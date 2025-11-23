@@ -33,6 +33,7 @@ Each highscore document has the following structure:
   score: number,             // Final game score (indexed, descending)
   wave: number,              // Wave reached
   zombiesKilled: number,     // Total zombies killed
+  isMultiplayer: boolean,    // Whether score was achieved in multiplayer mode
   timestamp: string          // ISO timestamp when score was achieved
 }
 ```
@@ -191,7 +192,7 @@ npm start
 **Purpose**: Add new highscore entry to MongoDB and refresh cache
 
 **Parameters**:
-- `entry`: `{ userId, username, score, wave, zombiesKilled }`
+- `entry`: `{ userId, username, score, wave, zombiesKilled, isMultiplayer }`
 
 **Returns**: `Promise<Array>` - Updated highscores array (top 10)
 
@@ -229,7 +230,7 @@ npm start
 
 **Client → Server: `game:score`**
 - Submits score on game over
-- Payload: `{ username, score, wave, zombiesKilled }`
+- Payload: `{ username, score, wave, zombiesKilled, isMultiplayer }`
 - Server extracts `userId` from socket handshake cookies
 - Calls `addHighscore()` to save to MongoDB
 

@@ -70,7 +70,7 @@ let currentLeaderId = null;
 // Generate unique user ID from cookie or create new one
 function getOrCreateUserId(req, res) {
   let userId = req.cookies?.zombobs_user_id;
-  
+
   if (!userId || !userSessions.has(userId)) {
     // Create new user ID
     userId = crypto.randomBytes(16).toString('hex');
@@ -80,7 +80,7 @@ function getOrCreateUserId(req, res) {
       secure: true, // HTTPS on Hugging Face
       sameSite: 'lax'
     });
-    
+
     // Initialize user session
     userSessions.set(userId, {
       userId,
@@ -99,7 +99,7 @@ function getOrCreateUserId(req, res) {
       session.ip = req.ip || req.connection.remoteAddress || session.ip;
     }
   }
-  
+
   return userId;
 }
 
@@ -124,13 +124,13 @@ function getRecentEvents() {
 // Chat helper functions
 function sanitizeChatMessage(message) {
   if (typeof message !== 'string') return null;
-  
+
   // Trim whitespace
   let sanitized = message.trim();
-  
+
   // Remove control characters (except newlines and tabs for multi-line support)
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  
+
   // HTML entity encoding for XSS prevention
   sanitized = sanitized
     .replace(/&/g, '&amp;')
@@ -138,12 +138,12 @@ function sanitizeChatMessage(message) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-  
+
   // Length validation (1-200 characters)
   if (sanitized.length === 0 || sanitized.length > 200) {
     return null;
   }
-  
+
   return sanitized;
 }
 
@@ -151,22 +151,22 @@ function checkRateLimit(socketId) {
   const now = Date.now();
   const RATE_LIMIT_WINDOW = 10000; // 10 seconds
   const MAX_MESSAGES = 5;
-  
+
   if (!chatRateLimits.has(socketId)) {
     chatRateLimits.set(socketId, []);
   }
-  
+
   const timestamps = chatRateLimits.get(socketId);
-  
+
   // Remove timestamps outside the window
   const validTimestamps = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW);
   chatRateLimits.set(socketId, validTimestamps);
-  
+
   // Check if under limit
   if (validTimestamps.length >= MAX_MESSAGES) {
     return false;
   }
-  
+
   // Add current timestamp
   validTimestamps.push(now);
   return true;
@@ -181,10 +181,10 @@ function addChatMessage(playerId, playerName, message, isSystem = false) {
     timestamp: Date.now(),
     isSystem: isSystem
   };
-  
+
   chatMessages[chatMessagesIndex] = chatMessage;
   chatMessagesIndex = (chatMessagesIndex + 1) % MAX_CHAT_MESSAGES;
-  
+
   return chatMessage;
 }
 
@@ -221,7 +221,7 @@ function assignLeader() {
   // Get first player efficiently using iterator
   const firstPlayerId = players.keys().next().value;
   const firstPlayer = players.get(firstPlayerId);
-  
+
   if (firstPlayer) {
     firstPlayer.isLeader = true;
     currentLeaderId = firstPlayerId;
@@ -270,25 +270,25 @@ app.get('/', (req, res) => {
   }
   const userId = getOrCreateUserId(req, res);
   const uptime = formatUptime(process.uptime());
-  
+
   // Cache memory usage calculation (don't call multiple times per request)
   const memUsage = process.memoryUsage();
   const memoryMB = formatMemory(memUsage.heapUsed);
   const totalMemoryMB = formatMemory(memUsage.heapTotal);
-  
+
   const version = packageJson.version;
-  
+
   // Use optimized recent events getter
   const events = getRecentEvents();
   const eventsHTML = events.length > 0
     ? events.map(event => `<li>${event}</li>`).join('')
     : '<li><em>No recent activity... yet.</em></li>';
-  
+
   // Get player list once and reuse
   const playerList = Array.from(players.values());
   const readyCount = playerList.filter(p => p.isReady).length;
   const leader = playerList.find(p => p.isLeader);
-  
+
   // Format player list HTML
   let playersHTML = '';
   if (playerList.length === 0) {
@@ -319,6 +319,165 @@ app.get('/', (req, res) => {
       <title>Zombobs Server - Apocalypse Status</title>
       <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
       <style>
+        /* ========== HALLOWEEN ZOMBIE EFFECTS ========== */
+        
+        /* Floating Zombie Animations */
+        .zombie-float {
+          position: fixed;
+          font-size: 3em;
+          opacity: 0.6;
+          pointer-events: none;
+          z-index: 1;
+          animation: float-across 15s infinite linear;
+          text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        @keyframes float-across {
+          0% {
+            transform: translateX(-100px) translateY(0) rotate(0deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.6;
+          }
+          90% {
+            opacity: 0.6;
+          }
+          100% {
+            transform: translateX(calc(100vw + 100px)) translateY(-50px) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        
+        .zombie-float:nth-child(1) { top: 10%; animation-delay: 0s; animation-duration: 20s; }
+        .zombie-float:nth-child(2) { top: 30%; animation-delay: 5s; animation-duration: 25s; }
+        .zombie-float:nth-child(3) { top: 50%; animation-delay: 10s; animation-duration: 18s; }
+        .zombie-float:nth-child(4) { top: 70%; animation-delay: 15s; animation-duration: 22s; }
+        .zombie-float:nth-child(5) { top: 85%; animation-delay: 3s; animation-duration: 19s; }
+        
+        /* Blood Drip Effect */
+        @keyframes blood-drip {
+          0% { 
+            text-shadow: 
+              0 0 10px rgba(255, 0, 0, 0.5), 
+              2px 2px 0px #000,
+              0 0 20px rgba(255, 0, 0, 0.8);
+          }
+          50% { 
+            text-shadow: 
+              0 0 20px rgba(255, 0, 0, 0.8), 
+              2px 2px 0px #000,
+              0 5px 30px rgba(139, 0, 0, 0.9),
+              0 10px 15px rgba(255, 0, 0, 0.4);
+          }
+          100% { 
+            text-shadow: 
+              0 0 10px rgba(255, 0, 0, 0.5), 
+              2px 2px 0px #000,
+              0 0 20px rgba(255, 0, 0, 0.8);
+          }
+        }
+        
+        /* Fog Overlay */
+        .fog-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            180deg,
+            rgba(100, 0, 100, 0.05) 0%,
+            rgba(0, 100, 0, 0.08) 50%,
+            rgba(100, 0, 0, 0.05) 100%
+          );
+          pointer-events: none;
+          z-index: 0;
+          animation: fog-drift 10s ease-in-out infinite;
+        }
+        
+        /* AI Badge */
+        .ai-badge {
+          position: fixed;
+          bottom: 12px;
+          right: 12px;
+          background: rgba(0, 0, 0, 0.6);
+          color: #fff;
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 0.75em;
+          font-family: 'Roboto', sans-serif;
+          backdrop-filter: blur(8px);
+          opacity: 0.7;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          z-index: 1000;
+        }
+        .ai-badge:hover {
+          opacity: 1;
+          border-color: rgba(204, 119, 34, 0.5);
+        }
+        .ai-badge .claude-text {
+          color: #cc7722;
+          font-weight: 600;
+        }
+        
+        /* Simple ChatGPT badge */
+        .chatgpt-badge {
+          position: fixed;
+          bottom: 12px;
+          left: 12px;
+          background: rgba(30, 30, 30, 0.6);
+          color: #fff;
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-size: 0.75em;
+          font-family: 'Roboto', sans-serif;
+          backdrop-filter: blur(4px);
+          opacity: 0.7;
+          transition: opacity 0.3s ease;
+        }
+        .chatgpt-badge:hover {
+          opacity: 1;
+        }
+        
+        @keyframes fog-drift {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
+        }
+        
+        /* Spooky Glow */
+        @keyframes spooky-glow {
+          0%, 100% { 
+            box-shadow: 
+              0 0 20px rgba(255, 0, 0, 0.4), 
+              inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              0 0 40px rgba(139, 0, 139, 0.3);
+          }
+          50% { 
+            box-shadow: 
+              0 0 40px rgba(255, 0, 0, 0.8), 
+              inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              0 0 60px rgba(139, 0, 139, 0.6);
+          }
+        }
+        
+        /* Screen Shake */
+        @keyframes screen-shake {
+          0%, 100% { transform: scale(1.05) translate(0, 0); }
+          10% { transform: scale(1.05) translate(-2px, 2px); }
+          20% { transform: scale(1.05) translate(2px, -2px); }
+          30% { transform: scale(1.05) translate(-2px, -2px); }
+          40% { transform: scale(1.05) translate(2px, 2px); }
+          50% { transform: scale(1.05) translate(-2px, 2px); }
+          60% { transform: scale(1.05) translate(2px, -2px); }
+          70% { transform: scale(1.05) translate(-2px, -2px); }
+          80% { transform: scale(1.05) translate(2px, 2px); }
+          90% { transform: scale(1.05) translate(-2px, 2px); }
+        }
+        
+        /* ========== ORIGINAL STYLES WITH ENHANCEMENTS ========== */
+        
         body {
           font-family: 'Roboto', sans-serif;
           max-width: 900px;
@@ -330,6 +489,8 @@ app.get('/', (req, res) => {
             url('data:image/svg+xml;utf8,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%232a0a0a" fill-opacity="0.4"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z"/%3E%3C/g%3E%3C/svg%3E');
           color: #dcdcdc;
           text-align: center;
+          position: relative;
+          overflow-x: hidden;
         }
 
         h1 { 
@@ -339,6 +500,9 @@ app.get('/', (req, res) => {
           text-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 2px 2px 0px #000;
           margin-bottom: 10px;
           letter-spacing: 2px;
+          animation: blood-drip 3s ease-in-out infinite;
+          position: relative;
+          z-index: 2;
         }
 
         .subtitle {
@@ -348,10 +512,14 @@ app.get('/', (req, res) => {
           margin-bottom: 40px;
           opacity: 0.9;
           text-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+          position: relative;
+          z-index: 2;
         }
 
         .play-section {
           margin: 40px 0;
+          position: relative;
+          z-index: 2;
         }
 
         .play-button {
@@ -370,8 +538,7 @@ app.get('/', (req, res) => {
         }
 
         .play-button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 0 30px rgba(255, 0, 0, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+          animation: screen-shake 0.5s ease-in-out, spooky-glow 2s ease-in-out infinite;
           background: linear-gradient(180deg, #ff5555 0%, #dd0000 100%);
         }
 
@@ -388,6 +555,8 @@ app.get('/', (req, res) => {
           margin: 0 auto;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
           backdrop-filter: blur(5px);
+          position: relative;
+          z-index: 2;
         }
 
         .status-indicator {
@@ -599,6 +768,14 @@ app.get('/', (req, res) => {
       </style>
     </head>
     <body>
+      <!-- Halloween Zombie Effects -->
+      <div class="fog-overlay"></div>
+      <div class="zombie-float">🧟</div>
+      <div class="zombie-float">🧟‍♀️</div>
+      <div class="zombie-float">💀</div>
+      <div class="zombie-float">🧟‍♂️</div>
+      <div class="zombie-float">👻</div>
+      
       <h1>🧟 Zombobs Server 🧟</h1>
       <div class="subtitle">The Horde Awaits...</div>
 
@@ -653,6 +830,10 @@ app.get('/', (req, res) => {
         <p>Server auto-refreshes every 10 seconds</p>
         <p class="port-info">Port: ${PORT} • Memory: ${memoryMB} MB / ${totalMemoryMB} MB</p>
       </div>
+      
+      <div class="ai-badge">
+        Enhanced with <span class="claude-text">Claude</span>
+      </div>
     </body>
     </html>
   `);
@@ -685,12 +866,12 @@ async function initMongoDB() {
     await client.connect();
     db = client.db(DB_NAME);
     highscoresCollection = db.collection(COLLECTION_NAME);
-    
+
     // Create index on score for faster queries
     await highscoresCollection.createIndex({ score: -1 });
-    
+
     console.log('[MongoDB] ✅ Connected to MongoDB Highscores');
-    
+
     // Load initial highscores into cache
     highscoresCache = await getHighscoresFromDB();
     console.log(`[highscores] Loaded ${highscoresCache.length} highscores from MongoDB`);
@@ -709,14 +890,14 @@ async function getHighscoresFromDB() {
   if (!highscoresCollection) {
     return [];
   }
-  
+
   try {
     const scores = await highscoresCollection
       .find({})
       .sort({ score: -1 })
       .limit(MAX_HIGHSCORES)
       .toArray();
-    
+
     // Ensure all entries have required fields
     return (scores || []).map(entry => ({
       userId: entry.userId || 'unknown',
@@ -724,6 +905,7 @@ async function getHighscoresFromDB() {
       score: entry.score || 0,
       wave: entry.wave || 0,
       zombiesKilled: entry.zombiesKilled || 0,
+      isMultiplayer: typeof entry.isMultiplayer === 'boolean' ? entry.isMultiplayer : false,
       timestamp: entry.timestamp || new Date().toISOString()
     }));
   } catch (error) {
@@ -754,6 +936,7 @@ async function addHighscore(entry) {
     score: typeof entry.score === 'number' ? entry.score : 0,
     wave: typeof entry.wave === 'number' ? entry.wave : 0,
     zombiesKilled: typeof entry.zombiesKilled === 'number' ? entry.zombiesKilled : 0,
+    isMultiplayer: typeof entry.isMultiplayer === 'boolean' ? entry.isMultiplayer : false,
     timestamp: new Date().toISOString()
   };
 
@@ -773,10 +956,10 @@ async function addHighscore(entry) {
   try {
     // Insert new score into MongoDB
     await highscoresCollection.insertOne(scoreEntry);
-    
+
     // Refresh cache from DB (get top 10)
     highscoresCache = await getHighscoresFromDB();
-    
+
     return [...highscoresCache];
   } catch (error) {
     console.error('[highscores] Error saving to MongoDB:', error);
@@ -817,25 +1000,26 @@ app.get('/api/highscores', (req, res) => {
 app.post('/api/highscore', async (req, res) => {
   try {
     const userId = getOrCreateUserId(req, res);
-    const { username, score, wave, zombiesKilled } = req.body;
-    
+    const { username, score, wave, zombiesKilled, isMultiplayer } = req.body;
+
     // Validate input
     if (typeof score !== 'number' || score < 0) {
       return res.status(400).json({ error: 'Invalid score' });
     }
-    
+
     // Add highscore (now async)
     const updatedHighscores = await addHighscore({
       userId,
       username: username || 'Survivor',
       score,
       wave: wave || 0,
-      zombiesKilled: zombiesKilled || 0
+      zombiesKilled: zombiesKilled || 0,
+      isMultiplayer: typeof isMultiplayer === 'boolean' ? isMultiplayer : false
     });
-    
+
     // Check if this score made it to top 10
     const isInTop10 = updatedHighscores.some(h => h.userId === userId && h.score === score);
-    
+
     res.json({
       success: true,
       isInTop10,
@@ -853,8 +1037,8 @@ io.on('connection', (socket) => {
   const cookies = socket.handshake.headers.cookie || '';
   const cookieMatch = cookies.match(/zombobs_user_id=([^;]+)/);
   const userId = cookieMatch ? cookieMatch[1] : null;
-  
-  const defaultName = `Survivor-${socket.id.slice(-4)}`;
+
+  const defaultName = `Survivor - ${socket.id.slice(-4)}`;
   const isFirstPlayer = players.size === 0;
 
   players.set(socket.id, {
@@ -869,12 +1053,12 @@ io.on('connection', (socket) => {
       rankTier: 1
     }
   });
-  
+
   // Set leader ID if first player
   if (isFirstPlayer) {
     currentLeaderId = socket.id;
   }
-  
+
   // Link socket to user session
   if (userId && userSessions.has(userId)) {
     const session = userSessions.get(userId);
@@ -930,7 +1114,7 @@ io.on('connection', (socket) => {
         });
       }
     } catch (error) {
-      console.error(`[player:ready] ERROR:`, error);
+      console.error(`[player: ready]ERROR: `, error);
       socket.emit('player:ready:error', {
         message: 'Server error processing ready toggle',
         error: error.message
@@ -945,7 +1129,7 @@ io.on('connection', (socket) => {
 
     // Check if requester is leader
     if (!player.isLeader) {
-      console.log(`[!] Non-leader ${player.name} attempted to start game`);
+      console.log(`[!] Non - leader ${player.name} attempted to start game`);
       socket.emit('game:start:error', { message: 'Only the lobby leader can start the game' });
       return;
     }
@@ -959,7 +1143,7 @@ io.on('connection', (socket) => {
     }
 
     // All checks passed - broadcast game starting countdown
-    console.log(`[+] Leader ${player.name} initiated game start. Countdown starting...`);
+    console.log(`[+] Leader ${player.name} initiated game start.Countdown starting...`);
 
     // Broadcast countdown start (3 seconds)
     const countdownDuration = 3000;
@@ -1067,40 +1251,42 @@ io.on('connection', (socket) => {
       const cookies = socket.handshake.headers.cookie || '';
       const cookieMatch = cookies.match(/zombobs_user_id=([^;]+)/);
       const userId = cookieMatch ? cookieMatch[1] : null;
-      
+
       if (!userId) {
         console.log('[game:score] No user ID found, skipping score submission');
         return;
       }
-      
+
       // Get username from player Map or data
       const player = players.get(socket.id);
       const username = player?.name || data.username || 'Survivor';
-      
+
       // Validate score data
       const score = typeof data.score === 'number' ? data.score : 0;
       const wave = typeof data.wave === 'number' ? data.wave : 0;
       const zombiesKilled = typeof data.zombiesKilled === 'number' ? data.zombiesKilled : 0;
-      
+      const isMultiplayer = typeof data.isMultiplayer === 'boolean' ? data.isMultiplayer : false;
+
       if (score <= 0) {
         console.log('[game:score] Invalid score, skipping submission');
         return;
       }
-      
+
       // Add highscore (now async)
       const updatedHighscores = await addHighscore({
         userId,
         username,
         score,
         wave,
-        zombiesKilled
+        zombiesKilled,
+        isMultiplayer
       });
-      
+
       // Check if this score made it to top 10
       const entry = updatedHighscores.find(h => h.userId === userId && h.score === score && h.wave === wave);
       const isInTop10 = !!entry;
       const rank = isInTop10 ? updatedHighscores.indexOf(entry) + 1 : null;
-      
+
       // Notify client of submission result
       socket.emit('game:score:result', {
         success: true,
@@ -1108,7 +1294,7 @@ io.on('connection', (socket) => {
         rank,
         highscores: updatedHighscores.slice(0, 10) // Send top 10 back
       });
-      
+
       // Broadcast new leaderboard to all clients if score is in top 10
       if (isInTop10) {
         io.emit('highscores:update', { highscores: updatedHighscores.slice(0, 10) });
@@ -1138,7 +1324,7 @@ io.on('connection', (socket) => {
 
     // Check rate limit
     if (!checkRateLimit(socket.id)) {
-      socket.emit('chat:rateLimit', { 
+      socket.emit('chat:rateLimit', {
         message: 'Rate limit exceeded. Please wait before sending another message.',
         retryAfter: 10
       });
@@ -1171,10 +1357,10 @@ io.on('connection', (socket) => {
     const wasLeader = player?.isLeader || false;
     const userId = player?.userId;
     players.delete(socket.id);
-    
+
     // Clean up rate limit tracking
     chatRateLimits.delete(socket.id);
-    
+
     // Remove socket from user session
     if (userId && userSessions.has(userId)) {
       const session = userSessions.get(userId);
@@ -1191,7 +1377,7 @@ io.on('connection', (socket) => {
     }
 
     // Reduced logging
-    console.log(`[-] ${displayName} disconnected | Players: ${players.size}`);
+    console.log(`[-] ${displayName} disconnected | Players: ${players.size} `);
     logEvent(`${displayName} was lost to the horde`);
     broadcastLobby();
 
@@ -1215,7 +1401,7 @@ initMongoDB().then(() => {
   try {
     httpServer.listen(PORT, '0.0.0.0', () => {
       serverReady = true; // Mark server as ready
-      console.log(`🚀 Zombobs Server running on port ${PORT}`);
+      console.log(`🚀 Zombobs Server running on port ${PORT} `);
       console.log(`🧟 The horde is approaching...`);
       console.log(`[DEBUG] Server is ready and listening for requests`);
       console.log(`[DEBUG] Health check available at: http://0.0.0.0:${PORT}/health`);

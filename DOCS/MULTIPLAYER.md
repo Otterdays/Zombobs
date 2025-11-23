@@ -314,6 +314,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
   score: number,         // Final game score
   wave: number,          // Wave reached
   zombiesKilled: number, // Total zombies killed
+  isMultiplayer: boolean, // Whether score was achieved in multiplayer mode
   timestamp: string      // ISO timestamp when score was achieved
 }
 ```
@@ -327,7 +328,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 
 **POST `/api/highscore`**
 - Submits a new score
-- Request body: `{ username, score, wave, zombiesKilled }`
+- Request body: `{ username, score, wave, zombiesKilled, isMultiplayer }`
 - Validates input (score must be number >= 0)
 - Extracts `userId` from cookie automatically
 - Returns: `{ success: true, isInTop10: boolean, rank: number | null }`
@@ -336,7 +337,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 
 **Client → Server: `game:score`**
 - Submits score on game over
-- Payload: `{ username, score, wave, zombiesKilled }`
+- Payload: `{ username, score, wave, zombiesKilled, isMultiplayer }`
 - Server extracts `userId` from socket handshake cookies
 - Server saves score and checks if it qualifies for top 10
 
@@ -358,6 +359,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Called automatically on game over
 - Prefers Socket.IO if multiplayer connected
 - Falls back to HTTP POST if not in multiplayer
+- Includes `isMultiplayer` flag based on connection status
 - Non-blocking (doesn't delay game over screen)
 
 **`submitScoreViaHTTP(scoreData)`**
@@ -375,6 +377,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Displays global leaderboard on main menu
 - Shows rank, username, score, and wave for each entry
 - Highlights player's own score if in top 10
+- Shows "MP" indicator for multiplayer scores (cyan color)
 - Positioned near top of screen (100 * scale from top), right-aligned
 - Shows "Loading leaderboard..." if fetching
 - Shows "Nobody yet!" when leaderboard successfully loaded but empty

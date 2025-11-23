@@ -174,7 +174,8 @@ export class GameStateManager {
             username: gameState.username,
             score: score,
             wave: wave,
-            zombiesKilled: zombiesKilled
+            zombiesKilled: zombiesKilled,
+            isMultiplayer: gameState.multiplayer.connected && gameState.multiplayer.socket && gameState.multiplayer.socket.connected
         };
 
         // Try socket.io first if multiplayer connected

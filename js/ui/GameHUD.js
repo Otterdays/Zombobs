@@ -4532,6 +4532,7 @@ export class GameHUD {
             const entry = this.leaderboard[i];
             const y = startY + (i + 1.5) * entryHeight;
             const isPlayerEntry = entry.username === gameState.username;
+            const isMultiplayer = entry.isMultiplayer === true;
 
             // Highlight player's own score
             if (isPlayerEntry) {
@@ -4557,7 +4558,17 @@ export class GameHUD {
             this.ctx.textAlign = 'right';
             const username = entry.username && entry.username.length > 12 ? entry.username.substring(0, 12) + '...' : (entry.username || 'Survivor');
             this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
-            this.ctx.fillText(username, rightX - 130 * scale, y);
+            const usernameX = isMultiplayer ? rightX - 150 * scale : rightX - 130 * scale;
+            this.ctx.fillText(username, usernameX, y);
+
+            // Multiplayer indicator (if applicable, right after username)
+            if (isMultiplayer) {
+                this.ctx.textAlign = 'right';
+                this.ctx.fillStyle = 'rgba(0, 255, 200, 0.9)';
+                this.ctx.font = `${Math.max(7, 8 * scale)}px "Roboto Mono", monospace`;
+                this.ctx.fillText('MP', rightX - 135 * scale, y);
+                this.ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+            }
 
             // Rank (right-aligned, leftmost)
             this.ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
