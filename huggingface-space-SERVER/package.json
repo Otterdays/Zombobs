@@ -1,6 +1,6 @@
 {
   "name": "zombobs-server",
-  "version": "0.7.2-ALPHA",
+  "version": "0.8.0-ALPHA",
   "description": "Backend server for Zombobs multiplayer",
   "main": "server.js",
   "scripts": {

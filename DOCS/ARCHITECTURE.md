@@ -11,7 +11,7 @@ The game has been refactored into a modular ES6 architecture:
 - `js/companions/`: AI NPC companion system (CompanionSystem)
 - `js/entities/`: Game entity classes (Bullet, Zombie, Particle, etc.)
 - `js/systems/`: Game systems (Audio, Graphics, Particle, Settings, Input)
-- `js/ui/`: User interface components (HUD, Settings Panel)
+- `js/ui/`: User interface components (HUD, Settings Panel, LeaderboardDisplay, RankDisplay, BossHealthBar)
 - `js/utils/`: Utility functions (combat, game utilities)
 
 This modular structure improves maintainability, testability, and scalability.
@@ -92,7 +92,7 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Text Rendering Quality System**:
 - Applies font smoothing settings (low, medium, high) to all canvas contexts
-- `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, BossHealthBar
+- `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, LeaderboardDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, BossHealthBar
 - Change listener in `js/main.js` calls `applyTextRenderingQualityToAll()` when `textRenderingQuality` setting changes
 - Settings persist via SettingsManager and localStorage
 
@@ -885,8 +885,14 @@ This hybrid approach provides:
   - Shows top 10 scores with rank, username, score, and wave
   - Highlights player's own score if in top 10
   - Shows loading/error states with retry countdown
-- **Left Side**: Last Run card (positioned at 100px from top, 20px from left)
-  - Displays score, wave, kills, and time from most recent game session
+- **Left Side**: Last Arcade Run card (positioned at 100px from top, 20px from left)
+  - Displays score, wave, kills, and time from most recent arcade game session
+  - Filters for `gameMode === 'arcade'` only
+  - Shows empty state message if no arcade runs available
+- **Left Side (Below)**: Local Best leaderboard (positioned at 220px from top, 20px from left)
+  - Shows top 5 arcade scores with rank, score, wave, kills, time, and multiplier
+  - Filters for `gameMode === 'arcade'` only (excludes coop and multiplayer runs)
+  - Each entry shows rank badge, score (right-aligned), and stats (left-aligned)
 - **Center**: Main menu button grid (2 columns, multiple rows)
   - Arcade, Campaign, Local Co-op, Play with AI, Settings, Multiplayer, Gallery, Profile, Achievements, About
 - `drawLobby()` - Render multiplayer lobby (status text, player list, chat window, back/start buttons)
@@ -919,8 +925,6 @@ This hybrid approach provides:
 - `getScaledItemSpacing()` - Get scaled item spacing value
 - `getScaledFontSize()` - Get scaled font size (minimum 8px for readability)
 - `drawPlayerCard(x, y, player, index, isLocalPlayer)` - Render player card in multiplayer lobby with rank badge
-- `fetchLeaderboard()` - Fetch global leaderboard from server with 10-second timeout
-- `drawLeaderboard()` - Draw global leaderboard with timeout/error handling and localStorage fallback
 
 **HUD Layout**:
 - **Top Left**: Player stats (Health, Shield, Multiplier) and shared stats (Wave, Kills, Left, Score, Buffs)
@@ -961,18 +965,35 @@ This hybrid approach provides:
   - Enter to send, Escape to clear, click to focus/unfocus
   - Disabled during game start countdown
 
-**Leaderboard System**:
-- Global leaderboard fetched from server with 10-second timeout
-- Timeout/error state tracking (`leaderboardFetchState`: 'loading' | 'success' | 'timeout' | 'error')
-- **Fixed infinite retry loop**: `leaderboardLastFetch` updated on all error paths (not just success)
-- **30-second cooldown enforcement**: Prevents 429 errors from request spam
-- **Retry countdown display**: Shows "Retrying in X seconds..." for better user feedback
-- Fallback to localStorage high score when server unavailable
-- Displays "Highscore server wasn't reached" message on timeout/error
-- Shows local high score as fallback when server fetch fails
-- Backend uses in-memory cache for instant responses (no disk I/O per request)
+**Dependencies**: `core/canvas.js`, `core/gameState.js`, `core/constants.js`, `systems/SettingsManager.js`, `ui/LeaderboardDisplay.js`
 
-**Dependencies**: `core/canvas.js`, `core/gameState.js`, `core/constants.js`, `systems/SettingsManager.js`
+**Screen Class Architecture (V0.8.0+)**:
+- **Modularization**: GameHUD.js refactored to use dedicated screen classes
+  - Reduced from ~4,715 lines to ~1,757 lines (63% reduction)
+  - 9 screen classes handle full-screen UI rendering and interaction
+- **Screen Classes**:
+  - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, version display
+  - `LobbyScreen.js` - Multiplayer lobby with player cards, chat system, connection status
+  - `CoopLobbyScreen.js` - Local co-op lobby for player setup
+  - `AILobbyScreen.js` - AI companion lobby for adding AI players
+  - `GameOverScreen.js` - Game over screen with quick stats and navigation
+  - `PauseMenuScreen.js` - Pause menu with resume/restart/settings options
+  - `AboutScreen.js` - About screen with game information
+  - `GalleryScreen.js` - Gallery showcase for zombies, weapons, and pickups
+  - `LevelUpScreen.js` - Level-up skill selection screen
+- **Screen Class Pattern**:
+  - Constructor: `constructor(canvas, ctx, hud)` - Receives canvas, context, and GameHUD reference
+  - Methods: `draw()`, `checkButtonClick(x, y)`, `updateHover(x, y)`
+  - Shared utilities accessed via `hud` reference: `getUIScale()`, `drawMenuButton()`, `drawGlassCard()`, `drawCreepyBackground()`
+- **Delegation Pattern**:
+  - GameHUD.draw() delegates to appropriate screen instance based on game state
+  - Interaction methods (checkMenuButtonClick, updateMenuHover) delegate to active screen
+  - Backward compatibility: main.js requires no changes, all methods delegate correctly
+- **Benefits**:
+  - Improved separation of concerns
+  - Better code organization and maintainability
+  - Easier to add new screens or modify existing ones
+  - Reduced cognitive load when working on specific screens
 
 #### SettingsPanel.js
 **Purpose**: Settings UI panel
@@ -1022,6 +1043,37 @@ This hybrid approach provides:
 - Settings-aware rendering (size and visibility controlled by SettingsManager)
 
 **Dependencies**: `core/canvas.js`, `systems/RankSystem.js`, `systems/SettingsManager.js`
+
+#### LeaderboardDisplay.js
+**Purpose**: UI component for fetching and displaying global leaderboard
+
+**Exports**: `LeaderboardDisplay` class
+
+**Methods**:
+- `getUIScale()` - Get current UI scale factor from settings (50%-150%)
+- `async fetch()` - Fetch global leaderboard from server with 10-second timeout
+  - Throttles fetches (30-second cooldown between successful fetches)
+  - Uses AbortController for timeout handling
+  - Manages fetch state: 'loading' | 'success' | 'timeout' | 'error'
+  - Updates timestamps on all error paths to prevent infinite retry loops
+- `draw(ctx)` - Draw global leaderboard with timeout/error handling and localStorage fallback
+  - Displays top 10 scores with rank, username, score, and wave
+  - Highlights player's own score if in top 10
+  - Shows loading/error states with retry countdown
+  - Displays "Highscore server wasn't reached" message on timeout/error
+  - Shows local high score as fallback when server fetch fails
+
+**Features**:
+- Global leaderboard fetched from server with 10-second timeout
+- Timeout/error state tracking (`leaderboardFetchState`: 'loading' | 'success' | 'timeout' | 'error')
+- **30-second cooldown enforcement**: Prevents 429 errors from request spam
+- **Retry countdown display**: Shows "Retrying in X seconds..." for better user feedback
+- Fallback to localStorage high score when server unavailable
+- Backend uses in-memory cache for instant responses (no disk I/O per request)
+- Full UI scaling support (50%-150%)
+- Self-contained state management (leaderboard array, fetch timestamps, fetch state)
+
+**Dependencies**: `core/gameState.js`, `systems/SettingsManager.js`, `core/constants.js`
 
 #### AchievementScreen.js
 **Purpose**: Achievement gallery UI component
@@ -1771,17 +1823,29 @@ Local scoreboard system that tracks and displays top 10 game sessions on the HTM
 - **`loadScoreboard()`**: Loads and returns top 10 entries sorted by score (descending)
 - **`saveScoreboardEntry(entry)`**: 
   - Loads existing scoreboard
-  - Inserts new entry
+  - Inserts new entry (includes `gameMode` field)
   - Sorts by score (descending)
   - Keeps only top 10
   - Saves to localStorage
   - Returns boolean indicating if entry qualified
+- **`getLastRuns(count, gameMode)`**: 
+  - Gets last N runs sorted by dateTime (most recent first)
+  - Optional `gameMode` filter: `'arcade'`, `'coop'`, or `'multiplayer'`
+  - For `'arcade'` mode, includes entries without `gameMode` (backwards compatibility)
+  - Returns filtered and sorted array
 
 ### Game Integration (`js/systems/GameStateManager.js`)
 - **Session Tracking**: `gameState.gameStartTime` set in `startGame()` method
+  - **Critical**: Must be set AFTER `resetGameState()` is called, otherwise it gets reset to 0
+  - Location: `startGame()` sets `gameState.gameStartTime = Date.now()` after state reset
 - **Time Calculation**: `(Date.now() - gameState.gameStartTime) / 1000` in `gameOver()` method
 - **Max Multiplier**: Calculated from all players' `maxMultiplierThisSession`
 - **Auto-Save**: Scoreboard entry saved automatically on game over if session was valid
+- **Game Mode Tracking**: Each scoreboard entry includes `gameMode` field:
+  - `'arcade'` - Single player non-coop games
+  - `'coop'` - Local co-op games
+  - `'multiplayer'` - Multiplayer games
+  - Old entries without `gameMode` default to `'arcade'` for backwards compatibility
 
 ### UI (`index.html`)
 - **Container**: Floating glassmorphism card matching existing side-card design

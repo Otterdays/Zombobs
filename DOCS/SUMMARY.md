@@ -331,6 +331,16 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
 
+## Recent Updates (V0.8.0 ALPHA)
+- **Major Code Refactoring**: GameHUD.js modularization with 9 screen classes
+  - Reduced GameHUD.js from ~4,715 lines to ~1,757 lines (63% reduction)
+  - Created dedicated screen classes: MainMenuScreen, LobbyScreen, CoopLobbyScreen, AILobbyScreen, GameOverScreen, PauseMenuScreen, AboutScreen, GalleryScreen, LevelUpScreen
+  - Each screen class encapsulates its own drawing and interaction logic
+  - Improved separation of concerns and maintainability
+  - All existing functionality preserved, backward compatible
+  - Shared utility methods remain in GameHUD for reuse
+- **Version Bump**: Updated all version references across the project to V0.8.0 ALPHA
+
 ## Recent Updates (V0.7.2 ALPHA)
 - **Game Over Screen Improvements**: Added "Back to Lobby" and "Back to Main Menu" navigation buttons, fixed cursor and hover state issues
 - **MongoDB Migration**: Migrated highscore storage from file-based to MongoDB Atlas for persistent cloud storage

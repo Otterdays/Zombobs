@@ -14,9 +14,9 @@
 > - Once a version is complete, move it to `CHANGELOG.md` and clear it from here (or archive it).
 ---
 
-## 🚀 CURRENT FOCUS: v0.7.1.1 (Small Polish Update)
+## 🚀 CURRENT FOCUS: v0.8.1 (Small Polish Update)
 
-**Goal:** Quick hotfix and polish pass following the v0.7.1 release. Addressing immediate feedback.
+**Goal:** Fix and polish pass following the v0.8.0 release. Addressing immediate feedback.
 
 - [ ] **Audio Balance Tweak**:
     - Shotgun sound is slightly too loud compared to BGM. Lower by 10%.
@@ -36,43 +36,43 @@
 
 ## 🔮 FUTURE PLANS (Backlog)
 
-- **v0.7.1.2: The Living World** (Environment & Visuals)
+- **v0.8.1.2: The Living World** (Environment & Visuals)
     - **Core**: Procedural Prop Spawning (Rocks, Debris, Burnt Cars) to break up the void.
     - **Visuals**: "Moving Ground" Shader (Subtle texture animation or parallax for depth).
     - **Tech**: Simple chunk system to manage spawned props.
 
-- **v0.7.2: The Scavenger Update** (Economy & Pickups)
+- **v0.8.2: The Scavenger Update** (Economy & Pickups)
     - **Mechanic**: "Scrap" currency drops from zombies (100% chance from Bosses, low chance from others).
     - **Feature**: Magnetic Pickup System (Scrap flies to player when close).
     - **UI**: Simple Scrap Counter in HUD.
-    - **v0.7.2.1**: *Scavenger Polish*
+    - **v0.8.2.1**: *Scavenger Polish*
         - **Visuals**: Add a "glint" particle effect to Scrap so it's visible at night.
         - **Balance**: Tweak magnetic radius and lerp speed (prevent scrap from orbiting player).
 
-- **v0.7.3: Foundations Update** (Core Building)
+- **v0.8.3: Foundations Update** (Core Building)
     - **System**: "Build Mode" (Toggle 'B'). Grid-based placement preview.
     - **Items**: Sandbags (Cheap, Low HP) and Wood Walls (Medium HP).
     - **Interaction**: "Repair" mechanic (Hold 'E' + Scrap cost).
-    - **v0.7.3.1**: *Foundations Polish*
+    - **v0.8.3.1**: *Foundations Polish*
         - **Audio**: Add satisfying "hammering" SFX for building and repairing.
         - **QoL**: Add "Recycle" option (refund 50% scrap) to fix misplaced walls.
-    - **v0.7.3.2**: *Architectural Expansion*
+    - **v0.8.3.2**: *Architectural Expansion*
         - **Content**: "Reinforced Gate" (Open/Close interaction).
         - **UX**: "Ghost" preview turns red if placement is invalid.
 
-- **v0.7.4: The Siege Update** (Threats & Balance)
+- **v0.8.4: The Siege Update** (Threats & Balance)
     - **Enemy**: "Sapper" Zombie (Explodes on contact with structures).
     - **Balance**: Wave scaling for "Siege Waves" (higher Sapper count).
     - **Tech**: Object Pooling for wall segments (performance).
-    - **v0.7.4.1**: *Siege Polish*
+    - **v0.8.4.1**: *Siege Polish*
         - **Visuals**: Implement "damage states" for walls (cracks appear at 50% and 25% HP).
         - **Feedback**: Distinct audio cue (ticking?) when Sappers are nearby.
-    - **v0.7.4.2**: *Breach & Clear*
+    - **v0.8.4.2**: *Breach & Clear*
         - **Mechanic**: "Repair Kit" drop (rare) that instantly heals nearby walls.
         - **AI**: Zombies prioritize "weak" (damaged) wall segments.
 
-- **v0.7.5**: UI Overhaul (The big HTML overlay update).
-    - **v0.7.5.1**: *UI Polish*
+- **v0.8.5**: UI Overhaul (The big HTML overlay update).
+    - **v0.8.5.1**: *UI Polish*
         - **Feel**: Add subtle hover/click SFX to all new HTML buttons.
         - **Perf**: Optimize CSS backdrop-blur for low-end devices.
 
@@ -85,43 +85,43 @@
         - **UX**: "Smart Snapping" for walls (corners auto-connect).
         - **UI**: "Base Management" tab in menu (overview of structure health).
 
-- **v0.8.1: Automated Defense** (Turrets & Firepower)
+- **v0.8.6: Automated Defense** (Turrets & Firepower)
     - **New Item**: "Sentry Turret" (Basic projectile, requires Scrap to reload).
     - **Mechanic**: Turret Targeting Logic (Closest vs Strongest).
-    - **v0.8.1.1**: *Turret Tuning*
+    - **v0.8.6.1**: *Turret Tuning*
         - **Balance**: Turret turn speed vs Fast Zombies.
         - **Audio**: Servo motor sounds and distinct firing SFX.
-    - **v0.8.1.2**: *Heavy Artillery*
+    - **v0.8.6.2**: *Heavy Artillery*
         - **New Item**: "Rocket Turret" (Splash damage, slow fire rate).
         - **Visuals**: Recoil animation for turrets.
 
-- **v0.8.2: Hazard Zone** (Traps & Area Denial)
+- **v0.8.7: Hazard Zone** (Traps & Area Denial)
     - **New Item**: "Spike Strip" (Slows enemies + minor DoT).
     - **New Item**: "Landmine" (High damage, one-time use).
-    - **v0.8.2.1**: *Trap Feedback*
+    - **v0.8.7.1**: *Trap Feedback*
         - **Audio**: Satisfying "Snap" sound for spikes.
         - **Visuals**: Blood splatter on spikes when zombies walk over them.
-    - **v0.8.2.2**: *Elemental Warfare*
+    - **v0.8.7.2**: *Elemental Warfare*
         - **New Item**: "Cryo-Pad" (Freezes zombies solid for 2s).
         - **New Item**: "Flame Pit" (Ignites zombies passing through).
 
-- **v0.8.3: Power & Logic** (Advanced Infrastructure)
+- **v0.8.8: Power & Logic** (Advanced Infrastructure)
     - **Core**: "Generator" (Consumes fuel/scrap to power advanced defenses).
     - **System**: Wire connections (Visualizing power flow).
-    - **v0.8.3.1**: *Visual Voltage*
+    - **v0.8.8.1**: *Visual Voltage*
         - **Visuals**: Electric sparks when generators are damaged.
         - **UI**: Power load indicator (Green/Yellow/Red).
-    - **v0.8.3.2**: *The Tesla Coil*
+    - **v0.8.8.2**: *The Tesla Coil*
         - **New Item**: "Tesla Tower" (Chain lightning, high power cost).
         - **Effect**: Stuns enemies briefly.
 
-- **v0.8.4: The Colony** (Survivors & Management)
+- **v0.8.9: The Colony** (Survivors & Management)
     - **Feature**: "Rescue Missions" (Find survivors in world, escort to base).
     - **Benefit**: Survivors provide passive bonuses (Repair speed, Scrap gain).
-    - **v0.8.4.1**: *Survivor Personality*
+    - **v0.8.9.1**: *Survivor Personality*
         - **Content**: Random names and bark lines ("Reloading!", "They're everywhere!").
         - **Visuals**: Unique hats/shirts for survivors.
-    - **v0.8.4.2**: *Role Assignment*
+    - **v0.8.9.2**: *Role Assignment*
         - **System**: Assign survivor to "Repair Duty" or "Turret Duty".
         - **AI**: Survivors flee to "Safe Zone" when walls are breached.
 - **Idea**: "Golden Zombie" rare spawn that drops 5x XP?

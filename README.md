@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.7.2_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.7.2 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.8.0_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.0 ALPHA" />
   </a>
 </p>
 
@@ -52,6 +52,21 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.8.0 ALPHA
+
+### 🎉 The Refactor Update
+
+> **Major code refactoring: GameHUD.js modularization**
+
+- **🔧 Major Code Refactoring** - GameHUD.js modularization
+  - **Screen Class Extraction**: Extracted 9 screen classes for better code organization
+    - MainMenuScreen, LobbyScreen, CoopLobbyScreen, AILobbyScreen, GameOverScreen, PauseMenuScreen, AboutScreen, GalleryScreen, LevelUpScreen
+  - **Code Reduction**: Reduced GameHUD.js from ~4,715 lines to ~1,757 lines (63% reduction)
+  - **Improved Maintainability**: Each screen class encapsulates its own drawing and interaction logic
+  - **Separation of Concerns**: Better code organization with clear responsibilities
+  - **Backward Compatible**: All existing functionality preserved, main.js requires no changes
+  - **Shared Utilities**: Common methods (getUIScale, drawMenuButton, drawGlassCard) remain in GameHUD for reuse
 
 ## 🔥 What's New in V0.7.2 ALPHA
 

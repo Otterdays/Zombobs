@@ -2,6 +2,100 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [Unreleased]
+
+### 🔧 Code Refactoring - Leaderboard System Extraction
+
+#### Changed
+- **Leaderboard System Refactored** - Extracted leaderboard functionality into separate component
+  - Created new `LeaderboardDisplay.js` component class following the pattern of `BossHealthBar` and `RankDisplay`
+  - Moved `fetchLeaderboard()` and `drawLeaderboard()` methods from `GameHUD.js` to `LeaderboardDisplay.js`
+  - Removed ~180 lines from `GameHUD.js`, improving code modularity and maintainability
+  - Updated all references in `main.js`, `GameStateManager.js`, and `MultiplayerSystem.js` to use new component
+  - Location: `js/ui/LeaderboardDisplay.js` (new file)
+  - Location: `js/ui/GameHUD.js` (refactored)
+
+#### Technical Details
+- `LeaderboardDisplay` class manages its own state (leaderboard array, fetch timestamps, fetch state)
+- Exposes `async fetch()` method for fetching leaderboard data
+- Exposes `draw(ctx)` method for rendering leaderboard UI
+- Follows same pattern as other UI components (`BossHealthBar`, `RankDisplay`)
+- Maintains all existing functionality (timeout handling, error states, retry logic)
+
+### 🎮 Main Menu Leaderboard Improvements
+
+#### Changed
+- **Last Run Panel** - Renamed to "Last Arcade Run" and filters for arcade runs only
+  - Now displays only the most recent arcade game session (excludes coop/multiplayer)
+  - Shows empty state message when no arcade runs are available
+  - Always displays card container even when empty
+  - Location: `js/ui/GameHUD.js` - `drawLocalHighscores()` method
+
+- **Local Best Leaderboard** - Now filters for arcade runs only
+  - Shows top 5 arcade scores only (excludes coop and multiplayer runs)
+  - Filters entries where `gameMode === 'arcade'` or `gameMode` is undefined (backwards compatibility)
+  - Location: `js/ui/GameHUD.js` - `drawLocalLeaderboard()` method
+
+#### Added
+- **Game Mode Tracking** - Scoreboard entries now include game mode
+  - `gameMode` field added to all new scoreboard entries
+  - Values: `'arcade'` (single player), `'coop'` (local co-op), `'multiplayer'` (online)
+  - Old entries without `gameMode` default to `'arcade'` for backwards compatibility
+  - Location: `js/systems/GameStateManager.js` - `gameOver()` method
+  - Location: `js/utils/gameUtils.js` - `saveScoreboardEntry()` method
+
+- **Game Mode Filtering** - `getLastRuns()` function now supports game mode filtering
+  - Optional `gameMode` parameter: `'arcade'`, `'coop'`, or `'multiplayer'`
+  - For `'arcade'` mode, includes entries without `gameMode` (backwards compatibility)
+  - Location: `js/utils/gameUtils.js` - `getLastRuns()` function
+
+#### Fixed
+- **Timer Reset Bug** - Fixed game start time being reset incorrectly
+  - Issue: `gameState.gameStartTime` was being reset to 0 by `resetGameState()` after being set
+  - Fix: Moved `gameState.gameStartTime = Date.now()` to AFTER `resetGameState()` call in `startGame()`
+  - Ensures timer starts correctly when game begins
+  - Location: `js/systems/GameStateManager.js` - `startGame()` method (line 164)
+
+- **Multiplayer State Reset** - Ensured multiplayer state is disabled for arcade mode
+  - Sets `gameState.multiplayer.active = false` when starting single/campaign games
+  - Prevents incorrect game mode detection
+  - Location: `js/main.js` - button click handlers for 'single' and 'campaign'
+
+## [V0.8.0 ALPHA] - 2025-01-XX
+
+### 🎉 VERSION 0.8.0 ALPHA RELEASE - The Refactor Update
+
+> **Major code refactoring: GameHUD.js modularization**
+
+### 🔧 Code Refactoring - GameHUD.js Modularization
+
+#### Changed
+- **GameHUD.js Major Refactor** - Extracted 9 screen classes for better code organization
+  - Reduced GameHUD.js from ~4,715 lines to ~1,757 lines (63% reduction)
+  - Created dedicated screen classes: MainMenuScreen, LobbyScreen, CoopLobbyScreen, AILobbyScreen, GameOverScreen, PauseMenuScreen, AboutScreen, GalleryScreen, LevelUpScreen
+  - Each screen class encapsulates its own drawing and interaction logic
+  - Improved separation of concerns and maintainability
+  - Location: `js/ui/GameHUD.js` (refactored)
+  - Location: `js/ui/*Screen.js` (9 new files)
+
+#### Technical Details
+- Screen classes follow consistent pattern: `constructor(canvas, ctx, hud)`, `draw()`, `checkButtonClick()`, `updateHover()`
+- Shared utility methods (`getUIScale`, `drawMenuButton`, `drawGlassCard`, `drawCreepyBackground`) remain in GameHUD
+- All interaction methods delegate to appropriate screen instances
+- Backward compatibility maintained - main.js requires no changes
+- News ticker state management moved to MainMenuScreen
+- All existing functionality preserved
+
+### Changed
+- **Version Bump**: Updated all version references across the project to V0.8.0 ALPHA
+  - Updated `index.html` landing page version display
+  - Updated `js/ui/MainMenuScreen.js` version display
+  - Updated `js/ui/AboutScreen.js` version display
+  - Updated `js/core/constants.js` news ticker
+  - Updated `server/package.json` and `huggingface-space/package.json` versions
+  - Updated `launch.ps1` server version
+  - Updated all documentation files
+
 ## [V0.7.2 ALPHA] - 2025-01-22
 
 ### 🏅 Badge System

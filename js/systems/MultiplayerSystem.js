@@ -591,7 +591,7 @@ export class MultiplayerSystem {
             socket.on('game:score:result', (data) => {
                 if (data.success && data.isInTop10 && gameHUD) {
                     // Refresh leaderboard if score made it to top 10
-                    gameHUD.fetchLeaderboard();
+                    gameHUD.leaderboardDisplay.fetch();
                 }
             });
 

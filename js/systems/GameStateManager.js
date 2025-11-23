@@ -37,6 +37,14 @@ export class GameStateManager {
         // Save scoreboard entry if game session was valid
         if (gameState.gameStartTime > 0) {
             const timeSurvived = (Date.now() - gameState.gameStartTime) / 1000; // in seconds
+            // Determine game mode: arcade if not coop and not multiplayer
+            const gameMode = (!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' : 
+                            (gameState.isCoop ? 'coop' : 'multiplayer');
+            console.log('[GameStateManager] Saving scoreboard entry:', {
+                isCoop: gameState.isCoop,
+                multiplayerActive: gameState.multiplayer.active,
+                gameMode: gameMode
+            });
             saveScoreboardEntry({
                 score: gameState.score,
                 wave: gameState.wave,
@@ -44,7 +52,8 @@ export class GameStateManager {
                 timeSurvived: timeSurvived,
                 maxMultiplier: maxMultiplier,
                 username: gameState.username,
-                dateTime: new Date().toISOString()
+                dateTime: new Date().toISOString(),
+                gameMode: gameMode
             });
 
             // Process session end for permanent progression
@@ -122,9 +131,6 @@ export class GameStateManager {
         gameState.showAILobby = false;
         this.gameHUD.hidePauseMenu(); // Ensure pause menu is hidden when game starts
 
-        // Set game start time for session tracking
-        gameState.gameStartTime = Date.now();
-
         // Do NOT reset players here for coop, we want to keep the lobby configuration
         if (!gameState.isCoop) {
             resetGameState(canvas.width, canvas.height);
@@ -153,6 +159,9 @@ export class GameStateManager {
                 p.y = canvas.height / 2;
             });
         }
+        
+        // Set game start time for session tracking AFTER resetting state
+        gameState.gameStartTime = Date.now();
 
         gameState.showMainMenu = false;
 
@@ -210,8 +219,8 @@ export class GameStateManager {
             if (response.ok) {
                 const result = await response.json();
                 // Refresh leaderboard in HUD if score made it to top 10
-                if (result.isInTop10 && this.gameHUD.fetchLeaderboard) {
-                    this.gameHUD.fetchLeaderboard();
+                if (result.isInTop10 && this.gameHUD.leaderboardDisplay) {
+                    this.gameHUD.leaderboardDisplay.fetch();
                 }
             }
         } catch (error) {

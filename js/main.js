@@ -1215,9 +1215,11 @@ canvas.addEventListener('mousedown', (e) => {
 
         if (clickedButton === 'single') {
             gameState.isCoop = false;
+            gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
             startGame();
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
+            gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
             startGame(); // TODO: Implement campaign mode
         } else if (clickedButton === 'local_coop') {
             gameState.showMainMenu = false;
@@ -1563,7 +1565,7 @@ if (profile && profile.username) {
 loadMenuMusicMuted();
 loadMultiplierStats();
 checkServerHealth(); // Start checking server status
-gameHUD.fetchLeaderboard(); // Fetch initial leaderboard
+gameHUD.leaderboardDisplay.fetch(); // Fetch initial leaderboard
 
 // Make clearScoreboard available globally for console access
 window.clearScoreboard = clearScoreboard;

@@ -210,7 +210,32 @@ export function clearScoreboard() {
 }
 
 /**
- * Save a new scoreboard entry if it qualifies for top 10
+ * Saves a run to the recent runs list in localStorage
+ * @param {Object} entry - The full scoreboard entry to save
+ */
+function saveToRecentRuns(entry) {
+    try {
+        let recentRuns = [];
+        const saved = localStorage.getItem('zombobs_recent_runs');
+        if (saved) {
+            recentRuns = JSON.parse(saved);
+            if (!Array.isArray(recentRuns)) recentRuns = [];
+        }
+
+        // Add new entry to the front
+        recentRuns.unshift(entry);
+
+        // Keep only the last 10 runs
+        const recentRunsToSave = recentRuns.slice(0, 10);
+
+        localStorage.setItem('zombobs_recent_runs', JSON.stringify(recentRunsToSave));
+    } catch (error) {
+        console.log('Failed to save to recent runs:', error);
+    }
+}
+
+/**
+ * Save a new scoreboard entry if it qualifies for top 10, and saves the run to the recent runs list.
  * @param {Object} entry - Scoreboard entry object
  * @param {number} entry.score - Final score
  * @param {number} entry.wave - Wave reached
@@ -218,39 +243,40 @@ export function clearScoreboard() {
  * @param {number} entry.timeSurvived - Time survived in seconds
  * @param {number} entry.maxMultiplier - Maximum multiplier achieved
  * @param {string} entry.username - Player username
- * @returns {boolean} True if entry was saved (qualified for top 10)
+ * @param {string} entry.gameMode - The game mode ('arcade', 'coop', etc.)
+ * @returns {boolean} True if entry was saved to the top-10 highscore board
  */
 export function saveScoreboardEntry(entry) {
     try {
-        const scoreboard = loadScoreboard();
-        
         // Get username from entry, gameState, or localStorage, with fallback
         let username = entry.username;
         if (!username || username.trim() === '') {
-            // Try to get from gameState
             if (gameState && gameState.username && gameState.username.trim() !== '') {
                 username = gameState.username.trim();
             } else {
-                // Try to get from localStorage
                 const savedUsername = localStorage.getItem('zombobs_username');
-                if (savedUsername !== null && savedUsername.trim() !== '') {
-                    username = savedUsername.trim();
-                } else {
-                    username = 'Survivor';
-                }
+                username = (savedUsername !== null && savedUsername.trim() !== '') ? savedUsername.trim() : 'Survivor';
             }
         }
         
-        // Add new entry
-        scoreboard.push({
+        const fullEntry = {
             score: entry.score || 0,
             wave: entry.wave || 0,
             kills: entry.kills || 0,
             timeSurvived: entry.timeSurvived || 0,
             maxMultiplier: entry.maxMultiplier || 1.0,
             dateTime: entry.dateTime || new Date().toISOString(),
-            username: username
-        });
+            username: username,
+            gameMode: entry.gameMode || 'arcade'
+        };
+
+        // Save to recent runs list
+        saveToRecentRuns(fullEntry);
+        
+        const scoreboard = loadScoreboard();
+        
+        // Add new entry for high score check
+        scoreboard.push(fullEntry);
         
         // Sort by score descending
         scoreboard.sort((a, b) => b.score - a.score);
@@ -260,8 +286,8 @@ export function saveScoreboardEntry(entry) {
         
         // Check if new entry made it into top 10
         const entryQualified = top10.some(e => 
-            e.score === entry.score && 
-            e.dateTime === entry.dateTime
+            e.score === fullEntry.score && 
+            e.dateTime === fullEntry.dateTime
         );
         
         // Save to localStorage
@@ -275,23 +301,30 @@ export function saveScoreboardEntry(entry) {
 }
 
 /**
- * Get last N runs from scoreboard sorted by dateTime (most recent first)
+ * Get last N runs from the recent runs list, sorted by dateTime (most recent first)
  * @param {number} count - Number of runs to retrieve
+ * @param {string} gameMode - Optional game mode filter ('arcade', 'coop', 'multiplayer')
  * @returns {Array} Array of scoreboard entries sorted by dateTime descending
  */
-export function getLastRuns(count) {
+export function getLastRuns(count, gameMode = null) {
     try {
-        const saved = localStorage.getItem('zombobs_scoreboard');
+        const saved = localStorage.getItem('zombobs_recent_runs');
         if (saved) {
-            const scoreboard = JSON.parse(saved);
-            if (Array.isArray(scoreboard)) {
-                // Sort by dateTime descending (most recent first)
-                const sorted = scoreboard.sort((a, b) => {
-                    const dateA = new Date(a.dateTime || 0);
-                    const dateB = new Date(b.dateTime || 0);
-                    return dateB - dateA; // Descending (newest first)
-                });
-                return sorted.slice(0, count);
+            const recentRuns = JSON.parse(saved);
+            if (Array.isArray(recentRuns)) {
+                // The list is already sorted by date (most recent first)
+                let filtered = recentRuns;
+                if (gameMode) {
+                    if (gameMode === 'arcade') {
+                        filtered = recentRuns.filter(entry => {
+                            const mode = entry.gameMode || 'arcade';
+                            return mode === 'arcade';
+                        });
+                    } else {
+                        filtered = recentRuns.filter(entry => entry.gameMode === gameMode);
+                    }
+                }
+                return filtered.slice(0, count);
             }
         }
     } catch (error) {
