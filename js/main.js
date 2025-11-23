@@ -1217,6 +1217,9 @@ canvas.addEventListener('mousedown', (e) => {
             gameState.isCoop = false;
             gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
             startGame();
+        } else if (clickedButton === 'survival') {
+            // Survival mode is coming soon - button is disabled
+            // Do nothing for now
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode

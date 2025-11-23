@@ -161,29 +161,33 @@ export class MainMenuScreen {
         const row4Y = buttonStartY + (buttonHeight + buttonSpacing) * 3;
         const row5Y = buttonStartY + (buttonHeight + buttonSpacing) * 4;
 
-        // Row 1: Arcade (left), Campaign (right)
+        // Row 1: Arcade (left), Survival (right) - disabled
         this.hud.drawMenuButton('Arcade', leftColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'single', false);
-        this.hud.drawMenuButton('Campaign', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
+        this.hud.drawMenuButton('Survival', rightColumnX, row1Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'survival', true);
 
-        // Row 2: Local Co-op (left), Play with AI (right)
-        this.hud.drawMenuButton('Local Co-op', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
-        this.hud.drawMenuButton('Play with AI', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
+        // Row 2: Campaign (left), Local Co-op (right)
+        this.hud.drawMenuButton('Campaign', leftColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'campaign', false);
+        this.hud.drawMenuButton('Local Co-op', rightColumnX, row2Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'local_coop', false);
 
-        // Row 3: Settings (left), Multiplayer (right)
-        this.hud.drawMenuButton('Settings', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
-        this.hud.drawMenuButton('Multiplayer', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
+        // Row 3: Play with AI (left), Settings (right)
+        this.hud.drawMenuButton('Play with AI', leftColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'play_ai', false);
+        this.hud.drawMenuButton('Settings', rightColumnX, row3Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'settings', false);
 
-        // Row 4: Gallery (centered)
-        this.hud.drawMenuButton('Gallery', centerX - buttonWidth / 2, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
+        // Row 4: Multiplayer (left), Gallery (right)
+        this.hud.drawMenuButton('Multiplayer', leftColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'multiplayer', false);
+        this.hud.drawMenuButton('Gallery', rightColumnX, row4Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'gallery', false);
 
         // Row 5: Profile (left), Achievements (right)
         this.hud.drawMenuButton('Profile', leftColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'profile', false);
         this.hud.drawMenuButton('Achievements', rightColumnX, row5Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'achievements', false);
 
-        // Row 6: Battlepass (left), About (right)
+        // Row 6: Battlepass (centered)
         const row6Y = buttonStartY + (buttonHeight + buttonSpacing) * 5;
-        this.hud.drawMenuButton('Battlepass', leftColumnX, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
-        this.hud.drawMenuButton('About', rightColumnX, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+        this.hud.drawMenuButton('Battlepass', centerX - buttonWidth / 2, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
+
+        // Row 7: About (centered)
+        const row7Y = buttonStartY + (buttonHeight + buttonSpacing) * 6;
+        this.hud.drawMenuButton('About', centerX - buttonWidth / 2, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         // Draw rank badge next to username
         this.drawRankBadge();
@@ -191,20 +195,22 @@ export class MainMenuScreen {
         // Global Leaderboard
         this.leaderboardDisplay.draw(this.ctx);
 
+        // Display all-time best multiplier - above Last Arcade Run box
+        if (gameState.allTimeMaxMultiplier > 1.0) {
+            const highScoreFontSize = Math.max(10, 12 * scale);
+            this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+            this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'left';
+            const cardX = 20 * scale; // Same X position as Last Arcade Run box
+            const multiplierY = 85 * scale; // Above the Last Arcade Run box
+            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, cardX, multiplierY);
+        }
+
         // Local Highscores (last 2 runs)
         this.drawLocalHighscores();
         
         // Local Leaderboard (top scores)
         this.drawLocalLeaderboard();
-
-        // Display all-time best multiplier - scaled
-        if (gameState.allTimeMaxMultiplier > 1.0) {
-            const highScoreFontSize = Math.max(10, 12 * scale);
-            this.ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
-            this.ctx.font = `${highScoreFontSize}px "Roboto Mono", monospace`;
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(`Best Multiplier: ${gameState.allTimeMaxMultiplier}x`, centerX, this.canvas.height - 60);
-        }
 
         // Draw mute button in bottom right
         const muteButtonSize = 40;
@@ -746,24 +752,26 @@ export class MainMenuScreen {
         // Check left column
         if (x >= leftColumnX && x <= leftColumnX + mainMenuButtonWidth) {
             if (y >= row1Y - mainMenuButtonHeight / 2 && y <= row1Y + mainMenuButtonHeight / 2) return 'single';
-            if (y >= row2Y - mainMenuButtonHeight / 2 && y <= row2Y + mainMenuButtonHeight / 2) return 'local_coop';
-            if (y >= row3Y - mainMenuButtonHeight / 2 && y <= row3Y + mainMenuButtonHeight / 2) return 'settings';
+            if (y >= row2Y - mainMenuButtonHeight / 2 && y <= row2Y + mainMenuButtonHeight / 2) return 'campaign';
+            if (y >= row3Y - mainMenuButtonHeight / 2 && y <= row3Y + mainMenuButtonHeight / 2) return 'play_ai';
+            if (y >= row4Y - mainMenuButtonHeight / 2 && y <= row4Y + mainMenuButtonHeight / 2) return 'multiplayer';
             if (y >= row5Y - mainMenuButtonHeight / 2 && y <= row5Y + mainMenuButtonHeight / 2) return 'profile';
-            if (y >= row6Y - mainMenuButtonHeight / 2 && y <= row6Y + mainMenuButtonHeight / 2) return 'battlepass';
         }
 
         // Check right column
         if (x >= rightColumnX && x <= rightColumnX + mainMenuButtonWidth) {
-            if (y >= row1Y - mainMenuButtonHeight / 2 && y <= row1Y + mainMenuButtonHeight / 2) return 'campaign';
-            if (y >= row2Y - mainMenuButtonHeight / 2 && y <= row2Y + mainMenuButtonHeight / 2) return 'play_ai';
-            if (y >= row3Y - mainMenuButtonHeight / 2 && y <= row3Y + mainMenuButtonHeight / 2) return 'multiplayer';
+            if (y >= row1Y - mainMenuButtonHeight / 2 && y <= row1Y + mainMenuButtonHeight / 2) return 'survival';
+            if (y >= row2Y - mainMenuButtonHeight / 2 && y <= row2Y + mainMenuButtonHeight / 2) return 'local_coop';
+            if (y >= row3Y - mainMenuButtonHeight / 2 && y <= row3Y + mainMenuButtonHeight / 2) return 'settings';
+            if (y >= row4Y - mainMenuButtonHeight / 2 && y <= row4Y + mainMenuButtonHeight / 2) return 'gallery';
             if (y >= row5Y - mainMenuButtonHeight / 2 && y <= row5Y + mainMenuButtonHeight / 2) return 'achievements';
-            if (y >= row6Y - mainMenuButtonHeight / 2 && y <= row6Y + mainMenuButtonHeight / 2) return 'about';
         }
 
-        // Check Gallery button (centered in row 4)
+        // Check centered buttons (row 6 and 7)
+        const row7Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 6;
         if (x >= centerX - mainMenuButtonWidth / 2 && x <= centerX + mainMenuButtonWidth / 2) {
-            if (y >= row4Y - mainMenuButtonHeight / 2 && y <= row4Y + mainMenuButtonHeight / 2) return 'gallery';
+            if (y >= row6Y - mainMenuButtonHeight / 2 && y <= row6Y + mainMenuButtonHeight / 2) return 'battlepass';
+            if (y >= row7Y - mainMenuButtonHeight / 2 && y <= row7Y + mainMenuButtonHeight / 2) return 'about';
         }
 
         // Check mute button (bottom right)
