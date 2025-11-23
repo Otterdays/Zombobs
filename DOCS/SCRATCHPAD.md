@@ -4,6 +4,20 @@
 
 ## 2025 - Active Development Notes
 
+### Flying Zombie Implementation [2025-01-XX]
+- ✅ **Flying Zombie** - New zombie variant with floating animation and simple wings
+  - Created `FlyingZombie` class extending base `Zombie` class
+  - Stats: 1.2x speed, 70% health, 90% radius (smaller hitbox)
+  - Subtle floating animation using `Math.sin()` with 3-4 pixel amplitude
+  - Simple wing visuals drawn on each side with subtle animation
+  - Light aura/glow effect (quality-scaled like other zombies)
+  - Elevated shadow to show flying effect
+  - Spawns from Wave 5+ with ~9% chance (inserted in spawn probability chain)
+  - XP value: 18 (balanced for medium difficulty)
+  - Location: `js/entities/Zombie.js` - `FlyingZombie` class
+  - Integration: `js/systems/ZombieSpawnSystem.js`, `js/systems/SkillSystem.js`
+  - Multiplayer compatible (inherits base class sync features)
+
 ### Badge System Implementation [2025-01-22]
 - ✅ **Badge System** - Simple visual collectibles separate from achievements
   - Created 6 starter badges: Rank 2, First Kill, Profile Visitor, First Game, Wave 5, Kill 10

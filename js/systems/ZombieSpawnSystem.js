@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie } from '../entities/Zombie.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie } from '../entities/Zombie.js';
 import { BossZombie } from '../entities/BossZombie.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 
@@ -20,6 +20,7 @@ export class ZombieSpawnSystem {
             'exploding': ExplodingZombie,
             'ghost': GhostZombie,
             'spitter': SpitterZombie,
+            'flying': FlyingZombie,
             'boss': BossZombie
         };
         return typeMap[type] || NormalZombie;
@@ -132,8 +133,12 @@ export class ZombieSpawnSystem {
                 else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
                     ZombieClass = SpitterZombie;
                 }
-                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost)
-                else if (gameState.wave >= 3 && rand >= 0.35) {
+                // Wave 5+: Introduce Flying zombies (~9% chance)
+                else if (gameState.wave >= 5 && rand >= 0.43 && rand < 0.52) {
+                    ZombieClass = FlyingZombie;
+                }
+                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying)
+                else if (gameState.wave >= 3 && rand >= 0.52) {
                     const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
                     if (Math.random() < armoredChance) {
                         ZombieClass = ArmoredZombie;

@@ -31,6 +31,7 @@ Players gain XP exclusively by **killing zombies**. The amount of XP awarded dep
 | Armored (Tank) | 16 XP | Higher health, slower movement |
 | Ghost | 24 XP | Can phase through obstacles |
 | Spitter | 21 XP | Ranged acid projectile attacks |
+| Flying | 18 XP | Flies with wings, faster but weaker |
 | Boss | 338 XP | Large health pool, special abilities |
 
 **Note**: XP values were reduced by 10% from previous values (8, 15, 23, 18, 27, 23, 375) to slow down progression slightly.

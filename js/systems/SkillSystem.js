@@ -199,6 +199,7 @@ class SkillSystem {
             armored: 16,    // Reduced by 10% from 18 (was 1.5x increase from 12)
             ghost: 24,      // Reduced by 10% from 27 (was 1.5x increase from 18)
             spitter: 21,    // Reduced by 10% from 23 (was 1.5x increase from 15)
+            flying: 18,     // Balanced for medium difficulty (between Ghost 24 and Spitter 21)
             boss: 338       // Reduced by 10% from 375 (was 1.5x increase from 250)
         };
     }

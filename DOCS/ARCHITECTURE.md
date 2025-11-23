@@ -237,7 +237,7 @@ This modular structure improves maintainability, testability, and scalability.
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type
@@ -246,6 +246,7 @@ This modular structure improves maintainability, testability, and scalability.
 - **ArmoredZombie**: Slower, heavily armored, absorbs damage before health
 - **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
 - **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, Wave 6+
+- **FlyingZombie**: Flies with wings, 1.2x speed, 70% health, smaller hitbox, subtle floating animation, Wave 5+
 
 **Methods**:
 - `update(player)` - AI pathfinding (kiting for SpitterZombie)
@@ -673,7 +674,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `spawnZombies(count, multiplayerSocket)` - Spawn zombies for a wave
 
 **Features**:
-- Wave-based zombie type selection (Fast, Exploding, Ghost, Spitter, Armored)
+- Wave-based zombie type selection (Fast, Exploding, Ghost, Spitter, Flying, Armored)
 - Boss wave spawning (every 5 waves)
 - Staggered spawn timing with visual indicators
 - Multiplayer synchronization (leader-only spawning)

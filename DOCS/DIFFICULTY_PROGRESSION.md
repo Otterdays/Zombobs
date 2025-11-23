@@ -108,7 +108,7 @@ health = (2 + Math.floor(wave / 3)) * 2
 
 ## Special Zombie Types
 
-The game features **6 special zombie variants** that spawn at specific wave thresholds with unique characteristics:
+The game features **7 special zombie variants** that spawn at specific wave thresholds with unique characteristics:
 
 ### Normal Zombie
 - **Base Type**: Default enemy
@@ -160,6 +160,15 @@ The game features **6 special zombie variants** that spawn at specific wave thre
 - **Spawn**: Wave 6+, ~8% chance (only if not Fast/Exploding/Ghost)
 - **Code**: `js/entities/Zombie.js:705-864`
 
+### Flying Zombie
+- **Health**: 70% of base (rounded down)
+- **Speed**: 1.2x base speed
+- **Hitbox**: 90% of normal radius (smaller, harder to hit)
+- **Special**: Flies with wings, subtle floating animation (3-4 pixel vertical bob)
+- **Visual**: Base zombie appearance with simple wing shapes, light aura/glow, elevated shadow
+- **Spawn**: Wave 5+, ~9% chance (only if not Fast/Exploding/Ghost/Spitter)
+- **Code**: `js/entities/Zombie.js:883-1150`
+
 ### Armored Zombie (The Tank)
 - **Health**: Base formula (full health)
 - **Speed**: 0.75x base speed (slower)
@@ -203,12 +212,13 @@ The spawn system uses a priority-based random selection:
 2. **Exploding Zombie**: Wave 5+, 10% chance (0.15-0.25) - only if not Fast
 3. **Ghost Zombie**: Wave 4+, 10% chance (0.25-0.35) - only if not Fast/Exploding
 4. **Spitter Zombie**: Wave 6+, 8% chance (0.35-0.43) - only if not Fast/Exploding/Ghost
-5. **Armored Zombie**: Wave 3+, scaling chance (0.35-1.00 range)
+5. **Flying Zombie**: Wave 5+, 9% chance (0.43-0.52) - only if not Fast/Exploding/Ghost/Spitter
+6. **Armored Zombie**: Wave 3+, scaling chance (0.52-1.00 range)
    - Base chance: 10% + (wave - 3) * 3%
    - Maximum: 50% (capped)
    - Example: Wave 6 = 10% + (6-3)*3% = 19% chance
    - Example: Wave 15 = 10% + (15-3)*3% = 46% chance (capped at 50%)
-6. **Normal Zombie**: Default fallback if no special type spawns
+7. **Normal Zombie**: Default fallback if no special type spawns
 
 **Code Reference**: `js/main.js:832-858`
 

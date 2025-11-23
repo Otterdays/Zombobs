@@ -244,7 +244,7 @@ The `gameState.multiplayer` object tracks:
 #### Zombie Spawns (`zombie:spawn`)
 - Leader broadcasts spawn event with: `{id, type, x, y, health, speed, baseSpeed}`
 - Non-leader clients create zombie using `getZombieClassByType()` helper
-- All zombie types supported: normal, fast, armored, exploding, ghost, spitter, boss
+- All zombie types supported: normal, fast, armored, exploding, ghost, spitter, flying, boss
 
 #### Zombie Damage/Death (`zombie:hit`, `zombie:die`)
 - Leader broadcasts hit events for visual effects (blood splatter)

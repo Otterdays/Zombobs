@@ -87,7 +87,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - main.js reduced from ~2,536 to ~1,241 lines (51% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
-✅ **Enemy Variety** - 6 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter)
+✅ **Enemy Variety** - 7 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying)
 ✅ **Day/Night Cycle** - Dynamic time-based atmosphere with difficulty scaling
 ✅ **Flamethrower Weapon** - Short-range weapon with burning damage over time
 ✅ **Environmental Hazards** - Acid pools from Spitter Zombie attacks
