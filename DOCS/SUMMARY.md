@@ -175,6 +175,13 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Achievement gallery screen with category filtering and progress tracking
   - Rank XP rewards (100-10,000 XP) and unlockable titles
   - Progress bars for locked achievements showing completion percentage
+✅ **Badge System** - Simple visual collectibles separate from achievements
+  - 6 starter badges: Rank 2, First Kill, Profile Visitor, First Game, Wave 5, Kill 10
+  - Badge bar in profile showing up to 3 most recent unlocked badges
+  - Badge gallery screen with statistics and grid layout
+  - Automatic badge unlocking when requirements are met
+  - Profile visit tracking for "Self Aware" badge
+  - Dossier theme styling matching profile screen
 ✅ **Battlepass/Expansion System** - Seasonal progression track with 50 tiers
   - Season 1: Outbreak (60-day season)
   - Free track available to all players
@@ -187,11 +194,12 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Unique player ID generation
   - Username and title display (titles unlocked from achievements)
   - Comprehensive statistics tracking (games, kills, waves, time, records, specialized stats)
-  - Profile screen showing rank, stats, achievements, and battlepass summary
+  - Profile screen showing rank, stats, achievements, badge bar, and battlepass summary
   - Automatic profile migration from existing username/high score data
-✅ **New UI Screens** - Three new full-screen interfaces
-  - Profile Screen: Player stats, rank display, achievement summary, battlepass summary
+✅ **New UI Screens** - Four new full-screen interfaces
+  - Profile Screen: Player stats, rank display, badge bar, achievement summary, battlepass summary
   - Achievement Screen: Grid layout with category filtering, progress tracking, unlock dates
+  - Badge Screen: Badge gallery with statistics, grid layout, locked/unlocked states
   - Battlepass Screen: Horizontal tier track, progress bar, season info, challenge list
   - All screens support UI scaling (50%-150%) and scrollable interfaces
 

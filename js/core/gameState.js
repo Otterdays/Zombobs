@@ -99,6 +99,7 @@ export const gameState = {
     showProfile: false,
     showAchievements: false,
     showBattlepass: false,
+    showBadges: false,
 
     multiplayer: {
         active: false,

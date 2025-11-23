@@ -4,7 +4,7 @@ import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
-import { saveMultiplierStats, getLastRuns, formatTime } from '../utils/gameUtils.js';
+import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
 import { isAudioInitialized } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
@@ -1551,6 +1551,9 @@ export class GameHUD {
 
         // Local Highscores (last 2 runs)
         this.drawLocalHighscores();
+        
+        // Local Leaderboard (top scores)
+        this.drawLocalLeaderboard();
 
         // Display all-time best multiplier - scaled
         if (gameState.allTimeMaxMultiplier > 1.0) {
@@ -1682,6 +1685,143 @@ export class GameHUD {
         this.ctx.fillText(`Time: ${timeText}`, cardX + padding, statY);
     }
 
+    drawLocalLeaderboard() {
+        const scale = this.getUIScale();
+        const scoreboard = loadScoreboard();
+        
+        // Card dimensions
+        const cardWidth = 200 * scale;
+        const maxHeight = 400 * scale; // Max height for scrollable content
+        const padding = 12 * scale;
+        const entryHeight = 70 * scale;
+        const entryPadding = 8 * scale;
+        
+        // Position below Last Run box
+        const cardX = 20 * scale; // Same X as Last Run
+        const y = 220 * scale; // Below Last Run (100 + 110 + 10 gap)
+        
+        // Calculate actual height based on entries (max 5 visible entries)
+        const visibleEntries = Math.min(scoreboard.length, 5);
+        const cardHeight = scoreboard.length === 0 
+            ? 80 * scale 
+            : Math.min(visibleEntries * entryHeight + padding * 2 + 20 * scale, maxHeight);
+        
+        // Draw glass card
+        this.drawGlassCard(cardX, y, cardWidth, cardHeight);
+        
+        // Header
+        const headerFontSize = Math.max(10, 11 * scale);
+        this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#ff9800';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('Local Best', cardX + padding, y + padding);
+        
+        // Subtitle
+        const subtitleFontSize = Math.max(8, 9 * scale);
+        this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.fillText('Top Scores', cardX + padding, y + padding + 14 * scale);
+        
+        if (scoreboard.length === 0) {
+            // Empty state
+            const emptyFontSize = Math.max(9, 10 * scale);
+            this.ctx.font = `${emptyFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#9e9e9e';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('No scores yet', cardX + cardWidth / 2, y + padding + 40 * scale);
+            this.ctx.fillText('Play to set records!', cardX + cardWidth / 2, y + padding + 55 * scale);
+            return;
+        }
+        
+        // Draw entries (show top 5)
+        const entriesToShow = Math.min(scoreboard.length, 5);
+        let entryY = y + padding + 28 * scale;
+        
+        for (let i = 0; i < entriesToShow; i++) {
+            const entry = scoreboard[i];
+            const rank = i + 1;
+            
+            // Entry background
+            const entryBgY = entryY - entryPadding;
+            const entryBgHeight = entryHeight - entryPadding * 2;
+            
+            // Rank-based colors
+            let bgColor, borderColor, rankColor;
+            if (rank === 1) {
+                bgColor = 'rgba(255, 215, 0, 0.15)';
+                borderColor = 'rgba(255, 215, 0, 0.3)';
+                rankColor = '#ffd700';
+            } else if (rank === 2) {
+                bgColor = 'rgba(192, 192, 192, 0.12)';
+                borderColor = 'rgba(192, 192, 192, 0.25)';
+                rankColor = '#c0c0c0';
+            } else if (rank === 3) {
+                bgColor = 'rgba(205, 127, 50, 0.12)';
+                borderColor = 'rgba(205, 127, 50, 0.25)';
+                rankColor = '#cd7f32';
+            } else {
+                bgColor = 'rgba(255, 255, 255, 0.03)';
+                borderColor = 'rgba(255, 255, 255, 0.05)';
+                rankColor = '#9e9e9e';
+            }
+            
+            // Draw entry background
+            this.ctx.fillStyle = bgColor;
+            this.ctx.fillRect(cardX + padding, entryBgY, cardWidth - padding * 2, entryBgHeight);
+            
+            // Draw entry border
+            this.ctx.strokeStyle = borderColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(cardX + padding, entryBgY, cardWidth - padding * 2, entryBgHeight);
+            
+            // Rank
+            const rankFontSize = Math.max(9, 10 * scale);
+            this.ctx.font = `bold ${rankFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = rankColor;
+            this.ctx.textAlign = 'left';
+            const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
+            this.ctx.fillText(rankText, cardX + padding + 4 * scale, entryY);
+            
+            // Score (large, prominent)
+            const scoreFontSize = Math.max(12, 14 * scale);
+            this.ctx.font = `bold ${scoreFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#ff5252';
+            const scoreText = (entry.score || 0).toLocaleString();
+            this.ctx.fillText(scoreText, cardX + padding + 4 * scale, entryY + 16 * scale);
+            
+            // Details (wave, kills, time)
+            const detailFontSize = Math.max(8, 9 * scale);
+            this.ctx.font = `${detailFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#9e9e9e';
+            let detailY = entryY + 32 * scale;
+            
+            // Wave and Kills on same line
+            this.ctx.fillText(`Wave: ${entry.wave || 0}`, cardX + padding + 4 * scale, detailY);
+            this.ctx.fillText(`Kills: ${(entry.kills || 0).toLocaleString()}`, cardX + padding + 80 * scale, detailY);
+            detailY += 12 * scale;
+            
+            // Time and Multiplier
+            const timeText = formatTime(entry.timeSurvived || 0);
+            this.ctx.fillText(`Time: ${timeText}`, cardX + padding + 4 * scale, detailY);
+            if (entry.maxMultiplier) {
+                this.ctx.fillText(`${entry.maxMultiplier.toFixed(1)}x`, cardX + padding + 80 * scale, detailY);
+            }
+            
+            entryY += entryHeight;
+        }
+        
+        // Show "and X more" if there are more than 5 entries
+        if (scoreboard.length > 5) {
+            const moreFontSize = Math.max(8, 9 * scale);
+            this.ctx.font = `${moreFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#9e9e9e';
+            this.ctx.textAlign = 'center';
+            const moreText = `+${scoreboard.length - 5} more`;
+            this.ctx.fillText(moreText, cardX + cardWidth / 2, entryY - entryPadding);
+        }
+    }
+
     drawNewsTicker() {
         const scale = this.getUIScale();
         // Use smaller font size for news ticker to fit more content
@@ -1785,25 +1925,14 @@ export class GameHUD {
         const version = "V0.7.2 ALPHA";
         const padding = 15;
         const boxHeight = 24;
-        const spacing = 8; // Space between version box and technology branding
+        const spacing = 8; // Space between WebGPU icon and version box
         
-        // Calculate technology branding position to position version box above it
-        const scale = this.getUIScale();
-        const techPadding = 15 * scale;
-        const techFontSize = Math.max(8, Math.round(10 * scale));
-        const techLineHeight = 14 * scale;
-        const techTextPadding = 8 * scale;
-        
-        // Calculate technology branding height (same as in drawTechnologyBranding)
-        this.ctx.save();
-        this.ctx.font = `${techFontSize}px "Roboto Mono", monospace`;
-        const techPanelHeight = 3 * techLineHeight + techTextPadding * 2; // 3 lines
-        const techPanelY = this.canvas.height - techPanelHeight - techPadding;
-        
-        // Position version box above technology branding
-        const x = padding;
-        const y = techPanelY - boxHeight - spacing;
+        // Position next to WebGPU icon (top left)
+        const webgpuIconWidth = 75;
+        const x = padding + webgpuIconWidth + spacing;
+        const y = padding;
 
+        this.ctx.save();
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
         const textWidth = this.ctx.measureText(version).width;
         const boxWidth = textWidth + 24;
@@ -3771,7 +3900,8 @@ export class GameHUD {
         this.ctx.save();
 
         const scale = this.getUIScale();
-        const padding = 15 * scale;
+        const padding = 15;
+        const spacing = 8; // Space between version box and technology branding
         const fontSize = Math.max(8, Math.round(10 * scale));
         const lineHeight = 14 * scale;
         const textPadding = 8 * scale;
@@ -3796,8 +3926,12 @@ export class GameHUD {
 
         const panelWidth = maxWidth + textPadding * 2;
         const panelHeight = lines.length * lineHeight + textPadding * 2;
-        const panelX = padding;
-        const panelY = this.canvas.height - panelHeight - padding;
+        
+        // Position next to WebGPU icon, below version box (top left)
+        const webgpuIconWidth = 75;
+        const versionBoxHeight = 24;
+        const panelX = padding + webgpuIconWidth + spacing;
+        const panelY = padding + versionBoxHeight + spacing;
 
         // Draw background panel
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';

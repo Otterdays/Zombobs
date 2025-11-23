@@ -60,6 +60,7 @@ import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
 import { ProfileScreen } from './ui/ProfileScreen.js';
 import { AchievementScreen } from './ui/AchievementScreen.js';
 import { BattlepassScreen } from './ui/BattlepassScreen.js';
+import { BadgeScreen } from './ui/BadgeScreen.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -79,10 +80,12 @@ window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
 const profileScreen = new ProfileScreen(canvas);
 const achievementScreen = new AchievementScreen(canvas);
 const battlepassScreen = new BattlepassScreen(canvas);
+const badgeScreen = new BadgeScreen(canvas);
 // Make globally accessible for text rendering quality
 window.profileScreen = profileScreen;
 window.achievementScreen = achievementScreen;
 window.battlepassScreen = battlepassScreen;
+window.badgeScreen = badgeScreen;
 
 // Initialize new systems
 const meleeSystem = new MeleeSystem();
@@ -279,6 +282,9 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
+    
+    // Track pause for badge
+    playerProfileSystem.trackGamePause();
 
     // Notify server
     if (gameState.multiplayer.active && gameState.multiplayer.socket) {
@@ -321,7 +327,7 @@ function drawPlayers() {
 // Drawing functions are now imported from drawingUtils.js
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout || gameState.showProfile || gameState.showAchievements || gameState.showBattlepass) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout || gameState.showProfile || gameState.showAchievements || gameState.showBattlepass || gameState.showBadges) return;
     if (gameState.showLevelUp) return; // Pause game during level up selection
 
     // Cache frequently accessed settings to reduce repeated lookups
@@ -638,6 +644,13 @@ function drawGame() {
         return;
     }
 
+    if (gameState.showBadges) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        badgeScreen.draw();
+        return;
+    }
+
     if (gameState.showLevelUp) {
         gameHUD.mainMenu = false;
         canvas.style.cursor = 'none'; // Use custom cursor
@@ -890,6 +903,8 @@ function gameOver() {
 }
 
 function restartGame() {
+    // Track restart for badge
+    playerProfileSystem.trackGameRestart();
     gameStateManager.restartGame();
 }
 
@@ -1218,6 +1233,7 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
+            playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'username') {
             const newUsername = window.prompt('Enter your name:', gameState.username);
             if (newUsername !== null && newUsername.trim() !== '') {
@@ -1234,6 +1250,7 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'gallery') {
             gameState.showGallery = true;
             gameState.showMainMenu = false;
+            playerProfileSystem.trackGalleryVisit();
             // Reset gallery scroll when entering
             if (gameHUD.galleryScrollY !== undefined) {
                 gameHUD.galleryScrollY = 0;
@@ -1248,6 +1265,7 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'achievements') {
             gameState.showAchievements = true;
             gameState.showMainMenu = false;
+            playerProfileSystem.trackAchievementVisit();
         } else if (clickedButton === 'battlepass') {
             gameState.showBattlepass = true;
             gameState.showMainMenu = false;
@@ -1443,6 +1461,7 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'pause_settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
+            playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'pause_menu') {
             restartGame();
         }

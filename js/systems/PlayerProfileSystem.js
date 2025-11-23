@@ -1,6 +1,7 @@
 import { rankSystem } from './RankSystem.js';
 import { achievementSystem } from './AchievementSystem.js';
 import { battlepassSystem } from './BattlepassSystem.js';
+import { badgeSystem } from './BadgeSystem.js';
 import { loadUsername } from '../utils/gameUtils.js';
 
 /**
@@ -40,6 +41,7 @@ export class PlayerProfileSystem {
                 rankName: "Private"
             },
             achievements: [],
+            badges: [],
             battlepass: {
                 currentSeason: 1,
                 battlepassXP: 0,
@@ -65,7 +67,14 @@ export class PlayerProfileSystem {
                 totalPerfectWaves: 0,
                 totalSkillsUnlocked: 0,
                 totalPickupsCollected: 0,
-                totalCoopWins: 0
+                totalCoopWins: 0,
+                profileVisits: 0,
+                settingsVisits: 0,
+                achievementVisits: 0,
+                badgeVisits: 0,
+                galleryVisits: 0,
+                gameRestarts: 0,
+                gamePauses: 0
             }
         };
     }
@@ -150,12 +159,24 @@ export class PlayerProfileSystem {
                     totalPerfectWaves: 0,
                     totalSkillsUnlocked: 0,
                     totalPickupsCollected: 0,
-                    totalCoopWins: 0
+                    totalCoopWins: 0,
+                    profileVisits: 0
                 };
+            }
+            if (!profile.badges) {
+                profile.badges = [];
             }
             
             profile.version = this.profileVersion;
         }
+        
+        // Ensure new stats exist (for version 1+ profiles)
+        if (!profile.stats.settingsVisits) profile.stats.settingsVisits = 0;
+        if (!profile.stats.achievementVisits) profile.stats.achievementVisits = 0;
+        if (!profile.stats.badgeVisits) profile.stats.badgeVisits = 0;
+        if (!profile.stats.galleryVisits) profile.stats.galleryVisits = 0;
+        if (!profile.stats.gameRestarts) profile.stats.gameRestarts = 0;
+        if (!profile.stats.gamePauses) profile.stats.gamePauses = 0;
     }
 
     /**
@@ -168,6 +189,7 @@ export class PlayerProfileSystem {
             // Update profile data from systems
             this.profile.rank = rankSystem.getData();
             this.profile.achievements = achievementSystem.getData();
+            this.profile.badges = badgeSystem.getData();
             this.profile.battlepass = battlepassSystem.getData();
             this.profile.version = this.profileVersion;
 
@@ -233,6 +255,7 @@ export class PlayerProfileSystem {
 
         rankSystem.initialize(this.profile);
         achievementSystem.loadAchievements(this.profile.achievements);
+        badgeSystem.loadBadges(this.profile.badges);
         battlepassSystem.initialize(this.profile);
     }
 
@@ -266,6 +289,9 @@ export class PlayerProfileSystem {
         };
         const newlyUnlocked = achievementSystem.updateProgress(sessionStatsForAchievements);
 
+        // Check badges
+        const newlyUnlockedBadges = badgeSystem.checkBadges();
+
         // Update battlepass (basic match completion bonus)
         const battlepassProgress = battlepassSystem.addXP(10); // Base match completion
 
@@ -275,8 +301,115 @@ export class PlayerProfileSystem {
         return {
             rankProgress,
             newlyUnlocked,
+            newlyUnlockedBadges,
             battlepassProgress
         };
+    }
+
+    /**
+     * Track profile visit (for badge tracking)
+     */
+    trackProfileVisit() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.profileVisits) {
+            this.profile.stats.profileVisits = 0;
+        }
+        this.profile.stats.profileVisits += 1;
+        // Check badges after incrementing
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track settings menu visit (for badge tracking)
+     */
+    trackSettingsVisit() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.settingsVisits) {
+            this.profile.stats.settingsVisits = 0;
+        }
+        this.profile.stats.settingsVisits += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track achievement screen visit (for badge tracking)
+     */
+    trackAchievementVisit() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.achievementVisits) {
+            this.profile.stats.achievementVisits = 0;
+        }
+        this.profile.stats.achievementVisits += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track badge screen visit (for badge tracking)
+     */
+    trackBadgeVisit() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.badgeVisits) {
+            this.profile.stats.badgeVisits = 0;
+        }
+        this.profile.stats.badgeVisits += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track gallery visit (for badge tracking)
+     */
+    trackGalleryVisit() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.galleryVisits) {
+            this.profile.stats.galleryVisits = 0;
+        }
+        this.profile.stats.galleryVisits += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track game restart (for badge tracking)
+     */
+    trackGameRestart() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.gameRestarts) {
+            this.profile.stats.gameRestarts = 0;
+        }
+        this.profile.stats.gameRestarts += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
+    }
+
+    /**
+     * Track game pause (for badge tracking)
+     */
+    trackGamePause() {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        if (!this.profile.stats.gamePauses) {
+            this.profile.stats.gamePauses = 0;
+        }
+        this.profile.stats.gamePauses += 1;
+        badgeSystem.checkBadges();
+        this.saveProfile();
     }
 
     /**

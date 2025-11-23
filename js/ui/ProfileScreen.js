@@ -2,6 +2,7 @@ import { playerProfileSystem } from '../systems/PlayerProfileSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { achievementSystem } from '../systems/AchievementSystem.js';
 import { battlepassSystem } from '../systems/BattlepassSystem.js';
+import { badgeSystem } from '../systems/BadgeSystem.js';
 import { gameState } from '../core/gameState.js';
 
 /**
@@ -19,6 +20,9 @@ export class ProfileScreen {
      * Mount the HTML overlay
      */
     mount() {
+        // Track profile visit for badge
+        playerProfileSystem.trackProfileVisit();
+        
         if (this.isMounted) {
             this.update();
             return;
@@ -226,6 +230,125 @@ export class ProfileScreen {
         rankDiv.appendChild(progressContainer);
 
         personnelInfo.appendChild(rankDiv);
+
+        // Badge Bar
+        const badgeBarContainer = document.createElement('div');
+        badgeBarContainer.style.marginTop = '24px';
+        
+        const badgeBarLabel = document.createElement('div');
+        badgeBarLabel.style.fontSize = '12px';
+        badgeBarLabel.style.color = '#8b6914';
+        badgeBarLabel.style.fontFamily = "'Courier Prime', monospace";
+        badgeBarLabel.style.marginBottom = '8px';
+        badgeBarLabel.textContent = 'BADGES';
+        badgeBarContainer.appendChild(badgeBarLabel);
+
+        const badgeBar = document.createElement('div');
+        badgeBar.className = 'badge-bar';
+        badgeBar.style.display = 'flex';
+        badgeBar.style.gap = '8px';
+
+        // Get unlocked badges (most recent first, limit to 3)
+        const unlockedBadges = badgeSystem.getUnlockedBadges().slice(0, 3);
+        
+        // Create 3 badge slots
+        for (let i = 0; i < 3; i++) {
+            const badgeSlot = document.createElement('div');
+            badgeSlot.className = 'badge-slot';
+            
+            if (i < unlockedBadges.length) {
+                // Show unlocked badge
+                badgeSlot.classList.add('filled');
+                badgeSlot.textContent = unlockedBadges[i].icon;
+                badgeSlot.title = unlockedBadges[i].name;
+            } else {
+                // Show empty slot
+                badgeSlot.classList.add('empty');
+                badgeSlot.textContent = '?';
+            }
+            
+            badgeBar.appendChild(badgeSlot);
+        }
+
+        badgeBarContainer.appendChild(badgeBar);
+
+        // VIEW BADGES button
+        const viewBadgesButton = document.createElement('button');
+        viewBadgesButton.className = 'btn-view-badges';
+        viewBadgesButton.style.marginTop = '12px';
+        viewBadgesButton.style.width = '100%';
+        viewBadgesButton.style.padding = '10px 16px';
+        viewBadgesButton.style.background = 'rgba(0, 0, 0, 0.4)';
+        viewBadgesButton.style.border = '2px solid #8b6914';
+        viewBadgesButton.style.borderRadius = '4px';
+        viewBadgesButton.style.color = '#d4af37';
+        viewBadgesButton.style.fontFamily = "'Courier Prime', monospace";
+        viewBadgesButton.style.fontSize = '12px';
+        viewBadgesButton.style.fontWeight = '700';
+        viewBadgesButton.style.textTransform = 'uppercase';
+        viewBadgesButton.style.letterSpacing = '0.1em';
+        viewBadgesButton.style.cursor = 'pointer';
+        viewBadgesButton.style.transition = 'all 0.2s ease';
+        viewBadgesButton.textContent = 'VIEW BADGES';
+        
+        viewBadgesButton.addEventListener('mouseenter', () => {
+            viewBadgesButton.style.borderColor = '#d4af37';
+            viewBadgesButton.style.boxShadow = '0 0 10px rgba(212, 175, 55, 0.4)';
+        });
+        
+        viewBadgesButton.addEventListener('mouseleave', () => {
+            viewBadgesButton.style.borderColor = '#8b6914';
+            viewBadgesButton.style.boxShadow = 'none';
+        });
+        
+        viewBadgesButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Ensure profile screen unmounts first
+            if (this.isMounted) {
+                this.unmount();
+            }
+            
+            // Close profile and open badge screen
+            gameState.showProfile = false;
+            gameState.showMainMenu = false;
+            gameState.showBadges = true;
+            
+            // Force badge screen to render on next frame
+            requestAnimationFrame(() => {
+                if (window.badgeScreen) {
+                    window.badgeScreen.draw();
+                }
+            });
+        });
+        
+        // Also try mousedown as backup
+        viewBadgesButton.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Ensure profile screen unmounts first
+            if (this.isMounted) {
+                this.unmount();
+            }
+            
+            // Close profile and open badge screen
+            gameState.showProfile = false;
+            gameState.showMainMenu = false;
+            gameState.showBadges = true;
+            
+            // Force badge screen to render on next frame
+            requestAnimationFrame(() => {
+                if (window.badgeScreen) {
+                    window.badgeScreen.draw();
+                }
+            });
+        });
+
+        badgeBarContainer.appendChild(viewBadgesButton);
+        personnelInfo.appendChild(badgeBarContainer);
+
         leftColumn.appendChild(personnelInfo);
         this.main.appendChild(leftColumn);
 

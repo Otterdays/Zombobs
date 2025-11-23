@@ -4,6 +4,17 @@
 
 ## 2025 - Active Development Notes
 
+### Badge System Implementation [2025-01-22]
+- ✅ **Badge System** - Simple visual collectibles separate from achievements
+  - Created 6 starter badges: Rank 2, First Kill, Profile Visitor, First Game, Wave 5, Kill 10
+  - Badge bar in profile showing up to 3 most recent unlocked badges
+  - Badge gallery screen with statistics and grid layout
+  - Automatic badge unlocking when requirements are met
+  - Profile visit tracking for "Self Aware" badge
+  - Dossier theme styling matching profile screen
+  - Location: `js/core/badgeDefinitions.js`, `js/systems/BadgeSystem.js`, `js/ui/BadgeScreen.js`
+  - Integration: `js/ui/ProfileScreen.js`, `js/systems/PlayerProfileSystem.js`, `js/main.js`, `css/ui-overlay.css`
+
 ### Multiplayer Lobby Return Bug Fix [2025-11-22]
 - ✅ **Stuck "GO!" Screen Fix** - Fixed bug where returning to lobby from dead multiplayer game showed stuck countdown screen
   - Issue: `isGameStarting` flag and `gameStartTime` weren't reset when clicking "Back to Lobby" from game over

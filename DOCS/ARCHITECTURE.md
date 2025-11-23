@@ -92,7 +92,7 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Text Rendering Quality System**:
 - Applies font smoothing settings (low, medium, high) to all canvas contexts
-- `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BossHealthBar
+- `applyTextRenderingQualityToAll()` updates: main canvas, GameHUD, RankDisplay, SettingsPanel, ProfileScreen, AchievementScreen, BattlepassScreen, BadgeScreen, BossHealthBar
 - Change listener in `js/main.js` calls `applyTextRenderingQualityToAll()` when `textRenderingQuality` setting changes
 - Settings persist via SettingsManager and localStorage
 
@@ -144,8 +144,9 @@ This modular structure improves maintainability, testability, and scalability.
 - `showProfile` - Profile screen visibility flag
 - `showAchievements` - Achievement screen visibility flag
 - `showBattlepass` - Battlepass screen visibility flag
+    - `showBadges` - Badge screen visibility flag
 - `achievementNotifications[]` - Array of achievement notifications to display
-- `sessionResults` - Session results from profile system (rank XP, achievements, battlepass progress)
+    - `sessionResults` - Session results from profile system (rank XP, achievements, badges, battlepass progress)
 
 **Dependencies**: `constants.js`
 
@@ -183,6 +184,22 @@ This modular structure improves maintainability, testability, and scalability.
 - Social: Co-op wins, games played milestones
 
 **Dependencies**: None
+
+#### badgeDefinitions.js
+**Purpose**: Badge definitions and helper functions
+
+**Exports**:
+- `BADGE_DEFINITIONS` - Array of all badge definitions (6 badges)
+- `getBadgeById(id)` - Get badge by ID
+- `getAllBadgeDefinitions()` - Get all badge definitions
+
+**Badge Types**:
+- `rank_2` - Reach rank 2
+- `first_kill` - Get 1 kill
+- `profile_visitor` - Check your profile
+- `first_game` - Play first game
+- `wave_5` - Survive wave 5
+- `kill_10` - Get 10 kills
 
 #### battlepassDefinitions.js
 **Purpose**: Battlepass season and tier definitions
@@ -519,6 +536,31 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/rankConstants.js`
 
+#### BadgeSystem.js
+**Purpose**: Badge tracking and unlock system (simpler visual collectibles separate from achievements)
+
+**Exports**: `BadgeSystem` class, `badgeSystem` singleton
+
+**Methods**:
+- `initializeBadges()` - Initialize badges from definitions
+- `loadBadges(profileBadges)` - Load badge progress from profile
+- `checkBadges()` - Check all badges and unlock any that meet requirements
+- `unlockBadge(badge)` - Unlock a badge
+- `getBadge(id)` - Get badge by ID
+- `getAllBadges()` - Get all badges
+- `getUnlockedBadges()` - Get unlocked badges (sorted by most recent)
+- `getStatistics()` - Get badge completion statistics
+- `getData()` - Get badge data for saving
+
+**Features**:
+- 6 simple badges for basic milestones
+- Automatic unlocking when requirements are met
+- Badge tracking for rank, kills, profile visits, games played, and waves
+- Profile visit tracking for "Self Aware" badge
+- Badge gallery display in profile
+
+**Dependencies**: `core/badgeDefinitions.js`, `systems/RankSystem.js`, `systems/PlayerProfileSystem.js`
+
 #### AchievementSystem.js
 **Purpose**: Achievement tracking and unlock system
 
@@ -595,7 +637,7 @@ This modular structure improves maintainability, testability, and scalability.
 - Profile versioning and migration
 - Export/import functionality for backup
 
-**Dependencies**: `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BattlepassSystem.js`, `utils/gameUtils.js`
+**Dependencies**: `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BadgeSystem.js`, `systems/BattlepassSystem.js`, `utils/gameUtils.js`
 
 #### MultiplayerSystem.js
 **Purpose**: Handles all multiplayer networking logic including Socket.IO connections, player synchronization, zombie sync, and game state sync
@@ -1026,6 +1068,29 @@ This hybrid approach provides:
 
 **Dependencies**: `core/canvas.js`, `systems/BattlepassSystem.js`, `systems/SettingsManager.js`
 
+#### BadgeScreen.js
+**Purpose**: Badge gallery UI component with dossier theme
+
+**Exports**: `BadgeScreen` class
+
+**Methods**:
+- `mount()` - Mount HTML overlay
+- `unmount()` - Unmount HTML overlay
+- `update()` - Update badge display
+- `renderBadges()` - Render all badges in grid
+- `draw()` - Legacy method (now uses HTML overlay)
+- `handleClick()` - Handle back button click
+
+**Features**:
+- Dossier theme styling (gold colors, monospace fonts)
+- Grid layout of all badges (3-4 columns responsive)
+- Badge statistics display (total, unlocked, locked, completion %)
+- Locked/unlocked visual states
+- Badge cards with icon, name, description, and status
+- HTML overlay implementation (not Canvas-based)
+
+**Dependencies**: `systems/BadgeSystem.js`, `core/gameState.js`
+
 #### ProfileScreen.js
 **Purpose**: Player profile UI component
 
@@ -1043,11 +1108,18 @@ This hybrid approach provides:
 - Rank XP progress bar with gold gradient styling matching dossier theme
 - Comprehensive statistics overview
 - Achievement summary (unlocked/total, completion %)
+- Badge bar showing up to 3 most recent unlocked badges
+- "VIEW BADGES" button to open badge gallery (uses `requestAnimationFrame` for proper screen transition timing)
 - Battlepass progress summary
 - Formatted numbers and time displays
 - Full UI scaling support
 
-**Dependencies**: `core/canvas.js`, `systems/PlayerProfileSystem.js`, `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BattlepassSystem.js`, `ui/RankDisplay.js`, `systems/SettingsManager.js`
+**Button Implementation**:
+- "VIEW BADGES" button uses both `click` and `mousedown` event listeners for reliability
+- Uses `requestAnimationFrame` wrapper to ensure badge screen renders on next frame after profile unmounts
+- Properly handles screen state transitions via `gameState` flags
+
+**Dependencies**: `core/canvas.js`, `systems/PlayerProfileSystem.js`, `systems/RankSystem.js`, `systems/AchievementSystem.js`, `systems/BadgeSystem.js`, `systems/BattlepassSystem.js`, `ui/RankDisplay.js`, `systems/SettingsManager.js`
 
 ### Companion Modules (`js/companions/`)
 

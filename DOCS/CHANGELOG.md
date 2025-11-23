@@ -4,6 +4,53 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [V0.7.2 ALPHA] - 2025-01-22
 
+### 🏅 Badge System
+
+#### Added
+- **Badge System** - Simple visual collectibles separate from achievements
+  - 6 starter badges: Rank 2, First Kill, Profile Visitor, First Game, Wave 5, Kill 10
+  - Badge bar in profile showing up to 3 most recent unlocked badges
+  - Empty badge slots show "?" placeholder
+  - "VIEW BADGES" button opens full badge gallery
+  - Badge screen with statistics and grid layout
+  - Dossier theme styling (gold colors, monospace fonts)
+  - Automatic badge unlocking when requirements are met
+  - Profile visit tracking for "Self Aware" badge
+  - Badge data persisted in player profile
+  - Location: `js/core/badgeDefinitions.js`, `js/systems/BadgeSystem.js`, `js/ui/BadgeScreen.js`
+  - Integration: `js/ui/ProfileScreen.js`, `js/systems/PlayerProfileSystem.js`, `js/main.js`
+
+- **Badge Definitions** - Simple badge requirements system
+  - Rank-based badges (reach rank 2)
+  - Kill-based badges (1 kill, 10 kills)
+  - Profile visit tracking (check profile)
+  - Game milestone badges (first game, wave 5)
+  - Location: `js/core/badgeDefinitions.js`
+
+- **Badge Gallery Screen** - Full badge collection viewer
+  - Badge statistics (total, unlocked, locked, completion %)
+  - Grid layout with responsive columns (3-4 columns)
+  - Badge cards with icon, name, description, and status
+  - Locked/unlocked visual states
+  - Dossier theme matching profile screen
+  - Location: `js/ui/BadgeScreen.js`
+
+#### Fixed
+- **Badge Screen Button** - Fixed "VIEW BADGES" button not opening badge screen
+  - Issue: Button click handler had timing issues with screen transitions
+  - Fix: Added `requestAnimationFrame` wrapper to ensure badge screen renders on next frame after profile unmounts
+  - Added mousedown event listener as backup for click events
+  - Button now properly transitions from profile screen to badge screen
+  - Location: `js/ui/ProfileScreen.js` - `viewBadgesButton` event handlers
+
+#### Technical Details
+- BadgeSystem tracks badge progress and unlocks
+- Badges checked on game session end and profile visit
+- Badge data saved in player profile alongside achievements and battlepass
+- Profile visit counter increments when profile is opened
+- Badge screen uses HTML overlay (not Canvas-based) for consistency
+- Button uses `requestAnimationFrame` for proper screen transition timing
+
 ### 🎮 Game Over Screen Improvements
 
 #### Added
