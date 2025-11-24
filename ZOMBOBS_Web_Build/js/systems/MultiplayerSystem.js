@@ -119,25 +119,51 @@ export class MultiplayerSystem {
         if (typeof io !== 'undefined') {
             gameState.multiplayer.status = 'connecting';
 
-            // Configure Socket.io for Hugging Face Spaces
-            // Hugging Face Spaces uses a reverse proxy, so we need to:
-            // 1. Use both polling and websocket transports (polling first for compatibility)
-            // 2. Set path explicitly for Spaces routing - Socket.io appends /socket.io/ automatically
-            // 3. Allow reconnection attempts
-            const socket = io(SERVER_URL, {
-                path: '/socket.io/', // Explicit path for Socket.io (will be appended to SERVER_URL)
-                transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
-                upgrade: true, // Allow transport upgrade from polling to websocket
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
-                timeout: 20000,
-                forceNew: false,
-                withCredentials: true // Important for CORS with cookies
+            // CRITICAL FIX: Ensure cookie is set BEFORE Socket.io connection
+            // Fetch /health endpoint first to get/set the user ID cookie
+            fetch(`${SERVER_URL}/health`, { 
+                credentials: 'include',
+                method: 'GET'
+            })
+            .then(() => {
+                // Cookie is now set, proceed with Socket.io connection
+                this.connectSocketIO(gameHUD);
+            })
+            .catch(error => {
+                console.warn('Failed to set cookie before Socket.io connection, connecting anyway:', error);
+                // Still try to connect, but cookie might not be set
+                this.connectSocketIO(gameHUD);
             });
+        } else {
+            console.error('Socket.io not found. Make sure the CDN script is loaded.');
+            gameState.multiplayer.status = 'error';
+            gameState.multiplayer.connected = false;
+        }
+    }
 
-            gameState.multiplayer.socket = socket;
+    /**
+     * Connect Socket.io after cookie is set
+     */
+    connectSocketIO(gameHUD) {
+        // Configure Socket.io for Hugging Face Spaces
+        // Hugging Face Spaces uses a reverse proxy, so we need to:
+        // 1. Use both polling and websocket transports (polling first for compatibility)
+        // 2. Set path explicitly for Spaces routing - Socket.io appends /socket.io/ automatically
+        // 3. Allow reconnection attempts
+        const socket = io(SERVER_URL, {
+            path: '/socket.io/', // Explicit path for Socket.io (will be appended to SERVER_URL)
+            transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+            upgrade: true, // Allow transport upgrade from polling to websocket
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            forceNew: false,
+            withCredentials: true // Important for CORS with cookies
+        });
+
+        gameState.multiplayer.socket = socket;
 
             socket.on('connect', () => {
                 console.log('✅ Successfully connected to multiplayer server');
@@ -608,11 +634,6 @@ export class MultiplayerSystem {
                 console.error('[Chat] Error:', data.message);
                 // Could show user feedback in UI
             });
-        } else {
-            console.error('Socket.io not found. Make sure the CDN script is loaded.');
-            gameState.multiplayer.status = 'error';
-            gameState.multiplayer.connected = false;
-        }
     }
 
     /**
