@@ -11,7 +11,7 @@ export class WebGPURenderer {
         this.isInitialized = false;
         this.fallbackMode = false;
         this.time = 0;
-        
+
         // Bloom settings
         this.bloomEnabled = true;
         this.bloomIntensity = 0.5;
@@ -33,7 +33,7 @@ export class WebGPURenderer {
         this.particleRenderBindGroup = null;
         this.particleComputeBindGroupLayout = null;
         this.particleRenderBindGroupLayout = null;
-        
+
         // Dirty flags for uniform updates
         this.uniformsDirty = true;
         this.cachedTime = 0;
@@ -42,18 +42,18 @@ export class WebGPURenderer {
         this.cachedBloomIntensity = -1;
         this.cachedDistortionEnabled = null;
         this.cachedLightingQuality = -1;
-        
+
         // Particle buffer management
         this.particleBufferSize = 0;
         this.particleStagingBuffer = null;
-        
+
         // Game particle sync (for explosions, etc.)
         this.gameParticleCount = 0;
         this.gameParticleBuffer = null;
         this.gameParticleRenderBindGroup = null;
         this.gameParticleRenderPipeline = null;
         this.gameParticleBindGroupLayout = null;
-        
+
         // Game particle sync (for explosions, etc.)
         this.gameParticleCount = 0;
         this.gameParticleBuffer = null;
@@ -324,8 +324,8 @@ export class WebGPURenderer {
             });
 
             // Create compute pipeline layout
-            const computePipelineLayout = this.device.createPipelineLayout({ 
-                bindGroupLayouts: [this.particleComputeBindGroupLayout] 
+            const computePipelineLayout = this.device.createPipelineLayout({
+                bindGroupLayouts: [this.particleComputeBindGroupLayout]
             });
 
             this.computePipeline = this.device.createComputePipeline({
@@ -479,16 +479,20 @@ export class WebGPURenderer {
             this.gameParticleRenderPipeline = this.device.createRenderPipeline({
                 layout: gameParticlePipelineLayout,
                 vertex: { module: gameParticleModule, entryPoint: 'vs_main' },
-                fragment: { module: gameParticleModule, entryPoint: 'fs_main', targets: [{ format: this.format, blend: {
-                    color: {
-                        srcFactor: 'src-alpha',
-                        dstFactor: 'one-minus-src-alpha',
-                    },
-                    alpha: {
-                        srcFactor: 'one',
-                        dstFactor: 'one-minus-src-alpha',
-                    },
-                } }] },
+                fragment: {
+                    module: gameParticleModule, entryPoint: 'fs_main', targets: [{
+                        format: this.format, blend: {
+                            color: {
+                                srcFactor: 'src-alpha',
+                                dstFactor: 'one-minus-src-alpha',
+                            },
+                            alpha: {
+                                srcFactor: 'one',
+                                dstFactor: 'one-minus-src-alpha',
+                            },
+                        }
+                    }]
+                },
                 primitive: { topology: 'triangle-strip' },
             });
 
@@ -514,14 +518,14 @@ export class WebGPURenderer {
         try {
             // Update time
             this.time += dt / 1000; // Convert to seconds
-            
+
             // Check if uniforms need updating (dirty flag system)
             const resolutionChanged = gpuCanvas.width !== this.cachedResolutionX ||
-                                    gpuCanvas.height !== this.cachedResolutionY;
+                gpuCanvas.height !== this.cachedResolutionY;
             const bloomChanged = this.bloomIntensity !== this.cachedBloomIntensity;
             const distortionChanged = this.distortionEnabled !== this.cachedDistortionEnabled;
             const lightingChanged = this.lightingQuality !== this.cachedLightingQuality;
-            
+
             // Always update time, but only update buffer if something changed
             if (this.uniformsDirty || resolutionChanged || bloomChanged || distortionChanged || lightingChanged) {
                 const uniformData = new Float32Array([
@@ -533,7 +537,7 @@ export class WebGPURenderer {
                     this.lightingQuality,
                 ]);
                 this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
-                
+
                 // Update cached values
                 this.cachedTime = this.time;
                 this.cachedResolutionX = gpuCanvas.width;
@@ -606,7 +610,7 @@ export class WebGPURenderer {
             // Don't throw, just log the error to prevent breaking the game loop
         }
     }
-    
+
     /**
      * Helper function to check WebGPU availability (consolidates checks)
      */
@@ -643,7 +647,7 @@ export class WebGPURenderer {
         if (level === 'off') newQuality = 0;
         else if (level === 'simple') newQuality = 1;
         else newQuality = 2;
-        
+
         if (this.lightingQuality !== newQuality) {
             this.lightingQuality = newQuality;
             this.uniformsDirty = true;
@@ -658,10 +662,10 @@ export class WebGPURenderer {
         if (count === this.particleCount) return;
         this.particleCount = count;
         if (!this.device) return;
-        
+
         const stride = 16; // 4 floats * 4 bytes each
         const requiredSize = count * stride;
-        
+
         // Only recreate buffer if size changed significantly or doesn't exist
         if (!this.particleBuffer || this.particleBufferSize < requiredSize) {
             // Destroy old buffer if exists
@@ -669,7 +673,7 @@ export class WebGPURenderer {
                 this.particleBuffer.destroy?.();
                 this.particleBuffer = null;
             }
-            
+
             if (count > 0) {
                 // Create buffer with required size
                 this.particleBuffer = this.device.createBuffer({
@@ -677,7 +681,7 @@ export class WebGPURenderer {
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
                 this.particleBufferSize = requiredSize;
-                
+
                 // Initialize particle data
                 const initData = new Float32Array(count * 4);
                 const w = gpuCanvas.width || 1920;
@@ -689,7 +693,7 @@ export class WebGPURenderer {
                     initData[i * 4 + 3] = (Math.random() - 0.5) * 0.5;
                 }
                 this.device.queue.writeBuffer(this.particleBuffer, 0, initData.buffer);
-                
+
                 // Recreate bind groups with new buffer
                 this._createParticleBindGroups();
             } else {
@@ -707,7 +711,7 @@ export class WebGPURenderer {
             this.particleRenderBindGroup = null;
         }
     }
-    
+
     /**
      * Helper method to create particle bind groups (reused when buffer changes)
      */
@@ -715,7 +719,7 @@ export class WebGPURenderer {
         if (!this.particleBuffer || !this.particleComputeBindGroupLayout || !this.particleRenderBindGroupLayout) {
             return;
         }
-        
+
         this.particleComputeBindGroup = this.device.createBindGroup({
             layout: this.particleComputeBindGroupLayout,
             entries: [
@@ -723,7 +727,7 @@ export class WebGPURenderer {
                 { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-write for compute
             ],
         });
-        
+
         this.particleRenderBindGroup = this.device.createBindGroup({
             layout: this.particleRenderBindGroupLayout,
             entries: [
@@ -771,7 +775,7 @@ export class WebGPURenderer {
         // Convert particles to WebGPU format
         // Format: [x, y, r, g, b, a, radius, life, maxLife]
         const particleData = new Float32Array(count * 8);
-        
+
         for (let i = 0; i < count; i++) {
             const p = particles[i];
             if (!p) continue;
@@ -816,7 +820,7 @@ export class WebGPURenderer {
 
         // Update count and create bind group if needed
         this.gameParticleCount = count;
-        
+
         if (this.gameParticleBindGroupLayout && this.gameParticleBuffer) {
             this.gameParticleRenderBindGroup = this.device.createBindGroup({
                 layout: this.gameParticleBindGroupLayout,

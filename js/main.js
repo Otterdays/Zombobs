@@ -818,6 +818,9 @@ function drawGame() {
             ctx.fillStyle = bgGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
+    } else {
+        // If WebGPU is active, background is handled by GPU layer - clear Canvas 2D to be transparent
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
 
