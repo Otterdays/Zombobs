@@ -640,7 +640,7 @@
   - Query range object reuse for reduced allocations
 - [ ] **Object Pooling 2.0** - Advanced global pooling system for zero-allocation gameplay loops (bullets, particles) 🟡
 - [ ] **Binary Data Serialization** - Use FlatBuffers/Protocol Buffers instead of JSON for faster save/load and network sync 🔴
-- [ ] **GPU Particle System** - Move particle simulation to Compute Shaders (WebGPU) or Transform Feedback (WebGL2) 🔴
+- [x] **GPU Particle System** - Move particle simulation to Compute Shaders (WebGPU) or Transform Feedback (WebGL2) 🔴
 - [ ] **LOD (Level of Detail) System** - Automatically downgrade animation/model quality based on entity distance 🟡
 - [ ] **Asset Streaming System** - Load textures and audio on-demand based on proximity rather than upfront loading 🟡
 - [ ] **Input System Rewrite** - Abstracted input handling to support remappable keys, gamepads, and touch interchangeably 🟡

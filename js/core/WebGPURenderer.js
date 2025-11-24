@@ -42,6 +42,8 @@ export class WebGPURenderer {
         this.cachedBloomIntensity = -1;
         this.cachedDistortionEnabled = null;
         this.cachedLightingQuality = -1;
+        this.cachedCameraX = 0;
+        this.cachedCameraY = 0;
 
         // Particle buffer management
         this.particleBufferSize = 0;
@@ -116,6 +118,8 @@ export class WebGPURenderer {
                         bloomIntensity: f32,
                         distortionEnabled: f32,
                         lightingQuality: f32,
+                        cameraX: f32,
+                        cameraY: f32,
                     }
                     
                     @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -177,29 +181,33 @@ export class WebGPURenderer {
                         let resolution = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
                         let uv = input.uv;
                         let aspect = resolution.x / resolution.y;
-                        var coord = vec2<f32>(uv.x * aspect, uv.y);
                         
-                        // Animated noise layers
-                        let time = uniforms.time * 0.1;
-                        let noise1 = fbm(coord * 2.0 + vec2<f32>(time * 0.3, time * 0.2));
-                        let noise2 = fbm(coord * 3.0 - vec2<f32>(time * 0.2, time * 0.4));
-                        let noise3 = fbm(coord * 1.5 + vec2<f32>(sin(time * 0.1), cos(time * 0.15)));
+                        // Parallax offset for background (moves slower than camera)
+                        let cameraOffset = vec2<f32>(uniforms.cameraX, uniforms.cameraY) / resolution;
+                        var coord = vec2<f32>(uv.x * aspect, uv.y) + cameraOffset * 0.2; // 20% parallax speed
+                        
+                        // Animated noise layers - SLOWER and LESS BUSY
+                        let time = uniforms.time * 0.05; // Slowed down
+                        let noise1 = fbm(coord * 1.5 + vec2<f32>(time * 0.1, time * 0.05));
+                        let noise2 = fbm(coord * 2.0 - vec2<f32>(time * 0.05, time * 0.1));
                         
                         // Combine noise layers
-                        let combined = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
+                        let combined = (noise1 * 0.6 + noise2 * 0.4);
                         
-                        // Dark horror theme colors
-                        let darkBase = vec3<f32>(0.02, 0.01, 0.03);
-                        let fogColor = vec3<f32>(0.08, 0.05, 0.12);
-                        let accentColor = vec3<f32>(0.15, 0.02, 0.08);
+                        // Apocalyptic / Ash / Burnt Paper Theme
+                        let darkBase = vec3<f32>(0.05, 0.05, 0.05); // Dark Grey/Black
+                        let ashColor = vec3<f32>(0.2, 0.2, 0.2); // Ash Grey
+                        let emberColor = vec3<f32>(0.3, 0.1, 0.05); // Dull glowing ember
                         
                         // Mix colors based on noise
-                        var color = mix(darkBase, fogColor, combined);
-                        color = mix(color, accentColor, noise2 * 0.3);
+                        var color = mix(darkBase, ashColor, combined * 0.8);
+                        // Add subtle ember glow in dark spots
+                        color = mix(color, emberColor, (1.0 - combined) * 0.3);
 
                         if (uniforms.distortionEnabled > 0.5) {
-                            let swirl = sin(coord.x * 3.0 + time) * cos(coord.y * 3.0 - time) * 0.05;
-                            color += vec3<f32>(swirl * 0.2, swirl * 0.1, swirl * 0.3);
+                            // Subtle heat haze instead of heavy swirl
+                            let haze = sin(coord.y * 10.0 + time * 2.0) * 0.005;
+                            coord.x += haze;
                         }
                         
                         // Vignette effect
@@ -212,16 +220,11 @@ export class WebGPURenderer {
                         if (bloomIntensity > 0.0) {
                             // Identify bright areas
                             let brightness = dot(color, vec3<f32>(0.299, 0.587, 0.114));
-                            let bloomThreshold = 0.1;
+                            let bloomThreshold = 0.2; // Higher threshold
                             if (brightness > bloomThreshold) {
-                                let bloomAmount = (brightness - bloomThreshold) * bloomIntensity * 3.0;
-                                color += vec3<f32>(bloomAmount * 0.3, bloomAmount * 0.2, bloomAmount * 0.5);
+                                let bloomAmount = (brightness - bloomThreshold) * bloomIntensity * 2.0;
+                                color += vec3<f32>(bloomAmount * 0.4, bloomAmount * 0.2, bloomAmount * 0.1); // Warm bloom
                             }
-                        }
-
-                        if (uniforms.lightingQuality > 1.5) {
-                            let rim = max(0.0, 1.0 - length(uv - 0.5) * 2.0);
-                            color += vec3<f32>(rim * 0.02, rim * 0.01, rim * 0.03);
                         }
                         
                         return vec4<f32>(color, 1.0);
@@ -280,6 +283,8 @@ export class WebGPURenderer {
                         bloomIntensity: f32,
                         distortionEnabled: f32,
                         lightingQuality: f32,
+                        cameraX: f32,
+                        cameraY: f32,
                     }
                     struct Particle {
                         pos: vec2<f32>,
@@ -293,7 +298,17 @@ export class WebGPURenderer {
                         if (i >= arrayLength(&particles)) { return; }
                         var p = particles[i];
                         let t = uniforms.time;
-                        p.vel += vec2<f32>(sin(t + f32(i) * 0.001), cos(t * 0.7 + f32(i) * 0.002)) * 0.0005;
+                        
+                        // Floaty ash movement
+                        // Dampen velocity
+                        p.vel = p.vel * 0.95;
+                        
+                        // Add gentle drift
+                        let noise = sin(t * 0.5 + f32(i) * 0.1) * 0.0002;
+                        let gravity = 0.0001; // Slow falling
+                        
+                        p.vel += vec2<f32>(noise, gravity);
+                        
                         p.pos += p.vel;
                         let w = uniforms.resolutionX;
                         let h = uniforms.resolutionY;
@@ -342,20 +357,52 @@ export class WebGPURenderer {
                         bloomIntensity: f32,
                         distortionEnabled: f32,
                         lightingQuality: f32,
+                        cameraX: f32,
+                        cameraY: f32,
                     }
                     struct Particle { pos: vec2<f32>, vel: vec2<f32> }
                     @group(0) @binding(0) var<uniform> uniforms: Uniforms;
                     @group(0) @binding(1) var<storage> particles: array<Particle>;
-                    struct VSOut { @builtin(position) position: vec4<f32> };
+                    
+                    struct VSOut { 
+                        @builtin(position) position: vec4<f32>,
+                        @location(0) random: f32
+                    };
+                    
                     @vertex fn vs_main(@builtin(vertex_index) i: u32) -> VSOut {
                         let p = particles[i].pos;
-                        let x = (p.x / uniforms.resolutionX) * 2.0 - 1.0;
-                        let y = (p.y / uniforms.resolutionY) * -2.0 + 1.0;
+                        
+                        // Apply camera offset for world-space feel (wrapping)
+                        let camPos = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
+                        let res = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
+                        
+                        // Calculate relative position with wrapping
+                        // We want particles to stay around the screen but move opposite to camera
+                        // effectively making them "world space" but repeating
+                        let relativePos = (p - camPos) % res;
+                        
+                        // Handle negative modulo result in WGSL/GLSL style
+                        let wrappedPos = relativePos + select(vec2<f32>(0.0), res, relativePos < vec2<f32>(0.0));
+                        
+                        let x = (wrappedPos.x / uniforms.resolutionX) * 2.0 - 1.0;
+                        let y = (wrappedPos.y / uniforms.resolutionY) * -2.0 + 1.0;
                         var out: VSOut;
                         out.position = vec4<f32>(x, y, 0.0, 1.0);
+                        // Generate stable random value based on index
+                        out.random = fract(sin(f32(i)) * 43758.5453);
                         return out;
                     }
-                    @fragment fn fs_main() -> @location(0) vec4<f32> { return vec4<f32>(1.0, 0.8, 0.2, 0.6); }
+                    
+                    @fragment fn fs_main(in: VSOut) -> @location(0) vec4<f32> { 
+                        // Mix between Ash (grey) and Ember (orange)
+                        // 90% Ash, 10% Embers
+                        let isEmber = step(0.9, in.random);
+                        
+                        let ashColor = vec4<f32>(0.5, 0.5, 0.5, 0.4); // Grey, semi-transparent
+                        let emberColor = vec4<f32>(1.0, 0.4, 0.1, 0.8); // Orange/Red, brighter
+                        
+                        return mix(ashColor, emberColor, isEmber);
+                    }
                 `,
             });
 
@@ -383,6 +430,8 @@ export class WebGPURenderer {
                         bloomIntensity: f32,
                         distortionEnabled: f32,
                         lightingQuality: f32,
+                        cameraX: f32,
+                        cameraY: f32,
                     }
                     @group(0) @binding(0) var<uniform> uniforms: Uniforms;
                     @group(0) @binding(1) var<storage> particleData: array<f32>;
@@ -434,8 +483,16 @@ export class WebGPURenderer {
                         }
                         
                         // Convert particle position to NDC
-                        let ndcX = (x / uniforms.resolutionX) * 2.0 - 1.0;
-                        let ndcY = (y / uniforms.resolutionY) * -2.0 + 1.0;
+                        // Convert particle position to NDC (apply camera offset)
+                        // Game particles are in world space, so we subtract camera position directly
+                        let camX = uniforms.cameraX;
+                        let camY = uniforms.cameraY;
+                        
+                        let screenX = x - camX;
+                        let screenY = y - camY;
+                        
+                        let ndcX = (screenX / uniforms.resolutionX) * 2.0 - 1.0;
+                        let ndcY = (screenY / uniforms.resolutionY) * -2.0 + 1.0;
                         
                         // Scale quad by particle size (in NDC space)
                         let scaleX = (size / uniforms.resolutionX) * 2.0;
@@ -506,7 +563,7 @@ export class WebGPURenderer {
         }
     }
 
-    render(dt) {
+    render(dt, camera = { x: 0, y: 0 }) {
         if (!this.isInitialized || this.fallbackMode) {
             return;
         }
@@ -525,9 +582,10 @@ export class WebGPURenderer {
             const bloomChanged = this.bloomIntensity !== this.cachedBloomIntensity;
             const distortionChanged = this.distortionEnabled !== this.cachedDistortionEnabled;
             const lightingChanged = this.lightingQuality !== this.cachedLightingQuality;
+            const cameraChanged = camera.x !== this.cachedCameraX || camera.y !== this.cachedCameraY;
 
             // Always update time, but only update buffer if something changed
-            if (this.uniformsDirty || resolutionChanged || bloomChanged || distortionChanged || lightingChanged) {
+            if (this.uniformsDirty || resolutionChanged || bloomChanged || distortionChanged || lightingChanged || cameraChanged) {
                 const uniformData = new Float32Array([
                     this.time,
                     gpuCanvas.width,
@@ -535,6 +593,8 @@ export class WebGPURenderer {
                     this.bloomIntensity,
                     this.distortionEnabled ? 1 : 0,
                     this.lightingQuality,
+                    camera.x,
+                    camera.y,
                 ]);
                 this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
 
@@ -545,6 +605,8 @@ export class WebGPURenderer {
                 this.cachedBloomIntensity = this.bloomIntensity;
                 this.cachedDistortionEnabled = this.distortionEnabled;
                 this.cachedLightingQuality = this.lightingQuality;
+                this.cachedCameraX = camera.x;
+                this.cachedCameraY = camera.y;
                 this.uniformsDirty = false;
             }
 

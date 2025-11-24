@@ -2,6 +2,26 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.5] - WebGPU Particle Parallax & Documentation Update
+
+### Added
+- **WebGPU Particle Parallax** - Particles now move relative to the camera in single player arcade mode
+  - Added `cameraX` and `cameraY` uniforms to WebGPU shaders
+  - Updated `WebGPURenderer.js` to accept camera position
+  - Updated `main.js` to pass camera position to renderer
+  - Particles now wrap around the screen but move opposite to camera movement, creating a world-space feel
+  - Location: `js/core/WebGPURenderer.js`, `js/main.js`
+
+### Changed
+- **WebGPU Shader Uniforms** - Updated all shader structs to include camera position
+  - Background shader now has subtle parallax movement (20% of camera speed)
+  - Particle shaders now offset positions by camera position
+  - Location: `js/core/WebGPURenderer.js`
+
+### Documentation
+- **Roadmap Update** - Marked "GPU Particle System" as completed in `roadmap.md`
+- **Changelog Update** - Added entry for v0.8.1.5
+
 ## [v0.8.1.4] - Explosion Particle Rendering Fix
 
 ### Fixed

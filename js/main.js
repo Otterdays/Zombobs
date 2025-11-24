@@ -1261,7 +1261,9 @@ gameEngine.draw = () => {
     // Render WebGPU layer (background/compute) AFTER drawGame() so particles are synced first
     if (isWebGPUActive()) {
         const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
-        webgpuRenderer.render(dt);
+        // Pass camera position for parallax
+        const cameraPos = cameraSystem.getPosition();
+        webgpuRenderer.render(dt, cameraPos);
     }
 };
 
