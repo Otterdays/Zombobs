@@ -1,15 +1,21 @@
 import { Zombie } from './Zombie.js';
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
+import { settingsManager } from '../systems/SettingsManager.js';
 import { triggerExplosion } from '../utils/combatUtils.js';
 
 export class BossZombie extends Zombie {
     constructor(x, y) {
-        super(x, y);
+        // v0.8.1.2: Call super with canvas dimensions (Zombie constructor expects canvasWidth, canvasHeight)
+        // Then override position with the provided x, y coordinates
+        super(1, 1); // Pass dummy values since we'll override position anyway
+        this.x = x;
+        this.y = y;
         this.type = 'boss';
         this.radius = 35; // Larger size
         this.speed = 0.6; // Slower than normal zombies initially
-        this.maxHealth = 500 + (gameState.wave * 50); // Scales with wave
+        // 1.25x increase, with minimum 1000 HP for wave 5+
+        this.maxHealth = Math.max(1000, Math.floor((500 + (gameState.wave * 50)) * 1.25));
         this.health = this.maxHealth;
         this.scoreValue = 500;
         this.color = {
@@ -133,8 +139,33 @@ export class BossZombie extends Zombie {
             ctx.fillRect(barX, barY, barWidth, barHeight);
             
             const healthPct = this.health / this.maxHealth;
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(barX, barY, barWidth * healthPct, barHeight);
+            const fillWidth = barWidth * healthPct;
+            
+            // Get health bar style setting
+            const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+            
+            if (healthBarStyle === 'gradient') {
+                // Red gradient for boss
+                const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                gradient.addColorStop(0, '#ff0000');
+                gradient.addColorStop(1, '#ff6666');
+                ctx.fillStyle = gradient;
+            } else if (healthBarStyle === 'solid') {
+                // Solid red for boss
+                ctx.fillStyle = '#ff0000';
+            } else if (healthBarStyle === 'simple') {
+                // Simple white fill
+                ctx.fillStyle = '#ffffff';
+            }
+            
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+            
+            // Border (only for gradient and solid styles)
+            if (healthBarStyle !== 'simple') {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
         }
     }
 }

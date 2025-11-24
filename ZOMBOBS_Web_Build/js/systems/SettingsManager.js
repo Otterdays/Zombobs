@@ -40,9 +40,20 @@ export class SettingsManager {
                 // New graphics quality settings
                 effectIntensity: 1.0, // 0.0 to 2.0 (0% to 200%) - multiplier for all visual effects
                 postProcessingQuality: 'medium', // 'off', 'low', 'medium', 'high' - post-processing effects
-                particleDetail: 'standard' // 'minimal', 'standard', 'detailed', 'ultra' - particle rendering quality
+                particleDetail: 'standard', // 'minimal', 'standard', 'detailed', 'ultra' - particle rendering quality
+                // Text rendering quality
+                textRenderingQuality: 'high', // 'low', 'medium', 'high'
+                // Rank badge settings
+                rankBadgeSize: 'normal', // 'small', 'normal', 'large'
+                showRankBadge: true, // boolean
+                // Crosshair settings
+                crosshairSize: 1.0, // 0.5 to 2.0 multiplier
+                crosshairOpacity: 1.0, // 0.0 to 1.0
+                // Enemy health bar style
+                enemyHealthBarStyle: 'gradient' // 'gradient', 'solid', 'simple'
             },
             gameplay: {
+                enableAICompanion: true,
                 autoSprint: false,
                 autoReload: true, // Disable for "hardcore" feel
                 pauseOnFocusLoss: true,

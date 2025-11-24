@@ -7,15 +7,16 @@ import {
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
     ZOMBIE_BASE_SCORES
 } from '../core/constants.js';
-import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
+import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
-import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
+import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
+import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
 let collisionQuadtree = null;
@@ -30,9 +31,14 @@ export function shootBullet(target, canvas, player) {
 
     // Check if reloading
     if (player.isReloading) {
-        if (now - player.reloadStartTime >= player.currentWeapon.reloadTime) {
+        const reloadMultiplier = player.reloadSpeedMultiplier || 1.0;
+        const adjustedReloadTime = player.currentWeapon.reloadTime * reloadMultiplier;
+        if (now - player.reloadStartTime >= adjustedReloadTime) {
             player.isReloading = false;
-            player.currentAmmo = player.currentWeapon.maxAmmo;
+            // Apply ammo multiplier (from Hoarder skill) when reloading
+            const ammoMultiplier = player.ammoMultiplier || 1.0;
+            player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+            player.currentAmmo = player.maxAmmo;
             // Update weapon state with reloaded ammo
             const weaponKeys = Object.keys(WEAPONS);
             const currentWeaponKey = weaponKeys.find(key => WEAPONS[key] === player.currentWeapon);
@@ -63,13 +69,20 @@ export function shootBullet(target, canvas, player) {
     const gunX = player.x + Math.cos(angle) * player.radius * 1.8;
     const gunY = player.y + Math.sin(angle) * player.radius * 1.8;
 
+    // Apply Steady Aim spread reduction (30% less spread)
+    const spreadReduction = player.bulletSpreadReduction || 1.0;
+
+    // Apply Long Range multiplier (20% increased range)
+    const rangeMultiplier = player.bulletRangeMultiplier || 1.0;
+
     // Create bullets based on weapon type
     if (player.currentWeapon === WEAPONS.shotgun) {
         // Shotgun fires 5 spread bullets
         for (let i = 0; i < 5; i++) {
-            const spreadAngle = angle + (Math.random() - 0.5) * 0.5; // Add spread
+            const spreadAngle = angle + (Math.random() - 0.5) * 0.5 * spreadReduction; // Add spread with reduction
             const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
             bullet.damage *= damageMult;
+            bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
             bullet.player = player; // Track which player fired this bullet
             gameState.bullets.push(bullet);
         }
@@ -77,35 +90,43 @@ export function shootBullet(target, canvas, player) {
         // Flamethrower fires multiple flame particles with spread
         const flameCount = 3; // Fire 3 flame particles per shot
         for (let i = 0; i < flameCount; i++) {
-            const spreadAngle = angle + (Math.random() - 0.5) * 0.4; // Wider spread
+            const spreadAngle = angle + (Math.random() - 0.5) * 0.4 * spreadReduction; // Wider spread with reduction
             const flame = new FlameBullet(gunX, gunY, spreadAngle, player.currentWeapon);
             flame.damage *= damageMult;
+            flame.maxDistance *= rangeMultiplier; // Apply range multiplier
             flame.player = player; // Track which player fired this bullet
             gameState.bullets.push(flame);
         }
     } else if (player.currentWeapon === WEAPONS.smg) {
         // SMG fires single bullet with slight spread
-        const spreadAngle = angle + (Math.random() - 0.5) * 0.1;
+        const spreadAngle = angle + (Math.random() - 0.5) * 0.1 * spreadReduction;
         const bullet = new Bullet(gunX, gunY, spreadAngle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.sniper) {
         // Sniper fires piercing bullet
         const bullet = new PiercingBullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
         // Rocket Launcher fires rocket
+
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
+
         rocket.damage *= damageMult; // Direct hit damage (if any)
+        rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
+
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
         bullet.damage *= damageMult;
+        bullet.maxDistance *= rangeMultiplier; // Apply range multiplier
         bullet.player = player; // Track which player fired this bullet
         gameState.bullets.push(bullet);
     }
@@ -136,11 +157,17 @@ export function shootBullet(target, canvas, player) {
     player.muzzleFlash.life = player.muzzleFlash.maxLife;
     player.muzzleFlash.intensity = 1;
 
-    // Create shell casing
-    gameState.shells.push(new Shell(gunX, gunY, angle));
+    // Create shell casing (not for rockets)
+    if (player.currentWeapon !== WEAPONS.rocketLauncher) {
+        gameState.shells.push(new Shell(gunX, gunY, angle));
+    }
 
-    // Play gunshot sound
-    playGunshotSound();
+    // Play weapon-specific sound
+    if (player.currentWeapon === WEAPONS.rocketLauncher) {
+        playRocketFireSound();
+    } else {
+        playGunshotSound();
+    }
 
     // Send action to server for multiplayer synchronization
     if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
@@ -158,7 +185,10 @@ export function shootBullet(target, canvas, player) {
 
 export function reloadWeapon(player) {
     player = player || gameState.players[0];
-    if (!player.isReloading && player.currentAmmo < player.currentWeapon.maxAmmo) {
+    // Apply ammo multiplier (from Hoarder skill) for reload check
+    const ammoMultiplier = player.ammoMultiplier || 1.0;
+    const maxAmmoWithMultiplier = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+    if (!player.isReloading && player.currentAmmo < maxAmmoWithMultiplier) {
         player.isReloading = true;
         player.reloadStartTime = Date.now();
         // Play reload sound if implemented
@@ -195,7 +225,19 @@ export function switchWeapon(weapon, player) {
 
         // Switch to new weapon
         player.currentWeapon = weapon;
-        player.maxAmmo = player.currentWeapon.maxAmmo;
+
+        // Trigger weapon switch flash animation (V0.7.1)
+        gameState.weaponSwitchFlash = {
+            active: true,
+            startTime: now,
+            duration: 150, // 150ms flash
+            weapon: weapon
+        };
+
+        // Apply ammo multiplier (from Hoarder skill) to max ammo
+        const ammoMultiplier = player.ammoMultiplier || 1.0;
+        player.maxAmmo = Math.floor(player.currentWeapon.maxAmmo * ammoMultiplier);
+
         player.lastShotTime = 0; // Reset fire rate cooldown
         player.isReloading = false; // Cancel any ongoing reload
 
@@ -206,14 +248,15 @@ export function switchWeapon(weapon, player) {
 
             // If weapon was holstered for longer than reload time, it auto-reloaded
             if (timeHolstered >= weapon.reloadTime && weaponState.lastHolsteredTime > 0) {
-                player.currentAmmo = weapon.maxAmmo;
+                // Use multiplied maxAmmo for background reload
+                player.currentAmmo = player.maxAmmo;
             } else {
-                // Restore saved ammo state
-                player.currentAmmo = weaponState.ammo;
+                // Restore saved ammo state, but cap at multiplied maxAmmo
+                player.currentAmmo = Math.min(weaponState.ammo, player.maxAmmo);
             }
         } else {
-            // Fallback: initialize with weapon's default ammo
-            player.currentAmmo = weapon.ammo;
+            // Fallback: initialize with weapon's default ammo (with multiplier applied)
+            player.currentAmmo = Math.floor(weapon.ammo * ammoMultiplier);
         }
 
         // Send action to server for multiplayer synchronization
@@ -245,14 +288,25 @@ export function throwGrenade(target, canvas, player) {
         return;
     }
 
+    // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
     // Calculate throw position (from player)
     const angle = Math.atan2(target.y - player.y, target.x - player.x);
     const throwX = player.x + Math.cos(angle) * player.radius * 1.5;
     const throwY = player.y + Math.sin(angle) * player.radius * 1.5;
 
     // Target is where the cursor/aim is
-    const targetX = Math.max(20, Math.min(canvas.width - 20, target.x));
-    const targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
+    // In single player arcade mode, use world space coordinates directly
+    // In other modes, clamp to canvas bounds
+    let targetX, targetY;
+    if (isSinglePlayerArcade) {
+        targetX = target.x;
+        targetY = target.y;
+    } else {
+        targetX = Math.max(20, Math.min(canvas.width - 20, target.x));
+        targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
+    }
 
     gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
     player.grenadeCount--;
@@ -276,16 +330,39 @@ export function throwGrenade(target, canvas, player) {
 }
 
 export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
-    // Create explosion visual effect
-    createExplosion(x, y);
+
+
+    // Safety check - ensure valid coordinates
+    if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
+        console.warn('triggerExplosion called with invalid coordinates:', x, y);
+        return;
+    }
+
+    // Calculate explosion size based on radius
+    // Grenade radius is 80, rocket is 150
+    // Normalize: grenade = 1.0, rocket = 1.875 (150/80)
+    const explosionSize = radius / 80; // Normalize to grenade size (80px)
+
+
+
+    // Create explosion visual effect with size parameter
+    try {
+        createExplosion(x, y, explosionSize);
+
+    } catch (e) {
+        console.error('Error creating explosion:', e);
+    }
 
     // Default to player 1 if no source player specified
     if (!sourcePlayer) {
         sourcePlayer = gameState.players[0];
     }
 
-    // Screen shake
-    gameState.shakeAmount = 15;
+    // Screen shake (more intense for larger explosions)
+    gameState.shakeAmount = 15 * Math.min(explosionSize, 1.5);
+
+    // Play explosion sound with size parameter
+    playExplosionSound(explosionSize);
 
     // AOE damage to zombies
     const radiusSquared = radius * radius;
@@ -305,7 +382,7 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
             if (zombie.takeDamage(finalDamage)) {
                 // Clean up state tracking for dead zombie (multiplayer sync)
                 gameState.lastZombieState.delete(zombie.id);
-                
+
                 gameState.zombies.splice(zombieIndex, 1);
 
                 // Check if boss was killed
@@ -325,18 +402,37 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
 
                     updateScoreMultiplier(sourcePlayer);
                     const baseScore = getZombieBaseScore(zombie);
-                    awardScore(sourcePlayer, baseScore, zombie.type);
+                    const finalScore = awardScore(sourcePlayer, baseScore, zombie.type);
+
+                    // Create floating damage number for explosion kill
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        // Show score with multiplier if active
+                        if (sourcePlayer.scoreMultiplier > 1.0) {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, `+${finalScore} (${sourcePlayer.scoreMultiplier}x)`));
+                        } else {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, `+${finalScore}`));
+                        }
+                    }
                 }
 
                 gameState.zombiesKilled++;
-                // Award XP for kill
+                // Award XP for kill (with multiplier if from player)
                 const zombieType1 = zombie.type || 'normal';
-                const xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                let xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
+                if (sourceIsPlayer && sourcePlayer) {
+                    xpAmount1 = Math.floor(xpAmount1 * sourcePlayer.scoreMultiplier);
+                }
                 skillSystem.gainXP(xpAmount1);
                 // Play kill confirmed sound
                 playKillSound();
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), true);
             } else {
+                // Zombie survived - show damage number
+                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                if (damageNumberStyle !== 'off') {
+                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, finalDamage));
+                }
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), false);
             }
         }
@@ -375,20 +471,55 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         }
         if (gameState.shakeAmount < 12) gameState.shakeAmount = 12;
     }
-
-    // Play explosion sound
-    playExplosionSound();
 }
 
 // Collision handlers
 export function handleBulletZombieCollisions() {
+    // v0.8.1.2: In single player arcade mode, use world space bounds for Quadtree
+    // In other modes, use canvas bounds (screen space)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
+
+
     // Reuse Quadtree instance instead of recreating every frame
     if (!collisionQuadtree) {
-        collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+        if (isSinglePlayerArcade) {
+            // Use a very large boundary for world space (covers entire possible world)
+            // This allows collision detection to work anywhere in the world
+            const worldSize = 100000; // Large enough to cover the entire explorable world
+            collisionQuadtree = new Quadtree({
+                x: -worldSize / 2,
+                y: -worldSize / 2,
+                width: worldSize,
+                height: worldSize
+            }, 4);
+        } else {
+            collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+        }
     } else {
-        // Clear and update boundary if canvas size changed
-        collisionQuadtree.clear();
-        collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+        // Only clear and update boundary if mode changed or canvas size changed (non-arcade)
+        const currentIsArcade = isSinglePlayerArcade;
+        const needsUpdate =
+            (currentIsArcade && collisionQuadtree.boundary.width !== 100000) ||
+            (!currentIsArcade && (collisionQuadtree.boundary.width !== canvas.width || collisionQuadtree.boundary.height !== canvas.height));
+
+        if (needsUpdate) {
+            collisionQuadtree.clear();
+            if (isSinglePlayerArcade) {
+                const worldSize = 100000;
+                collisionQuadtree.boundary = {
+                    x: -worldSize / 2,
+                    y: -worldSize / 2,
+                    width: worldSize,
+                    height: worldSize
+                };
+            } else {
+                collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+            }
+        } else {
+            // Just clear the quadtree contents (zombies) but keep the structure
+            collisionQuadtree.clear();
+        }
     }
 
     // Insert all zombies into Quadtree
@@ -431,7 +562,16 @@ export function handleBulletZombieCollisions() {
             const zombieIndex = gameState.zombies.indexOf(zombie);
             if (zombieIndex === -1) return; // Already removed
 
-            if (checkCollision(bullet, zombie)) {
+            if (checkZombieCollision(bullet, zombie)) {
+                // Handle Rocket collisions FIRST (before marking as hit)
+                if (bullet.type === 'rocket') {
+
+                    const rocketPlayer = bullet.player || gameState.players[0];
+                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer);
+                    bullet.markedForRemoval = true;
+                    return; // Stop processing this bullet
+                }
+
                 // Mark bullet as hit to prevent multiple collisions if it's not piercing
                 // (Flamethrower is piercing-ish, handled separately)
                 if (bullet.type !== 'flame' && bullet.type !== 'piercing') bullet.hit = true;
@@ -443,13 +583,6 @@ export function handleBulletZombieCollisions() {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
-
-                // Handle Rocket collisions
-                if (bullet.type === 'rocket') {
-                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage);
-                    bullet.markedForRemoval = true;
-                    return; // Stop processing this bullet
-                }
 
                 // Handle flame bullets (apply burn effect)
                 if (bullet.type === 'flame') {
@@ -508,6 +641,21 @@ export function handleBulletZombieCollisions() {
 
                         gameState.zombiesKilled++;
 
+                        // Apply Bloodlust heal (2 HP per kill)
+                        if (shootingPlayer.hasBloodlust) {
+                            shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                            const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                            if (damageNumberStyle !== 'off') {
+                                gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                            }
+                        }
+
+                        // Apply Adrenaline speed boost (20% for 3s after kill)
+                        if (shootingPlayer.hasAdrenaline) {
+                            shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                            shootingPlayer.adrenalineBoostActive = true;
+                        }
+
                         const now = Date.now();
                         if (now - gameState.lastKillTime < 1500) {
                             gameState.killStreak++;
@@ -516,14 +664,67 @@ export function handleBulletZombieCollisions() {
                         }
                         gameState.lastKillTime = now;
 
-                        if (gameState.killStreak > 2) {
-                            let comboText = `${gameState.killStreak} HIT COMBO!`;
-                            if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                            if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                        // Track max streak for session stats
+                        if (gameState.killStreak > gameState.maxKillStreak) {
+                            gameState.maxKillStreak = gameState.killStreak;
                         }
 
-                        playKillSound();
+                        // Multi-kill detection (V0.7.1)
+                        const zombieType = zombie.type || 'normal';
+                        if (!gameState.recentKills) gameState.recentKills = [];
+                        gameState.recentKills.push({ time: now, zombieType });
+                        // Remove kills older than 500ms
+                        gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
+
+                        // Check for multi-kill (3+ kills in 0.5 seconds)
+                        if (gameState.recentKills.length >= 3) {
+                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX,
+                                zombieY - 60,
+                                multiKillText,
+                                false,
+                                '#ff00ff', // Magenta for multi-kills
+                                28 // Larger font size
+                            ));
+                        }
+
+                        // Enhanced Kill Streak Visuals (V0.7.1)
+                        if (gameState.killStreak > 2) {
+                            let comboText = `${gameState.killStreak} HIT COMBO!`;
+                            let textColor = '#ffffff';
+                            let fontSize = 20;
+
+                            // Enhanced visuals for high streaks
+                            if (gameState.killStreak >= 20) {
+                                comboText = "LEGENDARY STREAK!";
+                                textColor = '#ffd700'; // Gold
+                                fontSize = 32;
+                            } else if (gameState.killStreak >= 15) {
+                                comboText = "DOMINATING!";
+                                textColor = '#ff6b00'; // Orange
+                                fontSize = 28;
+                            } else if (gameState.killStreak >= 10) {
+                                comboText = "UNSTOPPABLE!";
+                                textColor = '#ff1744'; // Red
+                                fontSize = 26;
+                            } else if (gameState.killStreak % 5 === 0) {
+                                comboText = `${gameState.killStreak} KILL RAMPAGE!`;
+                                textColor = '#ffc107'; // Amber
+                                fontSize = 24;
+                            }
+
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX,
+                                zombieY - 30,
+                                comboText,
+                                false,
+                                textColor,
+                                fontSize
+                            ));
+                        }
+
+                        playKillSound(zombieType);
 
                         // Show score with multiplier if active
                         if (shootingPlayer.scoreMultiplier > 1.0) {
@@ -533,6 +734,8 @@ export function handleBulletZombieCollisions() {
                         }
 
                         createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                        // Add volumetric blood on kill (more blood)
+                        bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
                     } else {
                         // Zombie survives but is burning
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
@@ -540,6 +743,8 @@ export function handleBulletZombieCollisions() {
                             gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
                         }
                         createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                        // Add volumetric blood on hit (less blood)
+                        bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
                         // Trigger hit marker
                         gameState.hitMarker.active = true;
@@ -564,18 +769,30 @@ export function handleBulletZombieCollisions() {
                     }
                 }
 
-                // Critical hit chance (10%)
-                const isCrit = Math.random() < 0.1;
+                // Get the player who fired the bullet
+                const shootingPlayer = bullet.player || gameState.players[0];
+
+                // Critical hit chance (base ~3.33%, plus player crit chance)
+                const baseCritChance = 0.0333333333; // Reduced by 2/3 from 10%
+                const playerCritChance = shootingPlayer.critChance || 0;
+                const totalCritChance = Math.min(1.0, baseCritChance + playerCritChance);
+                const isCrit = Math.random() < totalCritChance;
+
+                // Lucky Strike chance (15% for double damage)
+                const isLuckyStrike = shootingPlayer.luckyStrikeChance && Math.random() < shootingPlayer.luckyStrikeChance;
+
                 let finalDamage = bullet.damage;
                 if (isCrit) {
                     finalDamage = bullet.damage * 2; // 2x damage on crit
+                } else if (isLuckyStrike) {
+                    finalDamage = bullet.damage * 2; // 2x damage on lucky strike
                 }
 
                 // Check if zombie dies from this hit
                 if (zombie.takeDamage(finalDamage)) {
                     // Clean up state tracking for dead zombie (multiplayer sync)
                     gameState.lastZombieState.delete(zombie.id);
-                    
+
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
 
@@ -598,9 +815,6 @@ export function handleBulletZombieCollisions() {
                             isExploding: isExploding
                         });
                     }
-
-                    // Get the player who fired the bullet
-                    const shootingPlayer = bullet.player || gameState.players[0];
 
                     // Increment consecutive kills
                     shootingPlayer.consecutiveKills++;
@@ -639,12 +853,28 @@ export function handleBulletZombieCollisions() {
 
                     gameState.zombiesKilled++;
 
-                    // Award XP for kill
+                    // Apply Bloodlust heal (2 HP per kill)
+                    if (shootingPlayer.hasBloodlust) {
+                        shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                        }
+                    }
+
+                    // Apply Adrenaline speed boost (20% for 3s after kill)
+                    if (shootingPlayer.hasAdrenaline) {
+                        shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                        shootingPlayer.adrenalineBoostActive = true;
+                    }
+
+                    // Award XP for kill (with multiplier)
                     const zombieType = zombie.type || 'normal';
-                    const xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    let xpAmount = skillSystem.getXPForZombieType(zombieType);
+                    xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier);
                     skillSystem.gainXP(xpAmount);
 
-                    // Broadcast XP gain to other clients (leader only)
+                    // Broadcast XP gain to other clients (leader only) - use multiplied amount
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
                         gameState.multiplayer.socket.emit('game:xp', xpAmount);
                     }
@@ -658,20 +888,75 @@ export function handleBulletZombieCollisions() {
                     }
                     gameState.lastKillTime = now;
 
-                    if (gameState.killStreak > 2) {
-                        let comboText = `${gameState.killStreak} HIT COMBO!`;
-                        if (gameState.killStreak % 5 === 0) comboText = `${gameState.killStreak} KILL RAMPAGE!`;
-                        if (gameState.killStreak >= 10) comboText = "UNSTOPPABLE!";
+                    // Track max streak for session stats
+                    if (gameState.killStreak > gameState.maxKillStreak) {
+                        gameState.maxKillStreak = gameState.killStreak;
+                    }
 
+                    // Multi-kill detection (V0.7.1)
+                    // zombieType already declared above for XP calculation
+                    if (!gameState.recentKills) gameState.recentKills = [];
+                    gameState.recentKills.push({ time: now, zombieType });
+                    // Remove kills older than 500ms
+                    gameState.recentKills = gameState.recentKills.filter(k => now - k.time < 500);
+
+                    // Check for multi-kill (3+ kills in 0.5 seconds)
+                    if (gameState.recentKills.length >= 3) {
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                         if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 30, comboText));
+                            const multiKillText = gameState.recentKills.length >= 5 ? "MEGA KILL!" : "MULTI KILL!";
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX,
+                                zombieY - 60,
+                                multiKillText,
+                                false,
+                                '#ff00ff', // Magenta for multi-kills
+                                28 // Larger font size
+                            ));
                         }
                     }
 
-                    // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
+                    // Enhanced Kill Streak Visuals (V0.7.1)
+                    if (gameState.killStreak > 2) {
+                        let comboText = `${gameState.killStreak} HIT COMBO!`;
+                        let textColor = '#ffffff';
+                        let fontSize = 20;
+
+                        // Enhanced visuals for high streaks
+                        if (gameState.killStreak >= 20) {
+                            comboText = "LEGENDARY STREAK!";
+                            textColor = '#ffd700'; // Gold
+                            fontSize = 32;
+                        } else if (gameState.killStreak >= 15) {
+                            comboText = "DOMINATING!";
+                            textColor = '#ff6b00'; // Orange
+                            fontSize = 28;
+                        } else if (gameState.killStreak >= 10) {
+                            comboText = "UNSTOPPABLE!";
+                            textColor = '#ff1744'; // Red
+                            fontSize = 26;
+                        } else if (gameState.killStreak % 5 === 0) {
+                            comboText = `${gameState.killStreak} KILL RAMPAGE!`;
+                            textColor = '#ffc107'; // Amber
+                            fontSize = 24;
+                        }
+
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(
+                                zombieX,
+                                zombieY - 30,
+                                comboText,
+                                false,
+                                textColor,
+                                fontSize
+                            ));
+                        }
+                    }
+
+                    // Play kill confirmed sound with zombie type (unless it was exploding zombie, explosion sound plays)
                     if (!isExploding) {
-                        playKillSound();
+                        playKillSound(zombieType);
                     }
                     // Create floating damage number (with crit styling if crit)
                     const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
@@ -689,6 +974,8 @@ export function handleBulletZombieCollisions() {
                     }
                     // Create blood splatter on kill
                     createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                    // Add volumetric blood on kill (more blood)
+                    bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
                 } else {
                     // Zombie survived - broadcast hit to other clients (leader only)
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
@@ -711,6 +998,8 @@ export function handleBulletZombieCollisions() {
                     }
                     // Create blood splatter on hit (not kill)
                     createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                    // Add volumetric blood on hit (less blood)
+                    bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
                     // --- START: Apply Slow-on-Hit ---
                     if (zombie.originalSpeed === undefined) {
@@ -748,8 +1037,13 @@ export function handlePlayerZombieCollisions() {
         for (let j = 0; j < gameState.zombies.length; j++) {
             const zombie = gameState.zombies[j];
             if (checkCollision(player, zombie)) {
-                const damage = 0.5;
+                let damage = 0.5;
                 const previousHealth = player.health;
+
+                // Apply Thick Skin damage reduction
+                if (player.damageReduction !== undefined && player.damageReduction < 1.0) {
+                    damage *= player.damageReduction;
+                }
 
                 // Apply damage to shield first, then health
                 if (player.shield > 0) {
@@ -955,8 +1249,8 @@ function triggerNuke(x, y) {
             gameState.boss = null;
         }
 
-        // Visuals
-        createExplosion(zombie.x, zombie.y);
+        // Visuals (larger explosion for nuke)
+        createExplosion(zombie.x, zombie.y, 1.5);
 
         // Award score with multiplier (to player 1 for nuke pickups)
         const player = gameState.players[0];
@@ -973,11 +1267,22 @@ function triggerNuke(x, y) {
 
         gameState.zombiesKilled++;
 
+        // Apply Bloodlust heal (2 HP per kill)
+        if (player.hasBloodlust) {
+            player.health = Math.min(player.maxHealth, player.health + 2);
+        }
+
+        // Apply Adrenaline speed boost (20% for 3s after kill)
+        if (player.hasAdrenaline) {
+            player.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+            player.adrenalineBoostActive = true;
+        }
+
         // Remove
         gameState.zombies.splice(i, 1);
     }
 
-    playExplosionSound();
+    playExplosionSound(2.0); // Larger explosion sound for nuke
 }
 
 // Score Multiplier System

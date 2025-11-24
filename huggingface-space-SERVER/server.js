@@ -318,8 +318,39 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta http-equiv="refresh" content="10">
+      <meta name="description" content="Zombobs - Zombie Apocalypse Multiplayer Server Status">
+      <meta name="theme-color" content="#ff1744">
+      <!-- Permissions Policy - Only include recognized features to avoid console warnings -->
+      <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()">
       <title>Zombobs Server - Apocalypse Status</title>
       <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+      <script>
+        // Suppress console errors from third-party scripts (Hugging Face WAF)
+        (function() {
+          const originalError = console.error;
+          console.error = function(...args) {
+            const message = args.join(' ');
+            // Suppress known third-party errors
+            if (message.includes('challenge.js') || 
+                message.includes('ERR_BLOCKED_BY_CLIENT') ||
+                message.includes('awswaf.com')) {
+              return; // Silently ignore
+            }
+            originalError.apply(console, args);
+          };
+          
+          // Suppress Permissions Policy warnings (these are from Hugging Face container)
+          const originalWarn = console.warn;
+          console.warn = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('Unrecognized feature') || 
+                message.includes('Permissions-Policy')) {
+              return; // Silently ignore
+            }
+            originalWarn.apply(console, args);
+          };
+        })();
+      </script>
       <style>
         /* ========== HALLOWEEN ZOMBIE EFFECTS ========== */
         
@@ -482,13 +513,17 @@ app.get('/', (req, res) => {
         
         body {
           font-family: 'Roboto', sans-serif;
-          max-width: 900px;
+          max-width: 1000px;
           margin: 0 auto;
           padding: 40px 20px;
-          background-color: #0f0f0f;
+          min-height: 100vh;
+          background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a1a 100%);
           background-image: 
+            radial-gradient(circle at 20% 50%, rgba(255, 23, 68, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(0, 255, 0, 0.05) 0%, transparent 50%),
             linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.8)),
             url('data:image/svg+xml;utf8,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%232a0a0a" fill-opacity="0.4"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z"/%3E%3C/g%3E%3C/svg%3E');
+          background-attachment: fixed;
           color: #dcdcdc;
           text-align: center;
           position: relative;
@@ -528,52 +563,94 @@ app.get('/', (req, res) => {
           display: inline-block;
           background: linear-gradient(180deg, #ff4444 0%, #cc0000 100%);
           color: #fff;
-          padding: 20px 60px;
+          padding: 24px 70px;
           font-family: 'Creepster', cursive;
-          font-size: 2.5em;
+          font-size: 2.8em;
           text-decoration: none;
-          border-radius: 8px;
-          border: 2px solid #500;
-          box-shadow: 0 0 20px rgba(255, 0, 0, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.2);
-          transition: all 0.2s ease;
-          text-shadow: 2px 2px 0 #500;
+          border-radius: 12px;
+          border: 3px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 
+            0 0 30px rgba(255, 0, 0, 0.6), 
+            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            0 8px 16px rgba(0, 0, 0, 0.4);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 0, 0, 0.5);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .play-button::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          transform: rotate(45deg) translateY(-100%);
+          transition: transform 0.6s;
         }
 
         .play-button:hover {
           animation: screen-shake 0.5s ease-in-out, spooky-glow 2s ease-in-out infinite;
           background: linear-gradient(180deg, #ff5555 0%, #dd0000 100%);
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 
+            0 0 40px rgba(255, 0, 0, 0.8), 
+            inset 0 2px 0 rgba(255, 255, 255, 0.4),
+            0 12px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        .play-button:hover::before {
+          transform: rotate(45deg) translateY(100%);
         }
 
         .play-button:active {
-          transform: scale(0.98);
+          transform: translateY(-1px) scale(1.02);
         }
 
         .stats-container {
-          background: rgba(20, 20, 20, 0.8);
-          border: 1px solid #333;
-          border-radius: 12px;
-          padding: 25px;
-          max-width: 800px;
+          background: rgba(20, 20, 20, 0.85);
+          border: 2px solid rgba(255, 23, 68, 0.3);
+          border-radius: 16px;
+          padding: 30px;
+          max-width: 900px;
           margin: 0 auto;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(5px);
+          box-shadow: 
+            0 10px 40px rgba(0, 0, 0, 0.6),
+            0 0 60px rgba(255, 23, 68, 0.1),
+            inset 0 0 20px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px) saturate(120%);
           position: relative;
           z-index: 2;
+          transition: all 0.3s ease;
+        }
+        
+        .stats-container:hover {
+          border-color: rgba(255, 23, 68, 0.5);
+          box-shadow: 
+            0 15px 50px rgba(0, 0, 0, 0.7),
+            0 0 80px rgba(255, 23, 68, 0.2),
+            inset 0 0 30px rgba(0, 0, 0, 0.4);
         }
 
         .status-indicator {
           display: inline-block;
-          padding: 8px 16px;
-          background: rgba(0, 255, 0, 0.1);
-          border: 1px solid #00ff00;
+          padding: 12px 24px;
+          background: linear-gradient(135deg, rgba(0, 255, 0, 0.15) 0%, rgba(0, 200, 0, 0.1) 100%);
+          border: 2px solid #00ff00;
           color: #00ff00;
-          border-radius: 20px;
+          border-radius: 25px;
           font-weight: bold;
-          margin-bottom: 30px;
+          margin-bottom: 35px;
           text-transform: uppercase;
-          letter-spacing: 1px;
-          box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+          letter-spacing: 2px;
+          font-size: 1.1em;
+          box-shadow: 
+            0 0 20px rgba(0, 255, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
           animation: pulse 2s infinite;
+          text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         }
 
         @keyframes pulse {
@@ -590,11 +667,22 @@ app.get('/', (req, res) => {
         }
 
         .stat-card {
-          background: #252525;
-          padding: 20px;
-          border-radius: 8px;
-          border-top: 3px solid #888;
+          background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(20, 20, 20, 0.9) 100%);
+          padding: 24px;
+          border-radius: 12px;
+          border-top: 4px solid #888;
+          border-left: 2px solid rgba(255, 255, 255, 0.05);
+          border-right: 2px solid rgba(255, 255, 255, 0.05);
+          border-bottom: 2px solid rgba(255, 255, 255, 0.05);
           text-align: left;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .stat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          background: linear-gradient(135deg, rgba(35, 35, 35, 0.95) 0%, rgba(25, 25, 25, 0.95) 100%);
         }
 
         .stat-card.online { border-color: #00ff00; }

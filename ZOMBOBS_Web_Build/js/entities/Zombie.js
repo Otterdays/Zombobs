@@ -17,11 +17,18 @@ export class Zombie {
             case 2: this.x = Math.random() * canvasWidth; this.y = canvasHeight + 20; break;
             case 3: this.x = -20; this.y = Math.random() * canvasHeight; break;
         }
-        this.radius = 12;
+        this.radius = 15; // v0.8.1.2: Increased hitbox size for easier hits (was 12)
         this.speed = 1 + (gameState.wave * 0.1);
-        this.health = 2 + Math.floor(gameState.wave / 3);
+        this.health = Math.floor((2 + Math.floor(gameState.wave / 3)) * 2.5); // 1.25x increase from doubled HP
         this.maxHealth = this.health;
         this.type = 'base';
+
+        // Secondary lower body hitbox for better hit registration
+        this.lowerBodyHitbox = {
+            x: this.x,
+            y: this.y + 15, // Torso center position
+            radius: this.radius * 0.8 // Slightly smaller than main hitbox
+        };
 
         // Burning state
         this.burnTimer = 0; // ms remaining
@@ -97,6 +104,10 @@ export class Zombie {
         // Update position
         this.x += moveX;
         this.y += moveY;
+
+        // Update secondary lower body hitbox position
+        this.lowerBodyHitbox.x = this.x;
+        this.lowerBodyHitbox.y = this.y + 15;
 
         // Update velocity for interpolation (used in multiplayer)
         this.vx = moveX;
@@ -291,23 +302,40 @@ export class Zombie {
                 const healthPercent = Math.max(0, this.health / this.maxHealth);
                 const fillWidth = barWidth * healthPercent;
 
-                // Color gradient: green -> yellow -> red
-                const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
-                if (healthPercent > 0.5) {
-                    gradient.addColorStop(0, '#4caf50'); // Green
-                    gradient.addColorStop(1, '#ffeb3b'); // Yellow
-                } else {
-                    gradient.addColorStop(0, '#ffeb3b'); // Yellow
-                    gradient.addColorStop(1, '#f44336'); // Red
+                // Get health bar style setting
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    // Color gradient: green -> yellow -> red
+                    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    if (healthPercent > 0.5) {
+                        gradient.addColorStop(0, '#4caf50'); // Green
+                        gradient.addColorStop(1, '#ffeb3b'); // Yellow
+                    } else {
+                        gradient.addColorStop(0, '#ffeb3b'); // Yellow
+                        gradient.addColorStop(1, '#f44336'); // Red
+                    }
+                    ctx.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    // Single color based on health percent
+                    let color = '#4caf50'; // Green
+                    if (healthPercent < 0.5) {
+                        color = healthPercent < 0.25 ? '#f44336' : '#ffeb3b'; // Red or Yellow
+                    }
+                    ctx.fillStyle = color;
+                } else if (healthBarStyle === 'simple') {
+                    // Simple white fill
+                    ctx.fillStyle = '#ffffff';
                 }
 
-                ctx.fillStyle = gradient;
                 ctx.fillRect(barX, barY, fillWidth, barHeight);
 
-                // Border
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
+                // Border (only for gradient and solid styles)
+                if (healthBarStyle !== 'simple') {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
             }
         }
     }
@@ -531,7 +559,7 @@ export class ExplodingZombie extends Zombie {
         const auraQuality = graphicsSettings.getQualityValues('aura');
         if (auraQuality.opacity > 0) {
             const distToPlayer = Math.sqrt((gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2);
-            const healthRatio = this.health / (2 + Math.floor(gameState.wave / 3));
+            const healthRatio = this.health / Math.floor((2 + Math.floor(gameState.wave / 3)) * 2.5);
             const pulseSpeed = healthRatio < 0.5 || distToPlayer < 100 ? 100 : 200;
             const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
             const pulseMultiplier = auraQuality.pulseComplexity;
@@ -854,6 +882,589 @@ export class SpitterZombie extends Zombie {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
+    }
+
+    takeDamage(bulletDamage) {
+        this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
+        return this.health <= 0;
+    }
+}
+
+// Flying Zombie - Flies with wings, faster but weaker
+export class FlyingZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'flying';
+        this.speed *= 1.2; // 1.2x faster than normal
+        this.health = Math.floor(this.health * 0.7); // 70% health
+        this.radius *= 0.9; // 90% radius (smaller hitbox)
+        this.floatOffset = Math.random() * 1000; // Unique animation timing
+        
+    }
+
+    draw() {
+        // Calculate floating animation - MORE ELEVATED (increased from 3 to 8 pixels)
+        const floatOffset = Math.sin((Date.now() + this.floatOffset) / 250) * 8;
+        const elevationHeight = 12; // Base elevation height (makes them float higher)
+        const drawY = this.y - floatOffset - elevationHeight; // Draw position adjusted for float and elevation
+
+        // DARKER SHADOW during daytime (darker when NOT night)
+        if (graphicsSettings.shadows !== false) {
+            // Daytime: darker shadow (0.8 alpha), Nighttime: lighter shadow (0.4 alpha)
+            const shadowAlpha = gameState.isNight ? RENDERING.SHADOW_ALPHA * 0.4 : RENDERING.SHADOW_ALPHA * 0.8;
+            const shadowOffset = elevationHeight * 0.5; // Shadow offset based on elevation
+            
+            // Draw darker, more prominent shadow on ground (below the zombie)
+            ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+            ctx.beginPath();
+            // Shadow is larger and more offset to show height
+            ctx.ellipse(
+                this.x + 3, 
+                this.y + this.radius + 3 + shadowOffset, // Shadow further down due to elevation
+                this.radius * 1.4, // Larger shadow
+                this.radius * 0.5, // More elliptical
+                0, 0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Additional soft shadow layer for depth (daytime only)
+            if (!gameState.isNight) {
+                ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha * 0.5})`;
+                ctx.beginPath();
+                ctx.ellipse(
+                    this.x + 3,
+                    this.y + this.radius + 3 + shadowOffset,
+                    this.radius * 1.8,
+                    this.radius * 0.6,
+                    0, 0, Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        // Darker, more menacing aura (bat-like, purple/black tones)
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.5 * auraQuality.opacity; // Darker than normal zombies
+            
+            if (auraQuality.hasMultiLayer) {
+                // Outer dark purple/black aura
+                const outerAura = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.5);
+                outerAura.addColorStop(0, `rgba(80, 40, 100, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.3, `rgba(60, 30, 80, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.6, `rgba(40, 20, 60, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(20, 10, 30, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, drawY, this.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Inner darker aura
+            const auraGradient = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.0);
+            auraGradient.addColorStop(0, `rgba(100, 50, 120, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(70, 35, 90, ${baseOpacity * 0.6 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(40, 20, 60, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, drawY, this.radius * 2.0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Save context for wing drawing
+        ctx.save();
+        ctx.translate(this.x, drawY);
+
+        // LARGER, MORE PROMINENT BAT-LIKE WINGS
+        const wingFlapSpeed = 400; // Wing flap speed
+        const wingAngle = Math.sin((Date.now() + this.floatOffset) / wingFlapSpeed) * 0.4; // More pronounced wing animation
+        const wingColor = '#1a1a2e'; // Dark purple/black bat-like color
+        const wingAccent = '#2d1b4e'; // Dark purple accent
+        
+        // Left wing (LARGER - 12px x 6px instead of 6px x 3px)
+        ctx.save();
+        ctx.translate(-12, -4); // Further out and up
+        ctx.rotate(-0.5 + wingAngle); // More angle
+        // Wing membrane gradient
+        const leftWingGradient = ctx.createLinearGradient(-8, 0, 8, 0);
+        leftWingGradient.addColorStop(0, wingAccent);
+        leftWingGradient.addColorStop(0.5, wingColor);
+        leftWingGradient.addColorStop(1, '#0f0f1a');
+        ctx.fillStyle = leftWingGradient;
+        ctx.strokeStyle = '#0a0a15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Bat-like wing shape (more elongated)
+        ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Wing bone structure
+        ctx.strokeStyle = '#3d2b5e';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-8, -3);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(8, -2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Right wing (LARGER - 12px x 6px instead of 6px x 3px)
+        ctx.save();
+        ctx.translate(12, -4); // Further out and up
+        ctx.rotate(0.5 - wingAngle); // More angle
+        // Wing membrane gradient
+        const rightWingGradient = ctx.createLinearGradient(-8, 0, 8, 0);
+        rightWingGradient.addColorStop(0, wingAccent);
+        rightWingGradient.addColorStop(0.5, wingColor);
+        rightWingGradient.addColorStop(1, '#0f0f1a');
+        ctx.fillStyle = rightWingGradient;
+        ctx.strokeStyle = '#0a0a15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Bat-like wing shape (more elongated)
+        ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Wing bone structure
+        ctx.strokeStyle = '#3d2b5e';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-8, -2);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(8, -3);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore();
+
+        // DARKER, MORE DISTINCT BODY - Bat-like dark purple/gray tones
+        const bodyGradient = ctx.createRadialGradient(this.x - 4, drawY - 4, 0, this.x, drawY, this.radius);
+        bodyGradient.addColorStop(0, '#4a3a5a'); // Lighter purple-gray center
+        bodyGradient.addColorStop(0.4, '#3a2a4a'); // Medium purple-gray
+        bodyGradient.addColorStop(0.7, '#2a1a3a'); // Dark purple-gray
+        bodyGradient.addColorStop(1, '#1a0a2a'); // Very dark purple
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(this.x, drawY + 15, this.radius * 1.2, this.radius * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bat-like arms (thinner, more angular)
+        ctx.strokeStyle = '#1a0a2a';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.x - 8, drawY + 10);
+        ctx.lineTo(this.x - 16, drawY + 20);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(this.x + 8, drawY + 10);
+        ctx.lineTo(this.x + 16, drawY + 20);
+        ctx.stroke();
+
+        // Decayed flesh body (head) - DARKER
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Darker skin texture (purple/black patches)
+        ctx.fillStyle = 'rgba(20, 10, 30, 0.5)';
+        ctx.beginPath();
+        ctx.arc(this.x + 4, drawY - 2, 3, 0, Math.PI * 2);
+        ctx.arc(this.x - 3, drawY + 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Additional dark patches for bat-like appearance
+        ctx.fillStyle = 'rgba(10, 5, 15, 0.4)';
+        ctx.beginPath();
+        ctx.arc(this.x, drawY + 3, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body outline (darker, more defined)
+        ctx.strokeStyle = '#0a0a15';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([2, 1]);
+        ctx.beginPath();
+        ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Eye sockets (darker, more menacing)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.ellipse(this.x - 5, drawY - 3, 4, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(this.x + 5, drawY - 3, 4, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing zombie eyes (animated intensity) - quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
+        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+        ctx.shadowBlur = eyeQuality.shadowBlur * eyePulse;
+        ctx.shadowColor = '#ff0000';
+
+        const createEyeGradient = (x, y) => {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 3);
+            if (eyeQuality.gradientStops >= 5) {
+                gradient.addColorStop(0, `rgba(255, 200, 200, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.25, `rgba(255, 150, 150, ${eyeQuality.alpha * 0.9})`);
+                gradient.addColorStop(0.5, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.75, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else if (eyeQuality.gradientStops >= 4) {
+                gradient.addColorStop(0, `rgba(255, 150, 150, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.33, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.66, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else {
+                gradient.addColorStop(0, `rgba(255, 102, 102, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.5, `rgba(255, 0, 0, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.6})`);
+            }
+            return gradient;
+        };
+
+        ctx.fillStyle = createEyeGradient(this.x - 5, drawY - 3);
+        ctx.beginPath();
+        ctx.arc(this.x - 5, drawY - 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = createEyeGradient(this.x + 5, drawY - 3);
+        ctx.beginPath();
+        ctx.arc(this.x + 5, drawY - 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye highlights
+        ctx.fillStyle = 'rgba(255, 100, 100, 0.8)';
+        ctx.beginPath();
+        ctx.arc(this.x - 6, drawY - 4, 1, 0, Math.PI * 2);
+        ctx.arc(this.x + 4, drawY - 4, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Jagged mouth (open and menacing)
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.x - 6, drawY + 5);
+        ctx.quadraticCurveTo(this.x - 3, drawY + 8, this.x, drawY + 7);
+        ctx.quadraticCurveTo(this.x + 3, drawY + 8, this.x + 6, drawY + 5);
+        ctx.stroke();
+
+        // Teeth
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(this.x - 4, drawY + 5);
+        ctx.lineTo(this.x - 4, drawY + 7);
+        ctx.moveTo(this.x - 1, drawY + 6);
+        ctx.lineTo(this.x - 1, drawY + 8);
+        ctx.moveTo(this.x + 2, drawY + 6);
+        ctx.lineTo(this.x + 2, drawY + 8);
+        ctx.moveTo(this.x + 4, drawY + 5);
+        ctx.lineTo(this.x + 4, drawY + 7);
+        ctx.stroke();
+
+        // Health bar (if recently damaged and setting enabled)
+        if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
+            const timeSinceDamage = Date.now() - this.lastDamageTime;
+            if (timeSinceDamage < 2000 && this.maxHealth) {
+                const barWidth = this.radius * 2.5;
+                const barHeight = 3;
+                const barX = this.x - barWidth / 2;
+                const barY = drawY - this.radius - 8;
+
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health fill
+                const healthPercent = Math.max(0, this.health / this.maxHealth);
+                const fillWidth = barWidth * healthPercent;
+
+                // Get health bar style setting
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    if (healthPercent > 0.5) {
+                        gradient.addColorStop(0, '#4caf50');
+                        gradient.addColorStop(1, '#ffeb3b');
+                    } else {
+                        gradient.addColorStop(0, '#ffeb3b');
+                        gradient.addColorStop(1, '#f44336');
+                    }
+                    ctx.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    let color = '#4caf50';
+                    if (healthPercent < 0.5) {
+                        color = healthPercent < 0.25 ? '#f44336' : '#ffeb3b';
+                    }
+                    ctx.fillStyle = color;
+                } else if (healthBarStyle === 'simple') {
+                    ctx.fillStyle = '#ffffff';
+                }
+
+                ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+                // Border (only for gradient and solid styles)
+                if (healthBarStyle !== 'simple') {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
+            }
+        }
+    }
+
+    takeDamage(bulletDamage) {
+        this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
+        return this.health <= 0;
+    }
+}
+
+// Crawler Zombie - Low-profile crawler that's harder to hit
+export class CrawlerZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'crawler';
+        this.speed *= 1.3; // 1.3x faster (crawling can be quick)
+        this.health = Math.floor(this.health * 0.6); // 60% health (smaller target, easier to kill)
+        this.radius *= 0.7; // 0.7x radius (smaller hitbox, harder to hit)
+        this.crawlOffset = Math.random() * 1000; // Unique animation timing
+    }
+
+    draw() {
+        // Low-profile offset (drawn lower on Y-axis, ~+8px offset)
+        const drawY = this.y + 8;
+
+        // Flatter, wider shadow (more spread out for crawling pose)
+        if (graphicsSettings.shadows !== false) {
+            ctx.fillStyle = `rgba(0, 0, 0, ${RENDERING.SHADOW_ALPHA * 0.8})`;
+            ctx.beginPath();
+            // Wider, flatter shadow for crawling position
+            ctx.ellipse(this.x + 2, drawY + this.radius + 2, this.radius * 1.6, this.radius * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Darker aura (brown/black tones instead of green) - quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin(Date.now() / 350) * 0.3 + 0.7;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.4 * auraQuality.opacity; // Darker than normal zombies
+            
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.0);
+                outerAura.addColorStop(0, `rgba(60, 40, 40, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.4, `rgba(50, 30, 30, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.7, `rgba(40, 20, 20, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(20, 10, 10, 0)');
+                ctx.fillStyle = outerAura;
+                ctx.beginPath();
+                ctx.arc(this.x, drawY, this.radius * 2.0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const auraGradient = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 1.6);
+            auraGradient.addColorStop(0, `rgba(70, 50, 50, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(60, 40, 40, ${baseOpacity * 0.6 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(30, 20, 20, 0)');
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, drawY, this.radius * 1.6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Crawling body (horizontally elongated, darker brown/gray tones)
+        const bodyGradient = ctx.createRadialGradient(this.x - 3, drawY - 2, 0, this.x, drawY, this.radius);
+        bodyGradient.addColorStop(0, '#3a2a2a'); // Lighter brown-gray center
+        bodyGradient.addColorStop(0.4, '#2a1a1a'); // Medium brown-gray
+        bodyGradient.addColorStop(0.7, '#1a0a0a'); // Dark brown-gray
+        bodyGradient.addColorStop(1, '#0a0000'); // Very dark
+        ctx.fillStyle = bodyGradient;
+        
+        // Elongated horizontal body (wider, flatter)
+        ctx.beginPath();
+        ctx.ellipse(this.x, drawY + 5, this.radius * 1.4, this.radius * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Crawling limbs (arms/legs closer to ground)
+        ctx.strokeStyle = '#1a0a0a';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        
+        // Left arm (crawling position)
+        ctx.beginPath();
+        ctx.moveTo(this.x - 10, drawY + 3);
+        ctx.lineTo(this.x - 18, drawY + 10);
+        ctx.stroke();
+        
+        // Right arm (crawling position)
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, drawY + 3);
+        ctx.lineTo(this.x + 18, drawY + 10);
+        ctx.stroke();
+        
+        // Left leg (crawling position)
+        ctx.beginPath();
+        ctx.moveTo(this.x - 8, drawY + 8);
+        ctx.lineTo(this.x - 14, drawY + 15);
+        ctx.stroke();
+        
+        // Right leg (crawling position)
+        ctx.beginPath();
+        ctx.moveTo(this.x + 8, drawY + 8);
+        ctx.lineTo(this.x + 14, drawY + 15);
+        ctx.stroke();
+
+        // Head (smaller, lower profile)
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(this.x, drawY - 2, this.radius * 0.9, this.radius * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Darker skin texture (decayed patches)
+        ctx.fillStyle = 'rgba(10, 5, 5, 0.5)';
+        ctx.beginPath();
+        ctx.arc(this.x + 3, drawY, 2, 0, Math.PI * 2);
+        ctx.arc(this.x - 3, drawY + 4, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body outline (rough, decayed edges)
+        ctx.strokeStyle = '#0a0000';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([2, 1]);
+        ctx.beginPath();
+        ctx.ellipse(this.x, drawY - 2, this.radius * 0.9, this.radius * 0.8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Eye sockets (darker, more menacing)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.beginPath();
+        ctx.ellipse(this.x - 4, drawY - 4, 3, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(this.x + 4, drawY - 4, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing zombie eyes (animated intensity) - quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
+        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+        ctx.shadowBlur = eyeQuality.shadowBlur * eyePulse;
+        ctx.shadowColor = '#ff0000';
+
+        const createEyeGradient = (x, y) => {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 2.5);
+            if (eyeQuality.gradientStops >= 5) {
+                gradient.addColorStop(0, `rgba(255, 200, 200, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.25, `rgba(255, 150, 150, ${eyeQuality.alpha * 0.9})`);
+                gradient.addColorStop(0.5, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.75, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else if (eyeQuality.gradientStops >= 4) {
+                gradient.addColorStop(0, `rgba(255, 150, 150, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.33, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.66, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else {
+                gradient.addColorStop(0, `rgba(255, 102, 102, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.5, `rgba(255, 0, 0, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.6})`);
+            }
+            return gradient;
+        };
+
+        ctx.fillStyle = createEyeGradient(this.x - 4, drawY - 4);
+        ctx.beginPath();
+        ctx.arc(this.x - 4, drawY - 4, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = createEyeGradient(this.x + 4, drawY - 4);
+        ctx.beginPath();
+        ctx.arc(this.x + 4, drawY - 4, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Jagged mouth (open and menacing)
+        ctx.strokeStyle = '#0a0000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.x - 5, drawY + 2);
+        ctx.quadraticCurveTo(this.x - 2, drawY + 5, this.x, drawY + 4);
+        ctx.quadraticCurveTo(this.x + 2, drawY + 5, this.x + 5, drawY + 2);
+        ctx.stroke();
+
+        // Teeth
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(this.x - 3, drawY + 2);
+        ctx.lineTo(this.x - 3, drawY + 4);
+        ctx.moveTo(this.x, drawY + 3);
+        ctx.lineTo(this.x, drawY + 5);
+        ctx.moveTo(this.x + 3, drawY + 2);
+        ctx.lineTo(this.x + 3, drawY + 4);
+        ctx.stroke();
+
+        // Health bar (if recently damaged and setting enabled)
+        if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
+            const timeSinceDamage = Date.now() - this.lastDamageTime;
+            if (timeSinceDamage < 2000 && this.maxHealth) {
+                const barWidth = this.radius * 2.5;
+                const barHeight = 3;
+                const barX = this.x - barWidth / 2;
+                const barY = drawY - this.radius - 8;
+
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health fill
+                const healthPercent = Math.max(0, this.health / this.maxHealth);
+                const fillWidth = barWidth * healthPercent;
+
+                // Get health bar style setting
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    if (healthPercent > 0.5) {
+                        gradient.addColorStop(0, '#4caf50');
+                        gradient.addColorStop(1, '#ffeb3b');
+                    } else {
+                        gradient.addColorStop(0, '#ffeb3b');
+                        gradient.addColorStop(1, '#f44336');
+                    }
+                    ctx.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    let color = '#4caf50';
+                    if (healthPercent < 0.5) {
+                        color = healthPercent < 0.25 ? '#f44336' : '#ffeb3b';
+                    }
+                    ctx.fillStyle = color;
+                } else if (healthBarStyle === 'simple') {
+                    ctx.fillStyle = '#ffffff';
+                }
+
+                ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+                // Border (only for gradient and solid styles)
+                if (healthBarStyle !== 'simple') {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
+            }
+        }
     }
 
     takeDamage(bulletDamage) {

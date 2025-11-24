@@ -9,7 +9,7 @@ import {
     MAX_GRENADES,
     TWO_PI
 } from './core/constants.js';
-import { canvas, ctx, resizeCanvas } from './core/canvas.js';
+import { canvas, ctx, gpuCanvas, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
@@ -27,7 +27,6 @@ import { AcidPool } from './entities/AcidPool.js';
 window.AcidProjectile = AcidProjectile;
 window.AcidPool = AcidPool;
 import { BossZombie } from './entities/BossZombie.js';
-import { HealthPickup, AmmoPickup, DamagePickup, NukePickup, SpeedPickup, RapidFirePickup, ShieldPickup, AdrenalinePickup } from './entities/Pickup.js';
 import { DamageNumber } from './entities/Particle.js';
 import {
     shootBullet, reloadWeapon, switchWeapon, throwGrenade, triggerExplosion,
@@ -36,7 +35,7 @@ import {
 import {
     checkCollision, triggerDamageIndicator, triggerWaveNotification,
     loadHighScore, saveHighScore, loadUsername, saveUsername, loadMenuMusicMuted, saveMenuMusicMuted,
-    loadMultiplierStats
+    loadMultiplierStats, clearScoreboard
 } from './utils/gameUtils.js';
 
 // Make triggerDamageIndicator available globally for AcidPool
@@ -47,7 +46,26 @@ import { GameEngine } from './core/GameEngine.js';
 import { CompanionSystem } from './companions/CompanionSystem.js';
 import { WebGPURenderer } from './core/WebGPURenderer.js';
 import { skillSystem } from './systems/SkillSystem.js';
+import { zombieUpdateSystem } from './systems/ZombieUpdateSystem.js';
+import { entityRenderSystem } from './systems/EntityRenderSystem.js';
+import { pickupSpawnSystem } from './systems/PickupSpawnSystem.js';
+import { propSpawnSystem } from './systems/PropSpawnSystem.js';
+import { propRenderSystem } from './systems/PropRenderSystem.js';
+import { groundTextureSystem } from './systems/GroundTextureSystem.js';
+import { cameraSystem } from './systems/CameraSystem.js';
 import { SERVER_URL } from './core/constants.js';
+import { MultiplayerSystem } from './systems/MultiplayerSystem.js';
+import { ZombieSpawnSystem } from './systems/ZombieSpawnSystem.js';
+import { PlayerSystem } from './systems/PlayerSystem.js';
+import { GameStateManager } from './systems/GameStateManager.js';
+import { MeleeSystem } from './systems/MeleeSystem.js';
+import { drawMeleeSwipe, drawCrosshair as drawCrosshairUtil, drawWaveBreak, drawWaveNotification, drawFpsCounter } from './utils/drawingUtils.js';
+import { playerProfileSystem } from './systems/PlayerProfileSystem.js';
+import { ProfileScreen } from './ui/ProfileScreen.js';
+import { AchievementScreen } from './ui/AchievementScreen.js';
+import { BattlepassScreen } from './ui/BattlepassScreen.js';
+import { BadgeScreen } from './ui/BadgeScreen.js';
+import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -59,6 +77,39 @@ const companionSystem = new CompanionSystem();
 // Make companionSystem globally accessible
 window.companionSystem = companionSystem;
 
+// Initialize HUD (needed by GameStateManager)
+const gameHUD = new GameHUD(canvas);
+window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
+
+// Initialize profile UI screens
+const profileScreen = new ProfileScreen(canvas);
+const achievementScreen = new AchievementScreen(canvas);
+const battlepassScreen = new BattlepassScreen(canvas);
+const badgeScreen = new BadgeScreen(canvas);
+// Make globally accessible for text rendering quality
+window.profileScreen = profileScreen;
+window.achievementScreen = achievementScreen;
+window.battlepassScreen = battlepassScreen;
+window.badgeScreen = badgeScreen;
+
+// Initialize new systems
+const meleeSystem = new MeleeSystem();
+const playerSystem = new PlayerSystem(companionSystem);
+const zombieSpawnSystem = new ZombieSpawnSystem();
+const gameStateManager = new GameStateManager(gameHUD, (count) => {
+    zombieSpawnSystem.spawnZombies(count, gameState.multiplayer.socket);
+});
+const multiplayerSystem = new MultiplayerSystem(
+    gameEngine,
+    () => gameStateManager.startGame(),
+    (player) => meleeSystem.performMeleeAttack(player),
+    (target, canvas, player) => shootBullet(target, canvas, player),
+    (player) => reloadWeapon(player),
+    (target, canvas, player) => throwGrenade(target, canvas, player),
+    (weapon, player) => switchWeapon(weapon, player),
+    (type) => zombieSpawnSystem.getZombieClassByType(type)
+);
+
 // Apply FPS limit and VSync from settings
 const initialFpsLimit = settingsManager.getSetting('video', 'fpsLimit') ?? 0;
 const initialVSync = settingsManager.getSetting('video', 'vsync') ?? true;
@@ -67,11 +118,18 @@ if (!initialVSync) {
     gameEngine.setFPSLimit(initialFpsLimit);
 }
 
-// Initialize HUD
-const gameHUD = new GameHUD(canvas);
-
 // Initialize Settings Panel
 const settingsPanel = new SettingsPanel(canvas, settingsManager);
+window.settingsPanel = settingsPanel; // Make globally accessible for text rendering quality
+
+// Apply initial text rendering quality
+applyTextRenderingQualityToAll();
+
+// v0.8.1.2: Initialize ground texture system
+groundTextureSystem.init();
+
+// Initialize volumetric blood simulation system
+bloodSimulationSystem.init();
 
 // Input state
 const keys = {};
@@ -89,14 +147,20 @@ window.addEventListener('resize', () => {
 const webgpuRenderer = new WebGPURenderer();
 // Make renderer globally accessible for GameHUD
 window.webgpuRenderer = webgpuRenderer;
+
+// Set initial gpuCanvas visibility (hidden until WebGPU is confirmed active)
+updateGpuCanvasVisibility();
+
 webgpuRenderer.init().then(initialized => {
     if (initialized) {
-        console.log('WebGPU renderer ready');
+
         // Apply initial settings
         applyWebGPUSettings();
     } else {
-        console.log('WebGPU renderer unavailable, using Canvas 2D fallback');
+
     }
+    // Update gpuCanvas visibility based on WebGPU availability
+    updateGpuCanvasVisibility();
 });
 
 /**
@@ -106,6 +170,34 @@ webgpuRenderer.init().then(initialized => {
 function isWebGPUActive() {
     const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
     return webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+}
+
+/**
+ * Update gpuCanvas visibility based on WebGPU availability
+ * Hides gpuCanvas when WebGPU is disabled to prevent grey overlay
+ */
+function updateGpuCanvasVisibility() {
+    if (!gpuCanvas) {
+        console.warn('[gpuCanvas] Element not found');
+        return;
+    }
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    const webgpuAvailable = webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+    const webgpuActive = webgpuEnabled && webgpuAvailable;
+
+
+
+    if (webgpuActive) {
+        gpuCanvas.style.display = 'block';
+        gpuCanvas.style.visibility = 'visible';
+        gpuCanvas.style.opacity = '1';
+
+    } else {
+        gpuCanvas.style.display = 'none';
+        gpuCanvas.style.visibility = 'hidden';
+        gpuCanvas.style.opacity = '0';
+
+    }
 }
 
 // Function to apply WebGPU settings from SettingsManager
@@ -120,10 +212,21 @@ function applyWebGPUSettings() {
     webgpuRenderer.setLightingQuality(lighting);
     const particles = settingsManager.getSetting('video', 'particleCount') ?? 'high';
     webgpuRenderer.setParticleCount(particles);
+    const zombobsFX = settingsManager.getSetting('video', 'zombobsFXEnabled') ?? true;
+    webgpuRenderer.setZombobsFXEnabled(zombobsFX);
 }
 
 // Listen for settings changes and update renderer/systems
 settingsManager.addChangeListener((category, key, value) => {
+    if (category === 'gameplay' && key === 'enableAICompanion') {
+        const aiPlayerExists = gameState.players.some(p => p.inputSource === 'ai');
+        if (value && !aiPlayerExists) {
+            addAIPlayer();
+        } else if (!value && aiPlayerExists) {
+            gameState.players = gameState.players.filter(p => p.inputSource !== 'ai');
+        }
+    }
+
     if (category === 'video') {
         // Handle resolution scale (affects all rendering, not just WebGPU)
         if (key === 'resolutionScale') {
@@ -131,13 +234,18 @@ settingsManager.addChangeListener((category, key, value) => {
             const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
             resizeCanvas(localPlayer);
         }
-        
+
         // Handle UI Scale (affects all UI elements)
         if (key === 'uiScale') {
             // UI scaling applies immediately on next render, no action needed
             // GameHUD and SettingsPanel will recalculate scaled values on next draw
         }
-        
+
+        // Handle Text Rendering Quality (affects all canvas contexts)
+        if (key === 'textRenderingQuality') {
+            applyTextRenderingQualityToAll();
+        }
+
         // Handle VSync and FPS limit (affects all rendering)
         if (key === 'vsync') {
             gameEngine.setVSync(value);
@@ -149,7 +257,13 @@ settingsManager.addChangeListener((category, key, value) => {
                 gameEngine.setFPSLimit(value);
             }
         }
-        
+
+        // Handle WebGPU enabled/disabled toggle
+        if (key === 'webgpuEnabled') {
+            // Update gpuCanvas visibility when WebGPU setting changes
+            updateGpuCanvasVisibility();
+        }
+
         // WebGPU-specific settings (only apply if WebGPU is active)
         if (isWebGPUActive()) {
             if (key === 'bloomIntensity') {
@@ -158,6 +272,9 @@ settingsManager.addChangeListener((category, key, value) => {
             if (key === 'distortionEffects') {
                 webgpuRenderer.setDistortionEffects(value);
             }
+            if (key === 'zombobsFXEnabled') {
+                webgpuRenderer.setZombobsFXEnabled(value);
+            }
             if (key === 'lightingQuality') {
                 webgpuRenderer.setLightingQuality(value);
             }
@@ -165,555 +282,33 @@ settingsManager.addChangeListener((category, key, value) => {
                 webgpuRenderer.setParticleCount(value);
             }
         }
+
+        // Handle vignette, shadows, and lighting changes - invalidate cache for immediate visual update
+        if (key === 'vignette' || key === 'lighting') {
+            // Invalidate rendering cache when vignette/lighting toggles change
+            const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+            if (localPlayer) {
+                renderingCache.invalidate(localPlayer);
+            }
+            // Cache will be updated on next drawGame() call with new settings
+        }
+
+        // Shadows are read directly in rendering code, no cache invalidation needed
+        // But we can still add a listener for consistency
+        if (key === 'shadows') {
+            // Shadows are read directly per-frame, so changes apply immediately
+            // No cache invalidation needed
+        }
     }
 });
 
-// Server health check function
+// Server health check - delegate to MultiplayerSystem
 function checkServerHealth() {
-    if (gameState.multiplayer.status === 'connected') return;
-
-    gameState.multiplayer.serverStatus = 'checking';
-    console.log('Checking server health at:', SERVER_URL);
-
-    fetch(`${SERVER_URL}/health`)
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('Network response was not ok');
-        })
-        .then(data => {
-            console.log('Server is online:', data);
-            gameState.multiplayer.serverStatus = 'online';
-        })
-        .catch(error => {
-            console.log('Server appears offline or waking up:', error);
-            gameState.multiplayer.serverStatus = 'offline';
-
-            // Retry check after 5 seconds if offline (to handle wake-up)
-            setTimeout(checkServerHealth, 5000);
-        });
-}
-
-// Latency measurement function
-function startLatencyMeasurement(socket) {
-    // Use Socket.IO's built-in ping/pong mechanism for latency measurement
-    // Socket.IO sends ping/pong automatically, we just need to measure the round-trip time
-    let pingInterval = null;
-    
-    // Listen for ping events (server sends ping)
-    socket.io.on('ping', () => {
-        gameState.lastPingTime = Date.now();
-    });
-    
-    // Listen for pong events (server responds)
-    socket.io.on('pong', () => {
-        if (gameState.lastPingTime) {
-            const latency = Date.now() - gameState.lastPingTime;
-            // Use exponential moving average for smoother latency tracking
-            gameState.networkLatency = gameState.networkLatency 
-                ? gameState.networkLatency * 0.8 + latency * 0.2
-                : latency;
-            gameState.multiplayer.latency = gameState.networkLatency;
-        }
-    });
-    
-    // Also measure custom ping/pong if server supports it
-    pingInterval = setInterval(() => {
-        if (!socket.connected) {
-            if (pingInterval) clearInterval(pingInterval);
-            return;
-        }
-        
-        const pingStart = Date.now();
-        socket.emit('ping', Date.now(), (response) => {
-            if (response) {
-                const pingEnd = Date.now();
-                const latency = pingEnd - pingStart;
-                // Use exponential moving average for smoother latency tracking
-                gameState.networkLatency = gameState.networkLatency 
-                    ? gameState.networkLatency * 0.8 + latency * 0.2
-                    : latency;
-                gameState.multiplayer.latency = gameState.networkLatency;
-            }
-        });
-    }, 5000); // Measure every 5 seconds
-    
-    // Clean up on disconnect
-    socket.on('disconnect', () => {
-        if (pingInterval) {
-            clearInterval(pingInterval);
-            pingInterval = null;
-        }
-    });
+    multiplayerSystem.checkServerHealth();
 }
 
 function initializeNetwork() {
-    if (gameState.multiplayer.socket) return; // Already initialized
-
-    // Initialize socket.io connection to Hugging Face Space
-    if (typeof io !== 'undefined') {
-        gameState.multiplayer.status = 'connecting';
-
-        // Configure Socket.io for Hugging Face Spaces
-        // Hugging Face Spaces uses a reverse proxy, so we need to:
-        // 1. Use both polling and websocket transports (polling first for compatibility)
-        // 2. Set path explicitly for Spaces routing - Socket.io appends /socket.io/ automatically
-        // 3. Allow reconnection attempts
-        const socket = io(SERVER_URL, {
-            path: '/socket.io/', // Explicit path for Socket.io (will be appended to SERVER_URL)
-            transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
-            upgrade: true, // Allow transport upgrade from polling to websocket
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 20000,
-            forceNew: false,
-            withCredentials: false // Important for CORS
-        });
-
-        gameState.multiplayer.socket = socket;
-
-        socket.on('connect', () => {
-            console.log('✅ Successfully connected to multiplayer server');
-            console.log('Connection details:', {
-                id: socket.id,
-                transport: socket.io.engine?.transport?.name || 'unknown',
-                url: SERVER_URL
-            });
-            gameState.multiplayer.connected = true;
-            gameState.multiplayer.status = 'connected';
-            gameState.multiplayer.playerId = socket.id;
-            gameState.multiplayer.isReady = false;
-            gameState.multiplayer.isLeader = false;
-            socket.emit('player:register', {
-                name: gameState.username || `Survivor-${socket.id.slice(-4)}`
-            });
-            
-            // Start latency measurement (ping/pong)
-            startLatencyMeasurement(socket);
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from multiplayer server');
-            gameState.multiplayer.connected = false;
-            gameState.multiplayer.status = 'disconnected';
-            gameState.multiplayer.playerId = null;
-            gameState.multiplayer.players = [];
-            gameState.multiplayer.isLeader = false;
-            gameState.multiplayer.isReady = false;
-        });
-
-        socket.on('lobby:update', (players) => {
-            console.log('[Lobby Update] Received from server', {
-                playerCount: players?.length || 0,
-                localPlayerId: gameState.multiplayer.playerId
-            });
-            gameState.multiplayer.players = Array.isArray(players) ? players : [];
-            // Update local leader/ready status from server data
-            const localPlayer = players.find(p => p.id === gameState.multiplayer.playerId);
-            if (localPlayer) {
-                const oldReady = gameState.multiplayer.isReady;
-                const oldLeader = gameState.multiplayer.isLeader;
-                gameState.multiplayer.isLeader = localPlayer.isLeader || false;
-                gameState.multiplayer.isReady = localPlayer.isReady || false;
-                console.log('[Lobby Update] Local player state updated', {
-                    name: localPlayer.name,
-                    isLeader: gameState.multiplayer.isLeader,
-                    isReady: gameState.multiplayer.isReady,
-                    readyChanged: oldReady !== gameState.multiplayer.isReady,
-                    leaderChanged: oldLeader !== gameState.multiplayer.isLeader
-                });
-            } else {
-                console.warn('[Lobby Update] Local player not found in update', {
-                    localPlayerId: gameState.multiplayer.playerId,
-                    playersInUpdate: players.map(p => ({ id: p.id, name: p.name }))
-                });
-            }
-        });
-
-        socket.on('game:start', () => {
-            console.log('🎮 Game start signal received from server');
-            console.log('[game:start] Multiplayer players:', gameState.multiplayer.players);
-            console.log('[game:start] Local player ID:', gameState.multiplayer.playerId);
-
-            if (gameState.showLobby) {
-                // Enable co-op mode for multiplayer
-                gameState.isCoop = true;
-                console.log('[game:start] Co-op mode enabled');
-
-                // Synchronize players from lobby to game state
-                const multiplayerPlayers = gameState.multiplayer.players || [];
-                console.log('[game:start] Syncing players from lobby. Count:', multiplayerPlayers.length);
-
-                gameState.players = multiplayerPlayers.map((lobbyPlayer, index) => {
-                    const isLocalPlayer = lobbyPlayer.id === gameState.multiplayer.playerId;
-                    const player = createPlayer(
-                        canvas.width / 2 + (index * 50), // Spawn with offset
-                        canvas.height / 2,
-                        index % 5 // Cycle through colors
-                    );
-
-                    // Override with lobby data
-                    player.id = lobbyPlayer.id;
-                    player.name = lobbyPlayer.name;
-                    player.inputSource = isLocalPlayer ? 'mouse' : 'remote';
-
-                    console.log('[game:start] Created player:', {
-                        id: player.id,
-                        name: player.name,
-                        isLocal: isLocalPlayer,
-                        inputSource: player.inputSource,
-                        color: player.color.name
-                    });
-
-                    return player;
-                });
-
-                console.log('[game:start] Player sync complete. Total players:', gameState.players.length);
-                console.log('[game:start] Player IDs:', gameState.players.map(p => ({ id: p.id, name: p.name })));
-
-                initAudio();
-                startGame();
-            } else {
-                console.warn('[game:start] Received game:start but not in lobby (showLobby = false)');
-            }
-        });
-
-        socket.on('game:pause', () => {
-            gameState.gamePaused = true;
-            gameHUD.showPauseMenu();
-        });
-
-        socket.on('game:resume', () => {
-            gameState.gamePaused = false;
-            gameHUD.hidePauseMenu();
-        });
-
-        // Handle remote player state updates
-        socket.on('player:state:update', (data) => {
-            // Debug: Log received state updates (throttled to avoid spam)
-            if (!window._lastStateUpdateLog || Date.now() - window._lastStateUpdateLog > 2000) {
-                console.log('[player:state:update] Received state update', {
-                    playerId: data.playerId,
-                    isCoop: gameState.isCoop,
-                    gameRunning: gameState.gameRunning,
-                    hasX: data.x !== undefined,
-                    hasY: data.y !== undefined,
-                    hasAngle: data.angle !== undefined
-                });
-                window._lastStateUpdateLog = Date.now();
-            }
-
-            // Check if we're in multiplayer mode and game is running
-            if (!gameState.isCoop) {
-                console.warn('[player:state:update] Ignored - not in coop mode');
-                return;
-            }
-            if (!gameState.gameRunning) {
-                console.warn('[player:state:update] Ignored - game not running');
-                return;
-            }
-
-            // Find the remote player by ID
-            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
-
-            if (!remotePlayer) {
-                console.warn('[player:state:update] Remote player not found', {
-                    receivedPlayerId: data.playerId,
-                    availablePlayerIds: gameState.players.map(p => ({ id: p.id, name: p.name, inputSource: p.inputSource })),
-                    localPlayerId: gameState.multiplayer.playerId
-                });
-                return;
-            }
-
-            if (remotePlayer.inputSource !== 'remote') {
-                console.warn('[player:state:update] Player found but not remote', {
-                    playerId: data.playerId,
-                    playerName: remotePlayer.name,
-                    inputSource: remotePlayer.inputSource,
-                    isLocal: remotePlayer.id === gameState.multiplayer.playerId
-                });
-                return;
-            }
-
-            // Update remote player position and angle
-            // Simple LERP for smoother movement
-            if (data.x !== undefined) {
-                // Move 30% of the way to target position (smoothing)
-                remotePlayer.x = remotePlayer.x * 0.7 + data.x * 0.3;
-            }
-            if (data.y !== undefined) {
-                remotePlayer.y = remotePlayer.y * 0.7 + data.y * 0.3;
-            }
-
-            if (data.angle !== undefined) remotePlayer.angle = data.angle;
-            if (data.health !== undefined) remotePlayer.health = data.health;
-            if (data.stamina !== undefined) remotePlayer.stamina = data.stamina;
-            if (data.currentWeapon !== undefined) {
-                // Update weapon if needed
-                const weaponName = data.currentWeapon;
-                if (WEAPONS[weaponName]) {
-                    remotePlayer.currentWeapon = WEAPONS[weaponName];
-                }
-            }
-            if (data.currentAmmo !== undefined) remotePlayer.currentAmmo = data.currentAmmo;
-            if (data.isReloading !== undefined) remotePlayer.isReloading = data.isReloading;
-        });
-
-        // Handle remote player actions (shooting, melee, etc.)
-        socket.on('player:action:update', (data) => {
-            if (!gameState.isCoop || !gameState.gameRunning) return;
-
-            const remotePlayer = gameState.players.find(p => p.id === data.playerId);
-            if (remotePlayer && remotePlayer.inputSource === 'remote') {
-                if (data.action === 'shoot') {
-                    // Use exact position from packet if available to prevent "ghost bullets"
-                    // Temporarily override player position to spawn bullet correctly
-                    const originalX = remotePlayer.x;
-                    const originalY = remotePlayer.y;
-                    const originalAngle = remotePlayer.angle;
-                    
-                    if (data.x !== undefined) remotePlayer.x = data.x;
-                    if (data.y !== undefined) remotePlayer.y = data.y;
-                    if (data.angle !== undefined) remotePlayer.angle = data.angle;
-
-                    const target = {
-                        x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
-                        y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
-                    };
-                    shootBullet(target, canvas, remotePlayer);
-
-                    // Restore visual position (it will interpolate to correct spot anyway)
-                    remotePlayer.x = originalX;
-                    remotePlayer.y = originalY;
-                    remotePlayer.angle = originalAngle;
-                } else if (data.action === 'melee') {
-                    performMeleeAttack(remotePlayer);
-                } else if (data.action === 'reload') {
-                    reloadWeapon(remotePlayer);
-                } else if (data.action === 'grenade') {
-                    // Use exact position for grenades too
-                    const originalX = remotePlayer.x;
-                    const originalY = remotePlayer.y;
-                    const originalAngle = remotePlayer.angle;
-
-                    if (data.x !== undefined) remotePlayer.x = data.x;
-                    if (data.y !== undefined) remotePlayer.y = data.y;
-                    if (data.angle !== undefined) remotePlayer.angle = data.angle;
-
-                    const target = {
-                        x: remotePlayer.x + Math.cos(remotePlayer.angle) * 200,
-                        y: remotePlayer.y + Math.sin(remotePlayer.angle) * 200
-                    };
-                    throwGrenade(target, canvas, remotePlayer);
-
-                    remotePlayer.x = originalX;
-                    remotePlayer.y = originalY;
-                    remotePlayer.angle = originalAngle;
-                } else if (data.action === 'switchWeapon') {
-                    if (data.weaponName && WEAPONS[data.weaponName]) {
-                        switchWeapon(WEAPONS[data.weaponName], remotePlayer);
-                    }
-                }
-            }
-        });
-
-        socket.on('game:starting', (data) => {
-            console.log('Game starting in ' + data.duration + 'ms');
-            gameState.multiplayer.isGameStarting = true;
-            // Calculate start time - server sends startTime which is Date.now() + 3000
-            // We need to account for network latency, so use current time + duration
-            const clientNow = Date.now();
-            gameState.multiplayer.gameStartTime = clientNow + data.duration;
-        });
-
-        // Handle player disconnection
-        socket.on('player:disconnected', (data) => {
-            if (!gameState.isCoop) return;
-
-            const disconnectedPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
-            if (disconnectedPlayerIndex !== -1) {
-                console.log(`[Multiplayer] Player ${gameState.players[disconnectedPlayerIndex].name} disconnected`);
-                gameState.players.splice(disconnectedPlayerIndex, 1);
-            }
-        });
-
-        socket.on('game:start:error', (error) => {
-            console.warn('Game start error:', error.message);
-            // Could show error message to user in UI
-        });
-
-        socket.on('player:ready:error', (error) => {
-            console.error('[Ready Button] Server error:', error.message);
-            if (error.error) {
-                console.error('[Ready Button] Error details:', error.error);
-            }
-            if (error.availablePlayers) {
-                console.error('[Ready Button] Available players on server:', error.availablePlayers);
-            }
-        });
-
-        // --- Zombie Synchronization Listeners (Non-Leader) ---
-        socket.on('zombie:spawn', (data) => {
-            if (gameState.multiplayer.isLeader) return; // Leader spawns locally
-
-            // Spawn zombie on non-leader client
-            const ZombieClass = getZombieClassByType(data.type);
-            if (ZombieClass) {
-                const zombie = new ZombieClass(canvas.width, canvas.height);
-                zombie.id = data.id;
-                zombie.x = data.x;
-                zombie.y = data.y;
-                zombie.health = data.health;
-                gameState.zombies.push(zombie);
-            }
-        });
-
-        socket.on('zombie:update', (zombiesData) => {
-            if (gameState.multiplayer.isLeader) return; // Leader has authoritative state
-
-            const now = Date.now();
-            const updateInterval = Math.max(50, now - gameState.lastZombieUpdateBroadcast || 100);
-            const frameTime = gameEngine.timeStep || 16.67;
-            
-            // Calculate adaptive lerp factor based on update frequency
-            // Formula: lerpFactor = Math.min(0.5, updateInterval / frameTime)
-            // Higher update interval = faster lerp to catch up
-            const lerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
-            
-            // Update zombie positions from leader
-            zombiesData.forEach(data => {
-                const zombie = gameState.zombies.find(z => z.id === data.id);
-                if (zombie) {
-                    // Store previous position for velocity calculation
-                    const oldX = zombie.x;
-                    const oldY = zombie.y;
-                    
-                    // Apply synced speed if provided
-                    if (data.speed !== undefined) {
-                        zombie.speed = data.speed;
-                    }
-                    if (data.baseSpeed !== undefined) {
-                        zombie.baseSpeed = data.baseSpeed;
-                    }
-                    
-                    // Calculate velocity from position delta
-                    if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
-                        const timeSinceLastUpdate = (now - zombie.lastUpdateTime) || updateInterval;
-                        if (timeSinceLastUpdate > 0) {
-                            zombie.vx = (data.x - zombie.targetX) / timeSinceLastUpdate;
-                            zombie.vy = (data.y - zombie.targetY) / timeSinceLastUpdate;
-                        }
-                    }
-                    
-                    // Set target for interpolation
-                    zombie.targetX = data.x;
-                    zombie.targetY = data.y;
-                    zombie.health = data.health;
-                    zombie.lastUpdateTime = now;
-
-                    // If distance is too large (teleport/spawn), snap immediately
-                    const dx = data.x - zombie.x;
-                    const dy = data.y - zombie.y;
-                    const distSq = dx * dx + dy * dy;
-                    if (distSq > 10000) {
-                        // Large distance - snap immediately
-                        zombie.x = data.x;
-                        zombie.y = data.y;
-                        zombie.targetX = data.x;
-                        zombie.targetY = data.y;
-                    }
-                }
-            });
-            
-            gameState.lastZombieUpdateBroadcast = now;
-        });
-
-        socket.on('zombie:hit', (data) => {
-            if (gameState.multiplayer.isLeader) return; // Leader already applied damage
-
-            const zombie = gameState.zombies.find(z => z.id === data.zombieId);
-            if (zombie) {
-                zombie.health = data.newHealth;
-                // Visual feedback
-                createBloodSplatter(zombie.x, zombie.y, data.angle || 0, false);
-            }
-        });
-
-        socket.on('zombie:die', (data) => {
-            if (gameState.multiplayer.isLeader) return; // Leader already removed zombie
-
-            const zombieIndex = gameState.zombies.findIndex(z => z.id === data.zombieId);
-            if (zombieIndex !== -1) {
-                const zombie = gameState.zombies[zombieIndex];
-                
-                // Clean up state tracking for dead zombie (multiplayer sync)
-                gameState.lastZombieState.delete(zombie.id);
-
-                // Visual effects
-                createBloodSplatter(zombie.x, zombie.y, data.angle || 0, true);
-                createParticles(zombie.x, zombie.y, '#ff0000', 10);
-
-                // Handle exploding zombie
-                if (data.isExploding) {
-                    triggerExplosion(zombie.x, zombie.y, 100, 50, false);
-                }
-
-                // Remove zombie
-                gameState.zombies.splice(zombieIndex, 1);
-                gameState.zombiesKilled++;
-            }
-        });
-
-        // --- Game State Synchronization Listeners (Non-Leader) ---
-        socket.on('game:xp', (amount) => {
-            if (gameState.multiplayer.isLeader) return; // Leader already gained XP
-            skillSystem.gainXP(amount);
-        });
-
-        socket.on('game:levelup', (data) => {
-            if (gameState.multiplayer.isLeader) return; // Leader already leveled up
-
-            gameState.level = data.level;
-            gameState.nextLevelXP = data.nextLevelXP;
-            gameState.levelUpChoices = data.choices;
-            gameState.showLevelUp = true;
-        });
-
-        socket.on('game:skill', (skillId) => {
-            if (gameState.multiplayer.isLeader) return; // Leader already activated skill
-
-            skillSystem.activateSkill(skillId);
-            gameState.showLevelUp = false;
-            gameState.levelUpChoices = [];
-        });
-
-        socket.on('connect_error', (err) => {
-            console.error('Multiplayer connection error:', err.message);
-            console.error('Connection details:', {
-                url: SERVER_URL,
-                transport: socket.io.engine?.transport?.name || 'unknown'
-            });
-            gameState.multiplayer.connected = false;
-            gameState.multiplayer.status = 'error';
-        });
-
-        socket.on('reconnect_attempt', (attemptNumber) => {
-            console.log(`Reconnection attempt ${attemptNumber}...`);
-            gameState.multiplayer.status = 'connecting';
-        });
-
-        socket.on('reconnect_failed', () => {
-            console.error('Failed to reconnect to server after all attempts');
-            gameState.multiplayer.status = 'error';
-        });
-    } else {
-        console.error('Socket.io not found. Make sure the CDN script is loaded.');
-        gameState.multiplayer.status = 'error';
-        gameState.multiplayer.connected = false;
-    }
+    multiplayerSystem.initializeNetwork(gameHUD);
 }
 
 function connectToMultiplayer() {
@@ -725,161 +320,8 @@ function connectToMultiplayer() {
     gameState.multiplayer.active = true;
 }
 
-// Helper function to get zombie class by type string
-function getZombieClassByType(type) {
-    const typeMap = {
-        'normal': NormalZombie,
-        'fast': FastZombie,
-        'armored': ArmoredZombie,
-        'exploding': ExplodingZombie,
-        'ghost': GhostZombie,
-        'spitter': SpitterZombie,
-        'boss': BossZombie
-    };
-    return typeMap[type] || NormalZombie;
-}
-
-function spawnBoss() {
-    // In multiplayer, only the leader spawns the boss
-    if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-        return; // Non-leader clients will receive zombie:spawn event
-    }
-
-    gameState.isSpawningWave = true;
-    gameState.bossActive = true;
-
-    // Spawn boss at top center
-    const boss = new BossZombie(canvas.width / 2, -50);
-    gameState.boss = boss;
-    gameState.zombies.push(boss);
-
-    // Broadcast boss spawn to other clients (leader only)
-    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-        gameState.multiplayer.socket.emit('zombie:spawn', {
-            id: boss.id,
-            type: boss.type || 'boss',
-            x: boss.x,
-            y: boss.y,
-            health: boss.health
-        });
-    }
-
-    triggerWaveNotification("BOSS WAVE!", 180); // Longer notification
-
-    // Play boss sound (if we had one)
-    // playBossRoar();
-
-    gameState.isSpawningWave = false;
-}
-
 function spawnZombies(count) {
-    // In multiplayer, only the leader spawns zombies
-    if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-        return; // Non-leader clients will receive zombie:spawn events
-    }
-
-    // Clear any pending zombie spawn timeouts
-    gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
-    gameState.zombieSpawnTimeouts = [];
-
-    // Check for Boss Wave (Every 5 waves)
-    if (gameState.wave % 5 === 0) {
-        spawnBoss();
-        return;
-    }
-
-    // Mark that we're spawning a wave
-    gameState.isSpawningWave = true;
-
-    // Spawn zombies with staggered timing
-    for (let i = 0; i < count; i++) {
-        // Calculate spawn position (same logic as Zombie constructor)
-        const side = Math.floor(Math.random() * 4);
-        let spawnX, spawnY;
-        switch (side) {
-            case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
-            case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
-            case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
-            case 3: spawnX = -20; spawnY = Math.random() * canvas.height; break;
-        }
-
-        // Create spawn indicator 1 second before zombie spawns
-        const indicatorDelay = i * 500;
-        const spawnDelay = indicatorDelay + 1000; // 1 second after indicator
-
-        // Create indicator with unique ID for removal
-        const indicatorId = `ind_${i}_${Date.now()}_${Math.random()}`;
-        setTimeout(() => {
-            gameState.spawnIndicators.push({
-                id: indicatorId,
-                x: spawnX,
-                y: spawnY,
-                startTime: Date.now(),
-                duration: 1000 // 1 second
-            });
-        }, indicatorDelay);
-
-        // Spawn zombie after delay
-        const timeout = setTimeout(() => {
-            let ZombieClass = NormalZombie; // Default
-            const rand = Math.random();
-
-            // Wave 3+: Introduce Fast zombies (~15% chance)
-            if (gameState.wave >= 3 && rand < 0.15) {
-                ZombieClass = FastZombie;
-            }
-            // Wave 5+: Introduce Exploding zombies (~10% chance, but only if not fast)
-            else if (gameState.wave >= 5 && rand >= 0.15 && rand < 0.25) {
-                ZombieClass = ExplodingZombie;
-            }
-            // Wave 4+: Introduce Ghost zombies (~10% chance)
-            else if (gameState.wave >= 4 && rand >= 0.25 && rand < 0.35) {
-                ZombieClass = GhostZombie;
-            }
-            // Wave 6+: Introduce Spitter zombies (~8% chance)
-            else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
-                ZombieClass = SpitterZombie;
-            }
-            // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost)
-            else if (gameState.wave >= 3 && rand >= 0.35) {
-                const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
-                if (Math.random() < armoredChance) {
-                    ZombieClass = ArmoredZombie;
-                }
-            }
-
-            // Create zombie at the pre-determined spawn location
-            // Note: Zombie constructor sets random position, so we override it
-            const zombie = new ZombieClass(canvas.width, canvas.height);
-            // Override with our predetermined spawn position
-            zombie.x = spawnX;
-            zombie.y = spawnY;
-            gameState.zombies.push(zombie);
-
-            // Broadcast zombie spawn to other clients (leader only)
-            if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-                gameState.multiplayer.socket.emit('zombie:spawn', {
-                    id: zombie.id,
-                    type: zombie.type || 'normal',
-                    x: zombie.x,
-                    y: zombie.y,
-                    health: zombie.health
-                });
-            }
-
-            // Remove the corresponding indicator by ID
-            const indicatorIndex = gameState.spawnIndicators.findIndex(ind => ind.id === indicatorId);
-            if (indicatorIndex !== -1) {
-                gameState.spawnIndicators.splice(indicatorIndex, 1);
-            }
-
-            // After the last zombie spawns, clear the flag
-            if (i === count - 1) {
-                gameState.isSpawningWave = false;
-            }
-        }, spawnDelay);
-        gameState.zombieSpawnTimeouts.push(timeout);
-    }
+    zombieSpawnSystem.spawnZombies(count, gameState.multiplayer.socket);
 }
 
 // Pause menu functions
@@ -896,6 +338,9 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
+
+    // Track pause for badge
+    playerProfileSystem.trackGamePause();
 
     // Notify server
     if (gameState.multiplayer.active && gameState.multiplayer.socket) {
@@ -914,943 +359,31 @@ function resumeGame() {
 }
 
 function performMeleeAttack(player) {
-    player = player || gameState.players[0];
-    const now = Date.now();
-
-    // Check cooldown
-    if (now - player.lastMeleeTime < MELEE_COOLDOWN) {
-        return;
-    }
-
-    // Check if reloading
-    if (player.isReloading) {
-        return;
-    }
-
-    player.lastMeleeTime = now;
-
-    // Create swipe animation (right to left)
-    player.activeMeleeSwipe = {
-        startTime: now,
-        angle: player.angle,
-        duration: MELEE_SWIPE_DURATION
-    };
-
-    // Play melee sound (using damage sound as placeholder)
-    playDamageSound();
-
-    // Check for zombies in melee range
-    let hitCount = 0;
-    gameState.zombies.forEach((zombie, zombieIndex) => {
-        if (isInMeleeRange(zombie.x, zombie.y, zombie.radius, player.x, player.y, player.angle)) {
-            const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
-
-            // Store zombie position and type before damage (for exploding zombies)
-            const zombieX = zombie.x;
-            const zombieY = zombie.y;
-            const isExploding = zombie.type === 'exploding';
-
-            // Check if zombie dies
-            if (zombie.takeDamage(MELEE_DAMAGE)) {
-                // Clean up state tracking for dead zombie (multiplayer sync)
-                gameState.lastZombieState.delete(zombie.id);
-                
-                // Remove zombie from array first
-                gameState.zombies.splice(zombieIndex, 1);
-
-                // Check if boss was killed
-                if (zombie.type === 'boss' || zombie === gameState.boss) {
-                    gameState.bossActive = false;
-                    gameState.boss = null;
-                }
-
-                // Handle exploding zombie explosion (after removal to avoid array issues)
-                if (isExploding) {
-                    triggerExplosion(zombieX, zombieY, 60, 30, false);
-                }
-
-                gameState.score += 10;
-                gameState.zombiesKilled++;
-                // Award XP for kill
-                const zombieType4 = zombie.type || 'normal';
-                const xpAmount4 = skillSystem.getXPForZombieType(zombieType4);
-                skillSystem.gainXP(xpAmount4);
-                // Play kill confirmed sound (unless it was exploding zombie, explosion sound plays)
-                if (!isExploding) {
-                    playKillSound();
-                }
-                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                if (damageNumberStyle !== 'off') {
-                    gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY, MELEE_DAMAGE));
-                }
-                createBloodSplatter(zombieX, zombieY, impactAngle, true);
-            } else {
-                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
-                if (damageNumberStyle !== 'off') {
-                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, MELEE_DAMAGE));
-                }
-                createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
-            }
-            hitCount++;
-        }
-    });
-
-    // Screen shake on melee (stronger if hit something)
-    if (hitCount > 0) {
-        gameState.shakeAmount = 5;
-        createParticles(player.x, player.y, '#ffaa00', 5);
-    } else {
-        gameState.shakeAmount = 2; // Light shake even on miss
-    }
-
-    // Send action to server for multiplayer synchronization
-    if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
-        const isLocalPlayer = player.id === gameState.multiplayer.playerId;
-        if (isLocalPlayer) {
-            gameState.multiplayer.socket.emit('player:action', {
-                action: 'melee'
-            });
-        }
-    }
-}
-
-function isInMeleeRange(zombieX, zombieY, zombieRadius, playerX, playerY, playerAngle) {
-    const dx = zombieX - playerX;
-    const dy = zombieY - playerY;
-    const distSquared = dx * dx + dy * dy;
-
-    // Generous close-range check (inside the "swing" arc origin or very close)
-    // If zombie is practically touching the player, they get hit regardless of angle
-    const closeRangeThreshold = 30 + (zombieRadius || 12);
-    const closeRangeThresholdSquared = closeRangeThreshold * closeRangeThreshold;
-    if (distSquared < closeRangeThresholdSquared) {
-        // Check if they are somewhat in front (180 degree arc instead of 120)
-        // or just hit them if they are really close
-        if (distSquared < 25 * 25) return true; // Overlap check
-    }
-
-    const maxRange = MELEE_RANGE + (zombieRadius || 0);
-    const maxRangeSquared = maxRange * maxRange;
-    if (distSquared > maxRangeSquared) return false;
-    
-    // Calculate actual distance only when needed for angle check
-    const distance = Math.sqrt(distSquared);
-
-    // Check if zombie is in front arc (140 degree arc for wider coverage)
-    const angleToZombie = Math.atan2(dy, dx);
-    const angleDiff = Math.abs(angleToZombie - playerAngle);
-    const normalizedAngleDiff = Math.min(angleDiff, TWO_PI - angleDiff);
-
-    return normalizedAngleDiff < Math.PI * 0.4; // ~72 degrees on each side = 144 degree arc
+    meleeSystem.performMeleeAttack(player);
 }
 
 function addAIPlayer() {
+    const enableAICompanion = settingsManager.getSetting('gameplay', 'enableAICompanion');
+    if (!enableAICompanion) return;
     companionSystem.addCompanion();
 }
 
 function updatePlayers() {
-    // Don't update player if main menu is showing
-    if (gameState.showMainMenu || gameState.showCoopLobby || gameState.showLobby || gameState.showAILobby) return;
-
-    // Get shared controls settings
-    const controls = settingsManager.settings.controls;
-
-    gameState.players.forEach((player, index) => {
-        if (player.health <= 0) return;
-
-        // Skip input handling for remote players - they're controlled by other clients
-        if (player.inputSource === 'remote') {
-            return; // Remote players are updated via socket events
-        }
-
-        let moveX = 0;
-        let moveY = 0;
-        let aimX = 0;
-        let aimY = 0;
-        let isSprintingInput = false;
-        let target = { x: player.x + Math.cos(player.angle) * 100, y: player.y + Math.sin(player.angle) * 100 };
-
-        // AI Player Controls
-        if (player.inputSource === 'ai') {
-            const aiMovement = companionSystem.update(player);
-            moveX = aiMovement.moveX;
-            moveY = aiMovement.moveY;
-        }
-        // Gamepad Controls (for any player using gamepad)
-        else if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-            const gpState = inputSystem.getGamepad(player.gamepadIndex);
-            if (gpState) {
-                moveX = gpState.axes.move.x;
-                moveY = gpState.axes.move.y;
-                if (Math.abs(gpState.axes.aim.x) > 0.1 || Math.abs(gpState.axes.aim.y) > 0.1) {
-                    player.angle = Math.atan2(gpState.axes.aim.y, gpState.axes.aim.x);
-                    target = {
-                        x: player.x + gpState.axes.aim.x * 200,
-                        y: player.y + gpState.axes.aim.y * 200
-                    };
-                } else if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1) {
-                    // Aim in movement direction if no right stick
-                    player.angle = Math.atan2(moveY, moveX);
-                }
-                if (gpState.buttons.sprint.pressed) isSprintingInput = true;
-            }
-        }
-        // Mouse/Keyboard Controls (P1 only)
-        else if (player.inputSource === 'mouse') {
-            // Mouse/Keyboard
-            if (keys[controls.moveUp]) moveY -= 1;
-            if (keys[controls.moveDown]) moveY += 1;
-            if (keys[controls.moveLeft]) moveX -= 1;
-            if (keys[controls.moveRight]) moveX += 1;
-
-            const sprintKey = controls.sprint || 'shift';
-            if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
-
-            target = mouse;
-            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-        }
-        // Keyboard Arrow Controls (P2 only, for backward compatibility)
-        else if (index === 1 && player.inputSource === 'keyboard_arrow') {
-            // Keyboard Arrows
-            if (keys['arrowup']) moveY -= 1;
-            if (keys['arrowdown']) moveY += 1;
-            if (keys['arrowleft']) moveX -= 1;
-            if (keys['arrowright']) moveX += 1;
-
-            if (keys['control'] || keys['rcontrol']) isSprintingInput = true;
-
-            if (Math.abs(moveX) > 0 || Math.abs(moveY) > 0) {
-                player.angle = Math.atan2(moveY, moveX);
-            }
-            target = {
-                x: player.x + Math.cos(player.angle) * 200,
-                y: player.y + Math.sin(player.angle) * 200
-            };
-        }
-
-        // Normalize movement vector
-        const len = Math.sqrt(moveX * moveX + moveY * moveY);
-        if (len > 1) {
-            moveX /= len;
-            moveY /= len;
-        }
-
-        // Sprint Logic (with speed boost buff and skill multiplier)
-        const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
-        const skillSpeedMultiplier = player.speedMultiplier || 1.0;
-        const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier;
-        // autoSprint moved to gameplay, check both for migration safety or just gameplay
-        const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
-
-        // Auto-sprint: invert logic - sprint by default, hold shift to walk
-        let shouldSprint = false;
-        if (autoSprint) {
-            // Sprint by default unless shift is held
-            shouldSprint = !isSprintingInput && (Math.abs(moveX) > 0 || Math.abs(moveY) > 0);
-        } else {
-            // Normal: sprint only when shift is pressed
-            shouldSprint = isSprintingInput;
-        }
-
-        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
-            player.isSprinting = true;
-            player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
-            player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
-            player.lastSprintTime = Date.now();
-        } else {
-            player.isSprinting = false;
-            player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
-            if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
-                player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
-            }
-        }
-
-        // Apply Position
-        player.x += moveX * player.speed;
-        player.y += moveY * player.speed;
-
-        // Bounds
-        player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-        player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-
-        // Footstep sounds (more frequent and louder when sprinting)
-        if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {
-            const currentTime = Date.now();
-            // Sprinting: faster footsteps (130ms), Walking: normal footsteps (350ms)
-            const footstepInterval = player.isSprinting ? 130 : 350;
-            if (currentTime - gameState.lastFootstepTime >= footstepInterval) {
-                playFootstepSound(player.isSprinting);
-                gameState.lastFootstepTime = currentTime;
-            }
-        }
-
-        // Handle Actions (Shooting, etc.)
-        // P1 Actions (if mouse) handled in event listeners mostly, but gamepad actions here
-        // P2 Actions
-
-        // Gamepad Actions (For either player if using gamepad)
-        if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-            const gpState = inputSystem.getGamepad(player.gamepadIndex);
-            if (gpState) {
-                if (gpState.buttons.fire.pressed) shootBullet(target, canvas, player);
-                if (gpState.buttons.melee.justPressed) performMeleeAttack(player);
-                if (gpState.buttons.reload.justPressed) reloadWeapon(player);
-                if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
-                if (gpState.buttons.prevWeapon.justPressed) cycleWeapon(-1, player);
-                if (gpState.buttons.nextWeapon.justPressed) cycleWeapon(1, player);
-            }
-        }
-
-        // Keyboard Arrow Actions (Any player using keyboard_arrow input)
-        if (player.inputSource === 'keyboard_arrow') {
-            if (keys['enter']) shootBullet(target, canvas, player);
-            if (keys['delete']) performMeleeAttack(player);
-            if (keys['end'] || keys[']'] || keys['\\']) reloadWeapon(player);
-        }
-    });
+    playerSystem.updatePlayers(keys, mouse, (player) => meleeSystem.performMeleeAttack(player), cycleWeapon);
 }
 
 function updateCoopLobby() {
-    if (!gameState.showCoopLobby) return;
-
-    inputSystem.update(); // Update inputs to check for joins
-    const gamepads = inputSystem.getConnectedGamepadIndices();
-    const p1 = gameState.players[0];
-
-    // P1 Input Source Detection
-    // If P1 moves mouse or presses keys, switch to mouse and release gamepad
-    const hasMouseOrKeyboardInput = mouse.isDown || Object.keys(keys).some(k => keys[k] && !['enter', ']'].includes(k));
-    if (hasMouseOrKeyboardInput) {
-        if (p1.inputSource === 'gamepad') {
-            p1.inputSource = 'mouse';
-            p1.gamepadIndex = null;
-        }
-    }
-
-    // P1 Controller Assignment
-    // If P1 already has a gamepad assigned, stick with it
-    if (p1.gamepadIndex !== undefined && p1.gamepadIndex !== null) {
-        const p1Gp = inputSystem.getGamepad(p1.gamepadIndex);
-        if (!p1Gp) {
-            // Gamepad disconnected, switch to mouse
-            p1.inputSource = 'mouse';
-            p1.gamepadIndex = null;
-        } else {
-            // Verify it's still active (being used)
-            const isActive = Math.abs(p1Gp.axes.move.x) > 0.3 || Math.abs(p1Gp.axes.move.y) > 0.3 ||
-                Math.abs(p1Gp.axes.aim.x) > 0.3 || Math.abs(p1Gp.axes.aim.y) > 0.3 ||
-                p1Gp.buttons.select.pressed || p1Gp.buttons.fire.pressed;
-            if (isActive && !hasMouseOrKeyboardInput) {
-                p1.inputSource = 'gamepad';
-            }
-        }
-    } else if (!hasMouseOrKeyboardInput) {
-        // P1 doesn't have a gamepad yet - find first available one not used by other players
-        for (const index of gamepads) {
-            // Skip if this gamepad is already assigned to any player
-            const isAssigned = gameState.players.some(p => p.gamepadIndex === index);
-            if (isAssigned) continue;
-
-            const gp = inputSystem.getGamepad(index);
-            if (!gp) continue;
-
-            // Check if this controller is being actively used
-            const isActive = Math.abs(gp.axes.move.x) > 0.5 || Math.abs(gp.axes.move.y) > 0.5 ||
-                Math.abs(gp.axes.aim.x) > 0.3 || Math.abs(gp.axes.aim.y) > 0.3 ||
-                gp.buttons.select.pressed || gp.buttons.fire.pressed || gp.buttons.start?.pressed;
-
-            if (isActive) {
-                // Assign this controller to P1
-                p1.inputSource = 'gamepad';
-                p1.gamepadIndex = index;
-                break; // Only assign one controller to P1
-            }
-        }
-    }
-
-    // Player Joining Logic (P2 - P4)
-    if (gameState.players.length < MAX_LOCAL_PLAYERS) {
-        // Check gamepads for join input
-        for (const index of gamepads) {
-            // Skip if gamepad is already assigned to any player
-            const isAssigned = gameState.players.some(p => p.gamepadIndex === index);
-            if (isAssigned) continue;
-
-            const gp = inputSystem.getGamepad(index);
-            if (!gp) continue;
-
-            // Check for join button press (Start/A)
-            if (gp.buttons.select.justPressed || gp.buttons.pause?.justPressed) {
-                // Create new player and assign this gamepad
-                // Offset spawn position based on player count
-                const playerIndex = gameState.players.length;
-                const spawnX = canvas.width / 2 + (playerIndex * 50);
-                const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
-                newPlayer.inputSource = 'gamepad';
-                newPlayer.gamepadIndex = index;
-                gameState.players.push(newPlayer);
-                break; // Only join one player per frame
-            }
-        }
-
-        // Check for Keyboard Join (Enter) - only if no keyboard player exists beyond P1
-        // P1 is always index 0. If P1 is keyboard, P2 can be keyboard arrows.
-        // If P1 is gamepad, P2 can be keyboard arrows.
-        const keyboardPlayerExists = gameState.players.some((p, i) => i > 0 && p.inputSource === 'keyboard_arrow');
-        if (!keyboardPlayerExists && keys['enter']) {
-            // Check if P1 is already using keyboard (WASD) - P2 can still use Arrows
-            // Actually P1 uses 'mouse' source which implies keyboard WASD.
-            // So P2 can safely use 'keyboard_arrow' source.
-
-            const playerIndex = gameState.players.length;
-            const spawnX = canvas.width / 2 + (playerIndex * 50);
-            const newPlayer = createPlayer(spawnX, canvas.height / 2, playerIndex);
-            newPlayer.inputSource = 'keyboard_arrow';
-            newPlayer.gamepadIndex = null;
-            gameState.players.push(newPlayer);
-        }
-    }
-
-    // Player Dropping Out (Back/B/Backspace)
-    // Iterate backwards to safely remove
-    for (let i = gameState.players.length - 1; i > 0; i--) {
-        const player = gameState.players[i];
-
-        if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
-            const gp = inputSystem.getGamepad(player.gamepadIndex);
-            if (gp && gp.buttons.back.justPressed) {
-                gameState.players.splice(i, 1);
-                // Re-assign colors/positions? No, keep them as is until reset
-                // Actually, if P2 drops and P3 remains, P3 becomes new P2?
-                // Array splice handles index shift.
-            }
-        }
-
-        // Keyboard drop out
-        if (player.inputSource === 'keyboard_arrow' && keys['backspace']) {
-            gameState.players.splice(i, 1);
-        }
-    }
+    playerSystem.updateCoopLobby(keys, mouse);
 }
 
 function drawPlayers() {
-    gameState.players.forEach(player => {
-        if (player.health <= 0) return;
-
-        // Shadow - only if shadows enabled
-        if (cachedShadows) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.beginPath();
-            ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Outer glow - use player color
-        const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius * 1.5);
-        gradient.addColorStop(0, player.color.glow);
-        gradient.addColorStop(1, player.color.glow.replace(/[\d.]+\)/, '0)'));
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.radius * 1.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Body - use player color
-        const bodyGradient = ctx.createRadialGradient(player.x - 5, player.y - 5, 0, player.x, player.y, player.radius);
-        bodyGradient.addColorStop(0, player.color.light);
-        bodyGradient.addColorStop(1, player.color.dark);
-        ctx.fillStyle = bodyGradient;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Body outline - use player color
-        ctx.strokeStyle = player.color.outline;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Direction indicator (gun)
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(player.x, player.y);
-        const gunX = player.x + Math.cos(player.angle) * player.radius * 1.8;
-        const gunY = player.y + Math.sin(player.angle) * player.radius * 1.8;
-        ctx.lineTo(gunX, gunY);
-        ctx.stroke();
-
-        // Gun tip
-        ctx.fillStyle = '#ffaa00';
-        ctx.beginPath();
-        ctx.arc(gunX, gunY, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Stamina bar
-        if (player.stamina < PLAYER_STAMINA_MAX) {
-            const barWidth = 40;
-            const barHeight = 4;
-            const barX = player.x - barWidth / 2;
-            const barY = player.y + player.radius + 12;
-
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(barX, barY, barWidth, barHeight);
-
-            const fillWidth = (player.stamina / PLAYER_STAMINA_MAX) * barWidth;
-            ctx.fillStyle = '#00ffff';
-            ctx.fillRect(barX, barY, fillWidth, barHeight);
-        }
-
-        // Reload bar
-        if (cachedReloadBar && player.isReloading) {
-            const now = Date.now();
-            const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
-
-            const barWidth = 40;
-            const barHeight = 4;
-            const barX = player.x - barWidth / 2;
-            const barY = player.y + player.radius + (player.stamina < PLAYER_STAMINA_MAX ? 20 : 12);
-
-            // Background
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(barX, barY, barWidth, barHeight);
-
-            // Progress fill
-            const fillWidth = barWidth * reloadProgress;
-            ctx.fillStyle = '#ff9800'; // Orange color for reload
-            ctx.fillRect(barX, barY, fillWidth, barHeight);
-
-            // Border
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
-        }
-
-        // Player Name (for AI)
-        if (player.name && player.inputSource === 'ai') {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 12px Consolas, monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.shadowColor = 'black';
-            ctx.shadowBlur = 4;
-            ctx.fillText(player.name, player.x, player.y - player.radius - 8);
-            ctx.shadowBlur = 0;
-        }
-
-        // Muzzle flash - quality scaled
-        if (player.muzzleFlash.active) {
-            const flashQuality = cachedGraphicsSettings.getQualityValues('muzzleFlash');
-            const baseSize = 8 + (player.muzzleFlash.intensity * 12);
-            const flashSize = baseSize * flashQuality.sizeMultiplier;
-            const flashOffset = -2;
-            const flashX = player.muzzleFlash.x + Math.cos(player.muzzleFlash.angle) * flashOffset;
-            const flashY = player.muzzleFlash.y + Math.sin(player.muzzleFlash.angle) * flashOffset;
-
-            if (flashQuality.gradientLayers >= 3) {
-                // Ultra quality: Multi-layer flash with glow
-                ctx.shadowBlur = flashSize * 0.5;
-                ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
-                
-                // Outer glow layer
-                const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.5);
-                outerGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.3})`);
-                outerGradient.addColorStop(0.5, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.2})`);
-                outerGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
-                ctx.fillStyle = outerGradient;
-                ctx.beginPath();
-                ctx.arc(flashX, flashY, flashSize * 1.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Middle layer
-                const middleGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.2);
-                middleGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.6})`);
-                middleGradient.addColorStop(0.4, `rgba(255, 255, 150, ${player.muzzleFlash.intensity * 0.5})`);
-                middleGradient.addColorStop(0.8, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                middleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
-                ctx.fillStyle = middleGradient;
-                ctx.beginPath();
-                ctx.arc(flashX, flashY, flashSize * 1.2, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (flashQuality.gradientLayers >= 2) {
-                // High quality: Two-layer flash
-                ctx.shadowBlur = flashSize * 0.3;
-                ctx.shadowColor = 'rgba(255, 255, 200, 0.6)';
-                
-                // Outer layer
-                const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.3);
-                outerGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.4})`);
-                outerGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                outerGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-                ctx.fillStyle = outerGradient;
-                ctx.beginPath();
-                ctx.arc(flashX, flashY, flashSize * 1.3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Main flash (all quality levels)
-            const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
-            if (flashQuality.gradientLayers >= 3) {
-                flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.95})`);
-                flashGradient.addColorStop(0.2, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.85})`);
-                flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.7})`);
-                flashGradient.addColorStop(0.8, `rgba(255, 150, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            } else if (flashQuality.gradientLayers >= 2) {
-                flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
-                flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
-                flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            } else {
-                // Low/Medium: Simple gradient
-                flashGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.8})`);
-                flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.5})`);
-                flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            }
-
-            ctx.fillStyle = flashGradient;
-            ctx.beginPath();
-            ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Reset shadow
-            ctx.shadowBlur = 0;
-            
-            // Ultra quality: Add particle trail
-            if (flashQuality.hasTrail && Math.random() < 0.3) {
-                spawnParticle(flashX, flashY, '#ffff00', {
-                    radius: 2,
-                    vx: Math.cos(player.muzzleFlash.angle) * 3,
-                    vy: Math.sin(player.muzzleFlash.angle) * 3,
-                    life: 5,
-                    maxLife: 5
-                });
-            }
-        }
-
-        // Melee Swipe
-        if (player.activeMeleeSwipe) {
-            drawMeleeSwipe(player);
-        }
-    });
+    playerSystem.drawPlayers();
 }
 
-function drawMeleeSwipe(player) {
-    const now = Date.now();
-    const elapsed = now - player.activeMeleeSwipe.startTime;
-    const progress = Math.min(elapsed / player.activeMeleeSwipe.duration, 1);
-
-    const startAngle = player.activeMeleeSwipe.angle - Math.PI * 0.4; // Match wider arc
-    const endAngle = player.activeMeleeSwipe.angle + Math.PI * 0.4;
-    const currentAngle = startAngle + (endAngle - startAngle) * progress;
-
-    const swipeRadius = MELEE_RANGE;
-
-    ctx.save();
-
-    // Create gradient for the swipe
-    const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, swipeRadius);
-    gradient.addColorStop(0, 'rgba(255, 170, 0, 0)');
-    gradient.addColorStop(0.5, 'rgba(255, 170, 0, 0.2)');
-    gradient.addColorStop(1, 'rgba(255, 170, 0, 0.6)');
-
-    // Draw filled sector
-    ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
-    ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
-    ctx.lineTo(player.x, player.y);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Draw outer edge glow
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#ffaa00';
-    ctx.strokeStyle = '#ffaa00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, swipeRadius, startAngle, currentAngle);
-    ctx.stroke();
-
-    // Draw tip spark
-    const tipX = player.x + Math.cos(currentAngle) * swipeRadius;
-    const tipY = player.y + Math.sin(currentAngle) * swipeRadius;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function drawCrosshair() {
-    if (!gameState.gameRunning || gameState.gamePaused) return;
-    if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby) return;
-
-    // Find local player (mouse user)
-    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
-    if (!localPlayer) return;
-
-    if (mouse.x < 0 || mouse.x > canvas.width || mouse.y < 0 || mouse.y > canvas.height) return;
-
-    ctx.save();
-    const baseCrosshairSize = 12;
-    const crosshairLineWidth = 2;
-    const crosshairColor = '#ffffff';
-    const crosshairOutlineColor = '#000000';
-
-    const crosshairColorCurrent = localPlayer.isReloading ? '#888888' : crosshairColor;
-
-    // Dynamic crosshair: expand when moving or shooting
-    let crosshairSize = baseCrosshairSize;
-    const dynamicCrosshair = cachedDynamicCrosshair;
-
-    if (dynamicCrosshair && localPlayer) {
-        const player = localPlayer;
-        // Check if player is moving (approximate by checking if they moved recently)
-        const isMoving = Math.abs(player.x - (player.lastX || player.x)) > 0.1 ||
-            Math.abs(player.y - (player.lastY || player.y)) > 0.1;
-        player.lastX = player.x;
-        player.lastY = player.y;
-
-        // Expand crosshair when moving or recently shot
-        const timeSinceLastShot = Date.now() - (player.lastShotTime || 0);
-        const recentlyShot = timeSinceLastShot < 200; // 200ms after shooting
-
-        if (isMoving || recentlyShot) {
-            const expansion = isMoving ? 4 : (recentlyShot ? 6 : 0);
-            crosshairSize = baseCrosshairSize + expansion;
-        }
-    }
-
-    // Get crosshair style from settings
-    const crosshairStyle = cachedCrosshairStyle;
-
-    // Draw based on style
-    if (crosshairStyle === 'dot') {
-        // Simple dot crosshair
-        ctx.fillStyle = crosshairColorCurrent;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Outline
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    } else if (crosshairStyle === 'circle') {
-        // Circle crosshair
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = crosshairLineWidth + 2;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.strokeStyle = crosshairColorCurrent;
-        ctx.lineWidth = crosshairLineWidth;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, crosshairSize, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Center dot
-        ctx.fillStyle = crosshairColorCurrent;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-    } else if (crosshairStyle === 'cross') {
-        // Simple cross (no center dot)
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = crosshairLineWidth + 2;
-        ctx.lineCap = 'round';
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-        ctx.stroke();
-
-        ctx.strokeStyle = crosshairColorCurrent;
-        ctx.lineWidth = crosshairLineWidth;
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-        ctx.stroke();
-    } else {
-        // Default: cross with center dot
-        ctx.strokeStyle = crosshairOutlineColor;
-        ctx.lineWidth = crosshairLineWidth + 2;
-        ctx.lineCap = 'round';
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-        ctx.stroke();
-
-        ctx.strokeStyle = crosshairColorCurrent;
-        ctx.lineWidth = crosshairLineWidth;
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x - crosshairSize, mouse.y);
-        ctx.lineTo(mouse.x + crosshairSize, mouse.y);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(mouse.x, mouse.y - crosshairSize);
-        ctx.lineTo(mouse.x, mouse.y + crosshairSize);
-        ctx.stroke();
-
-        ctx.fillStyle = crosshairColorCurrent;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // Draw hit marker (X) when hit occurs
-    if (gameState.hitMarker.active) {
-        const alpha = gameState.hitMarker.life / gameState.hitMarker.maxLife;
-        const markerSize = 8;
-        const markerColor = `rgba(255, 255, 0, ${alpha})`;
-
-        ctx.strokeStyle = markerColor;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-
-        // Draw X
-        ctx.beginPath();
-        ctx.moveTo(mouse.x - markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x + markerSize, mouse.y + markerSize);
-        ctx.moveTo(mouse.x + markerSize, mouse.y - markerSize);
-        ctx.lineTo(mouse.x - markerSize, mouse.y + markerSize);
-        ctx.stroke();
-    }
-
-    ctx.restore();
-}
-
-function drawWaveBreak() {
-    if (!gameState.waveBreakActive) return;
-
-    const remainingTime = Math.ceil((gameState.waveBreakEndTime - Date.now()) / 1000);
-    if (remainingTime < 0) return;
-
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.font = 'bold 40px Creepster, system-ui';
-    ctx.fillStyle = '#ffc107';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 10;
-    ctx.fillText("Wave Cleared!", canvas.width / 2, canvas.height / 2 - 80);
-
-    ctx.font = '30px "Roboto Mono", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
-
-    ctx.font = '20px "Roboto Mono", monospace';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText("Reload [R] | Heal Up", canvas.width / 2, canvas.height / 2 + 20);
-
-    ctx.restore();
-}
-
-function drawWaveNotification() {
-    if (!gameState.waveNotification.active) return;
-
-    ctx.save();
-    const alpha = Math.min(1, gameState.waveNotification.life / 30);
-    const fadeOut = Math.min(1, gameState.waveNotification.life / 40);
-    const finalAlpha = alpha * fadeOut;
-
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = `rgba(255, 23, 68, ${finalAlpha * 0.6})`;
-
-    ctx.fillStyle = `rgba(255, 255, 255, ${finalAlpha})`;
-    ctx.font = 'bold 32px \"Roboto Mono\", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(gameState.waveNotification.text, canvas.width / 2, canvas.height / 2 - 40);
-
-    ctx.fillStyle = `rgba(255, 200, 200, ${finalAlpha * 0.8})`;
-    ctx.font = '14px \"Roboto Mono\", monospace';
-    ctx.fillText('Get ready...', canvas.width / 2, canvas.height / 2 + 10);
-
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
-
-function drawFpsCounter() {
-    const showFps = cachedShowFps;
-    const showDebugStats = cachedShowDebugStats;
-
-    if (!showFps && !showDebugStats) return;
-
-    ctx.save();
-
-    if (showFps) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.font = '14px "Roboto Mono", monospace';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'top';
-        ctx.fillText(`${gameState.fps} FPS`, canvas.width - 20, 20);
-    }
-
-    // Detailed stats overlay
-    if (showDebugStats && gameState.gameRunning && !gameState.gamePaused) {
-        const statsY = 45;
-        const lineHeight = 18;
-        let currentY = statsY;
-
-        // Background panel
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(canvas.width - 200, statsY - 5, 195, 120);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(canvas.width - 200, statsY - 5, 195, 120);
-
-        // Stats
-        ctx.textAlign = 'left';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillText(`Zombies: ${gameState.zombies.length}`, canvas.width - 195, currentY);
-        currentY += lineHeight;
-        ctx.fillText(`Bullets: ${gameState.bullets.length}`, canvas.width - 195, currentY);
-        currentY += lineHeight;
-        ctx.fillText(`Particles: ${gameState.particles.length}`, canvas.width - 195, currentY);
-        currentY += lineHeight;
-
-        if (gameState.players.length > 0 && gameState.players[0]) {
-            const p1 = gameState.players[0];
-            ctx.fillText(`Player X: ${Math.floor(p1.x)}`, canvas.width - 195, currentY);
-            currentY += lineHeight;
-            ctx.fillText(`Player Y: ${Math.floor(p1.y)}`, canvas.width - 195, currentY);
-            currentY += lineHeight;
-        }
-
-        // Memory usage (approximate)
-        if (performance.memory) {
-            const memMB = Math.round(performance.memory.usedJSHeapSize / 1048576);
-            ctx.fillText(`Memory: ${memMB} MB`, canvas.width - 195, currentY);
-        }
-    }
-
-    ctx.restore();
-}
+// Drawing functions are now imported from drawingUtils.js
 
 function updateGame() {
-    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby) return;
+    if (!gameState.gameRunning || gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout || gameState.showProfile || gameState.showAchievements || gameState.showBattlepass || gameState.showBadges) return;
     if (gameState.showLevelUp) return; // Pause game during level up selection
 
     // Cache frequently accessed settings to reduce repeated lookups
@@ -1872,59 +405,33 @@ function updateGame() {
     // Night is from 0.5 to 1.0 (second half of cycle)
     gameState.isNight = gameState.gameTime >= 0.5;
 
-    // Spawn health pickups
-    if (now - gameState.lastHealthPickupSpawnTime >= HEALTH_PICKUP_SPAWN_INTERVAL &&
-        gameState.healthPickups.length < MAX_HEALTH_PICKUPS) {
-        // Only spawn if some player is hurt
-        if (gameState.players.some(p => p.health < PLAYER_MAX_HEALTH && p.health > 0)) {
-            gameState.healthPickups.push(new HealthPickup(canvas.width, canvas.height));
-            gameState.lastHealthPickupSpawnTime = now;
-        }
-    }
+    // v0.8.1.2: Update camera and world systems (single player arcade only)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+    if (isSinglePlayerArcade) {
+        const localPlayer = gameState.players[0];
+        if (localPlayer) {
+            // Update camera to follow player
+            cameraSystem.update(localPlayer);
 
-    // Spawn ammo pickups
-    if (now - gameState.lastAmmoPickupSpawnTime >= AMMO_PICKUP_SPAWN_INTERVAL &&
-        gameState.ammoPickups.length < MAX_AMMO_PICKUPS) {
-        if (gameState.players.some(p => p.currentAmmo < p.maxAmmo * 0.5 && p.health > 0)) {
-            gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
-            gameState.lastAmmoPickupSpawnTime = now;
-        }
-    }
+            // Update ground texture based on camera position (world moves with camera)
+            groundTextureSystem.updateFromCamera(cameraSystem);
 
-    // Spawn powerups (Rare)
-    if (now - gameState.lastPowerupSpawnTime >= 30000) { // Every 30 seconds check
-        if (Math.random() < 0.6) { // 60% chance
-            const rand = Math.random();
+            // Update prop spawning
+            propSpawnSystem.update(gameState, localPlayer);
 
-            // Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
-            if (rand < 0.20) { // Damage
-                if (gameState.damagePickups.length < 1) {
-                    gameState.damagePickups.push(new DamagePickup(canvas.width, canvas.height));
-                }
-            } else if (rand < 0.28) { // Nuke
-                if (gameState.nukePickups.length < 1) {
-                    gameState.nukePickups.push(new NukePickup(canvas.width, canvas.height));
-                }
-            } else if (rand < 0.46) { // Speed
-                if (gameState.speedPickups.length < 1) {
-                    gameState.speedPickups.push(new SpeedPickup(canvas.width, canvas.height));
-                }
-            } else if (rand < 0.64) { // RapidFire
-                if (gameState.rapidFirePickups.length < 1) {
-                    gameState.rapidFirePickups.push(new RapidFirePickup(canvas.width, canvas.height));
-                }
-            } else if (rand < 0.88) { // Shield
-                if (gameState.shieldPickups.length < 1) {
-                    gameState.shieldPickups.push(new ShieldPickup(canvas.width, canvas.height));
-                }
-            } else { // Adrenaline
-                if (gameState.adrenalinePickups.length < 1) {
-                    gameState.adrenalinePickups.push(new AdrenalinePickup(canvas.width, canvas.height));
+            // Update props (smoke particles for burnt cars)
+            if (gameState.props && gameState.props.length > 0) {
+                for (const prop of gameState.props) {
+                    if (prop.update) {
+                        prop.update();
+                    }
                 }
             }
         }
-        gameState.lastPowerupSpawnTime = now;
     }
+
+    // Spawn pickups (health, ammo, powerups)
+    pickupSpawnSystem.updateSpawns(gameState, canvas, now);
 
     // Apply regeneration skill
     gameState.players.forEach(player => {
@@ -1935,7 +442,18 @@ function updateGame() {
 
     // Get viewport bounds for update culling (calculate once per frame)
     // Cache viewport bounds for reuse in drawGame
-    const viewport = getViewportBounds(canvas);
+    // v0.8.1.2: Adjust viewport for camera in single player arcade mode
+    let viewport = getViewportBounds(canvas);
+    if (isSinglePlayerArcade && gameState.players[0]) {
+        const cameraPos = cameraSystem.getPosition();
+        // Viewport in world space (accounting for camera)
+        viewport = {
+            left: cameraPos.x,
+            top: cameraPos.y,
+            right: cameraPos.x + canvas.width,
+            bottom: cameraPos.y + canvas.height
+        };
+    }
     gameState.cachedViewport = viewport;
 
     // Update players
@@ -1984,9 +502,9 @@ function updateGame() {
     gameState.bullets = gameState.bullets.filter(bullet => {
         // Early exit for bullets marked for removal
         if (bullet.markedForRemoval) return false;
-        bullet.update();
-        // Check again after update (update might mark it for removal)
-        return !bullet.markedForRemoval;
+        const exploded = bullet.update();
+        // Check again after update (update might mark it for removal or explode)
+        return !bullet.markedForRemoval && !exploded;
     });
 
     // Update grenades (only update those near viewport)
@@ -1995,8 +513,10 @@ function updateGame() {
         // Early exit for exploded grenades
         if (grenade.exploded) return false;
         // Update if near viewport
-        if (shouldUpdateEntity(grenade, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
-            grenade.update(canvas.width, canvas.height);
+        if (shouldUpdateEntity(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
+            const exploded = grenade.update(canvas.width, canvas.height);
+            // If grenade exploded during update, remove it
+            if (exploded) return false;
         }
         return !grenade.exploded;
     });
@@ -2006,7 +526,7 @@ function updateGame() {
     gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
         // Early exit for off-screen projectiles
         if (projectile.isOffScreen(canvas.width, canvas.height)) return false;
-        if (shouldUpdateEntity(projectile, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+        if (shouldUpdateEntity(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             projectile.update();
         }
         return !projectile.isOffScreen(canvas.width, canvas.height);
@@ -2017,189 +537,20 @@ function updateGame() {
     gameState.acidPools = gameState.acidPools.filter(pool => {
         // Early exit for expired pools
         if (pool.isExpired()) return false;
-        if (shouldUpdateEntity(pool, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+        if (shouldUpdateEntity(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
             pool.update();
         }
         return !pool.isExpired();
     });
 
     // Update zombies (Find target for each) - BIGGEST PERFORMANCE WIN: Only update zombies near viewport
-    // Apply night difficulty modifier (20% speed increase)
-    const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
-
-    // Optimized loop: use for loop instead of forEach for better performance
-    const zombiesLength = gameState.zombies.length;
-    const viewportLeft = viewport.left;
-    const viewportTop = viewport.top;
-    const viewportRight = viewport.right;
-    const viewportBottom = viewport.bottom;
-    for (let i = 0; i < zombiesLength; i++) {
-        const zombie = gameState.zombies[i];
-        
-        // Update culling: Skip updating zombies far off-screen (major FPS boost)
-        if (!shouldUpdateEntity(zombie, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
-            continue; // Skip this zombie's update - too far away
-        }
-        
-        // Only the Leader or Singleplayer should run Zombie AI logic
-        if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-            // Advanced interpolation for smooth movement between server updates
-            if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
-                const now = Date.now();
-                const timeSinceUpdate = now - (zombie.lastUpdateTime || 0);
-                const updateInterval = gameState.zombieUpdateInterval || 100;
-                const frameTime = gameEngine.timeStep || 16.67;
-                
-                // Calculate adaptive lerp factor
-                // Use gameEngine interpolation alpha for frame-perfect interpolation
-                const interpAlpha = gameEngine.getInterpolationAlpha ? gameEngine.getInterpolationAlpha() : 0;
-                const baseLerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
-                const lerpFactor = interpAlpha > 0 ? baseLerpFactor * (1 + interpAlpha) : baseLerpFactor;
-                
-                // Calculate distance to target (use squared distance for comparison)
-                const dx = zombie.targetX - zombie.x;
-                const dy = zombie.targetY - zombie.y;
-                const distSquared = dx * dx + dy * dy;
-                const dist = Math.sqrt(distSquared);
-                
-                // Use velocity-based extrapolation if velocity is available
-                if (zombie.vx !== undefined && zombie.vy !== undefined && distSquared < 50 * 50 && timeSinceUpdate < updateInterval * 2) {
-                    // Small distance and recent update - use velocity extrapolation
-                    const extrapolationFactor = timeSinceUpdate / updateInterval;
-                    zombie.x += zombie.vx * extrapolationFactor;
-                    zombie.y += zombie.vy * extrapolationFactor;
-                } else {
-                    // Use adaptive lerp
-                    zombie.x += dx * lerpFactor;
-                    zombie.y += dy * lerpFactor;
-                }
-                
-                // Snap if very close (prevents jitter)
-                if (dist < 0.5) {
-                    zombie.x = zombie.targetX;
-                    zombie.y = zombie.targetY;
-                }
-            }
-            continue;
-        }
-
-        // Find closest living player
-        let closestPlayer = null;
-        let minDist = Infinity;
-
-        // Optimized player search loop
-        for (let j = 0; j < gameState.players.length; j++) {
-            const p = gameState.players[j];
-            if (p.health > 0) {
-                const d = (p.x - zombie.x) ** 2 + (p.y - zombie.y) ** 2;
-                if (d < minDist) {
-                    minDist = d;
-                    closestPlayer = p;
-                }
-            }
-        }
-
-        if (closestPlayer) {
-            // Store original speed if not already stored
-            if (!zombie.baseSpeed) {
-                zombie.baseSpeed = zombie.speed;
-            }
-            // Apply night speed boost
-            zombie.speed = zombie.baseSpeed * nightSpeedMultiplier;
-            zombie.update(closestPlayer);
-        }
-    }
-
-    // Broadcast zombie positions to other clients (leader only, throttled)
-    if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
-        // Adaptive update rate based on zombie count and activity
-        const zombieCount = gameState.zombies.length;
-        const baseInterval = 100; // Base 10Hz
-        // Adjust interval: faster with more zombies (50ms), slower with few (200ms)
-        const adaptiveInterval = Math.max(50, Math.min(200, baseInterval - (zombieCount * 0.5)));
-        
-        // Also adjust based on network latency if available
-        const latencyAdjustment = gameState.networkLatency > 100 ? 20 : 0;
-        const updateInterval = adaptiveInterval + latencyAdjustment;
-        
-        if (!gameState.lastZombieUpdateBroadcast || now - gameState.lastZombieUpdateBroadcast >= updateInterval) {
-            gameState.zombieUpdateInterval = updateInterval; // Store for client-side interpolation
-            
-            // Delta compression: only send changed zombies
-            const changedZombies = [];
-            const threshold = 1.0; // Position change threshold (pixels)
-            
-            for (let i = 0; i < gameState.zombies.length; i++) {
-                const z = gameState.zombies[i];
-                const lastState = gameState.lastZombieState.get(z.id);
-                
-                // Check if zombie has changed significantly
-                const positionChanged = !lastState || 
-                    Math.abs(lastState.x - z.x) > threshold || 
-                    Math.abs(lastState.y - z.y) > threshold;
-                const healthChanged = !lastState || lastState.health !== z.health;
-                const speedChanged = !lastState || 
-                    Math.abs((lastState.speed || 0) - (z.speed || 0)) > 0.01;
-                
-                if (positionChanged || healthChanged || speedChanged || !lastState) {
-                    // Include speed and baseSpeed for synchronization
-                    const zombieData = {
-                        id: z.id,
-                        x: z.x,
-                        y: z.y,
-                        health: z.health,
-                        speed: z.speed,
-                        baseSpeed: z.baseSpeed || z.speed
-                    };
-                    changedZombies.push(zombieData);
-                    
-                    // Update last known state
-                    gameState.lastZombieState.set(z.id, {
-                        x: z.x,
-                        y: z.y,
-                        health: z.health,
-                        speed: z.speed
-                    });
-                }
-            }
-            
-            // Only send if there are changes (or send full state first time)
-            if (changedZombies.length > 0 || gameState.lastZombieState.size === 0) {
-                // If more than 80% of zombies changed, send all for efficiency
-                if (gameState.zombies.length > 0 && changedZombies.length / gameState.zombies.length > 0.8) {
-                    // Send full state (more efficient than many small packets)
-                    const zombieData = gameState.zombies.map(z => ({
-                        id: z.id,
-                        x: z.x,
-                        y: z.y,
-                        health: z.health,
-                        speed: z.speed,
-                        baseSpeed: z.baseSpeed || z.speed
-                    }));
-                    gameState.multiplayer.socket.emit('zombie:update', zombieData);
-                    
-                    // Update all states
-                    gameState.lastZombieState.clear();
-                    zombieData.forEach(zd => {
-                        gameState.lastZombieState.set(zd.id, {
-                            x: zd.x,
-                            y: zd.y,
-                            health: zd.health,
-                            speed: zd.speed
-                        });
-                    });
-                } else {
-                    // Send only changed zombies (delta compression)
-                    gameState.multiplayer.socket.emit('zombie:update', changedZombies);
-                }
-            }
-            
-            gameState.lastZombieUpdateBroadcast = now;
-        }
-    }
+    zombieUpdateSystem.updateZombies(gameState, gameEngine, viewport, now);
 
     // Update particles
     updateParticles();
+
+    // Update blood simulation (volumetric blood)
+    bloodSimulationSystem.update(16.67); // Use fixed timeStep (1000/60 = 16.67ms for 60 FPS)
 
     // Update shells (only update those near viewport - shells are small and fast to despawn)
     gameState.shells = gameState.shells.filter(shell => {
@@ -2289,7 +640,14 @@ function updateGame() {
     if (mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
         if (localPlayer && localPlayer.health > 0) {
-            shootBullet(mouse, canvas, localPlayer);
+            // v0.8.1.2: Convert mouse screen coordinates to world coordinates in single player arcade mode
+            const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+            let target = mouse;
+            if (isSinglePlayerArcade) {
+                const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+                target = { x: worldPos.x, y: worldPos.y };
+            }
+            shootBullet(target, canvas, localPlayer);
         }
     }
 
@@ -2314,6 +672,9 @@ function updateGame() {
 }
 
 function drawGame() {
+    // v0.8.1.2: Check if single player arcade mode (used for camera and world systems)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
     if (gameState.showSettingsPanel) {
         canvas.style.cursor = 'default';
         settingsPanel.draw(mouse);
@@ -2322,28 +683,84 @@ function drawGame() {
 
     if (gameState.showMainMenu) {
         gameHUD.mainMenu = true;
-        canvas.style.cursor = 'default';
+        // Set cursor based on news ticker interaction
+        if (gameHUD.newsTickerDragging) {
+            canvas.style.cursor = 'grabbing';
+        } else if (gameHUD.checkNewsTickerHit(mouse.x, mouse.y)) {
+            canvas.style.cursor = 'grab';
+        } else {
+            canvas.style.cursor = 'none'; // Use custom cursor
+        }
         gameHUD.draw();
         return;
     }
 
     if (gameState.showLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
 
     if (gameState.showCoopLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
 
     if (gameState.showAILobby) {
         gameHUD.mainMenu = false;
+        canvas.style.cursor = 'none'; // Use custom cursor
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showGallery) {
+        gameHUD.mainMenu = false;
         canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showAbout) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        gameHUD.draw();
+        return;
+    }
+
+    if (gameState.showProfile) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        profileScreen.draw();
+        return;
+    }
+
+    if (gameState.showAchievements) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        achievementScreen.draw();
+        return;
+    }
+
+    if (gameState.showBattlepass) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        battlepassScreen.draw();
+        return;
+    }
+
+    if (gameState.showBadges) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'default';
+        badgeScreen.draw();
+        return;
+    }
+
+    if (gameState.showLevelUp) {
+        gameHUD.mainMenu = false;
+        canvas.style.cursor = 'none'; // Use custom cursor
         gameHUD.draw();
         return;
     }
@@ -2351,39 +768,77 @@ function drawGame() {
     gameHUD.mainMenu = false;
     const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
 
-    // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
-    if (activeInputSource === 'gamepad') {
-        canvas.style.cursor = 'none';
+    // Hide cursor during gameplay (crosshair used) or when paused (custom cursor used)
+    // Settings panel uses default cursor, otherwise use custom
+    if (!gameState.showSettingsPanel && (gameState.gamePaused || gameHUD.gameOver)) {
+        canvas.style.cursor = 'none'; // Use custom cursor when paused or game over
     } else {
-        canvas.style.cursor = 'none';
+        // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
+        if (activeInputSource === 'gamepad') {
+            canvas.style.cursor = 'none';
+        } else {
+            canvas.style.cursor = 'none';
+        }
     }
 
     // Cache settings at frame start to avoid repeated lookups
     const cachedGraphicsSettings = graphicsSettings;
     // Use consolidated WebGPU check helper
     const webgpuActive = isWebGPUActive();
+    const qualityPreset = settingsManager.getSetting('video', 'qualityPreset') || 'high';
     const postProcessingQuality = cachedGraphicsSettings.postProcessingQuality || 'medium';
-    
-    // Post-processing quality controls vignette and lighting
-    // Off = no effects, Low = vignette only, Medium = vignette + lighting, High = all + enhanced
-    const vignetteEnabled = cachedGraphicsSettings.vignette !== false && 
-                           (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high');
-    const lightingEnabled = cachedGraphicsSettings.lighting !== false && 
-                           (postProcessingQuality === 'medium' || postProcessingQuality === 'high');
+
+    // When quality preset is 'custom', individual toggles work independently
+    // Otherwise, post-processing quality acts as a global override
+    const isCustomPreset = qualityPreset === 'custom';
+
+    // Vignette: Works independently if custom preset, otherwise respects postProcessingQuality
+    const vignetteEnabled = isCustomPreset
+        ? cachedGraphicsSettings.vignette !== false  // Independent toggle when custom
+        : (cachedGraphicsSettings.vignette !== false &&
+            (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+
+    // Lighting: Works independently if custom preset, otherwise respects postProcessingQuality  
+    const lightingEnabled = isCustomPreset
+        ? cachedGraphicsSettings.lighting !== false  // Independent toggle when custom
+        : (cachedGraphicsSettings.lighting !== false &&
+            (postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+
     const enhancedPostProcessing = postProcessingQuality === 'high';
-    
+
     const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
-    
+
     // Update rendering cache settings
     renderingCache.updateSettings(vignetteEnabled, lightingEnabled);
-    
+
     // Invalidate cache if needed
     if (renderingCache.needsInvalidation(localPlayer)) {
         renderingCache.invalidate(localPlayer);
     }
 
+    // Background gradient (drawn FIRST in screen space, before camera transform)
+    // This ensures it's behind everything
+    if (!webgpuActive) {
+        const bgGradient = renderingCache.getBackgroundGradient();
+        if (bgGradient) {
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    } else {
+        // If WebGPU is active, background is handled by GPU layer - clear Canvas 2D to be transparent
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
+
     ctx.save();
-    // Apply screen shake
+
+    // v0.8.1.2: Apply camera transform (single player arcade only)
+    // This makes the world move while player stays centered
+    if (isSinglePlayerArcade) {
+        cameraSystem.applyTransform(ctx);
+    }
+
+    // Apply screen shake (after camera transform)
     if (gameState.shakeAmount > 0.1) {
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
@@ -2393,79 +848,117 @@ function drawGame() {
         gameState.shakeAmount = 0;
     }
 
-    // Background - transparent if WebGPU is handling it, otherwise use Canvas 2D fallback
-    if (!webgpuActive) {
-        const bgGradient = renderingCache.getBackgroundGradient();
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
-
     // Ground pattern (cached)
-    const groundPattern = renderingCache.getGroundPattern();
-    if (groundPattern) {
-        ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
-        ctx.fillStyle = groundPattern;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
-    }
+    // v0.8.1.2: Animated ground texture for single player arcade mode
+    if (isSinglePlayerArcade) {
+        // Use direct image drawing for animated scrolling
+        const groundImage = groundTextureSystem.getImage();
+        if (groundImage && groundImage.complete) {
+            ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
 
-    // Vignette overlay (if enabled) - cached gradient
-    if (vignetteEnabled) {
-        const vignette = renderingCache.getVignetteGradient();
-        ctx.fillStyle = vignette;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+            const offset = groundTextureSystem.getOffset();
+            const tileSize = groundTextureSystem.tileSize;
+            const cameraPos = cameraSystem.getPosition();
 
-    // Lighting overlay (if enabled) - follows player position, cached gradient
-    if (lightingEnabled && localPlayer && localPlayer.health > 0) {
-        const lightingGradient = renderingCache.getLightingGradient(localPlayer);
-        if (lightingGradient) {
-            ctx.fillStyle = lightingGradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Enhanced post-processing: Additional bloom-like glow effect
-            if (enhancedPostProcessing) {
-                ctx.globalCompositeOperation = 'screen';
-                ctx.globalAlpha = 0.15;
-                ctx.fillStyle = lightingGradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0;
-                ctx.globalCompositeOperation = 'source-over';
+            // Calculate world bounds for ground tiling (accounting for camera)
+            const worldStartX = cameraPos.x - (cameraPos.x % tileSize) - tileSize;
+            const worldStartY = cameraPos.y - (cameraPos.y % tileSize) - tileSize;
+            const worldEndX = cameraPos.x + canvas.width + tileSize * 2;
+            const worldEndY = cameraPos.y + canvas.height + tileSize * 2;
+
+            // Draw tiled pattern in world space (camera transform already applied)
+            for (let worldX = worldStartX; worldX < worldEndX; worldX += tileSize) {
+                for (let worldY = worldStartY; worldY < worldEndY; worldY += tileSize) {
+                    ctx.drawImage(groundImage, worldX, worldY, tileSize, tileSize);
+                }
             }
+
+            ctx.globalAlpha = 1.0;
+        } else {
+            // Fallback to pattern if image not loaded yet
+            const groundPattern = renderingCache.getGroundPattern();
+            if (groundPattern) {
+                ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
+                ctx.fillStyle = groundPattern;
+                // Draw in world space covering visible area
+                const cameraPos = cameraSystem.getPosition();
+                ctx.fillRect(cameraPos.x, cameraPos.y, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+    } else {
+        // Non-animated mode: use pattern
+        const groundPattern = renderingCache.getGroundPattern();
+        if (groundPattern) {
+            ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
+            ctx.fillStyle = groundPattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
         }
     }
 
-    // Day/Night Cycle Overlay
+    // Vignette overlay will be drawn in screen space after ctx.restore()
+    // Store vignette for later use
+    let vignetteGradient = null;
+    if (vignetteEnabled) {
+        vignetteGradient = renderingCache.getVignetteGradient();
+    }
+
+    // Lighting overlay will be drawn in screen space after ctx.restore()
+    // Store lighting data for later use
+    let lightingGradient = null;
+    if (lightingEnabled && localPlayer && localPlayer.health > 0) {
+        // v0.8.1.2: Convert player world position to screen position for lighting
+        let playerScreenX = localPlayer.x;
+        let playerScreenY = localPlayer.y;
+        if (isSinglePlayerArcade) {
+            const screenPos = cameraSystem.worldToScreen(localPlayer.x, localPlayer.y);
+            playerScreenX = screenPos.x;
+            playerScreenY = screenPos.y;
+        }
+
+        // Create lighting gradient in screen space (will be used after ctx.restore())
+        const lightingRadius = Math.max(canvas.width, canvas.height) * 0.8;
+        lightingGradient = ctx.createRadialGradient(
+            playerScreenX, playerScreenY, 0,
+            playerScreenX, playerScreenY, lightingRadius
+        );
+        lightingGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+        lightingGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
+        lightingGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.02)');
+        lightingGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    }
+
+    // Day/Night Cycle Overlay - will be drawn in screen space after ctx.restore()
     // Calculate ambient light level based on gameTime
     // Day (0.0-0.5): Transparent to slightly dark
     // Night (0.5-1.0): Dark blue/black overlay
-    let nightAlpha = 0;
-    if (gameState.isNight) {
-        // Smooth transition: 0.5 -> 0.0 alpha, 0.75 -> 0.6 alpha, 1.0 -> 0.7 alpha
-        const nightProgress = (gameState.gameTime - 0.5) * 2; // 0 to 1 during night
-        nightAlpha = 0.5 + (nightProgress * 0.2); // 0.5 to 0.7
-    } else {
-        // Dawn transition: 0.0 -> 0.0 alpha, 0.25 -> 0.3 alpha, 0.5 -> 0.0 alpha
-        const dawnProgress = gameState.gameTime * 2; // 0 to 1 during day
-        if (dawnProgress < 0.5) {
-            nightAlpha = dawnProgress * 0.6; // 0 to 0.3
+    function calculateNightAlpha() {
+        let nightAlpha = 0;
+        if (gameState.isNight) {
+            // Smooth transition: 0.5 -> 0.0 alpha, 0.75 -> 0.6 alpha, 1.0 -> 0.7 alpha
+            const nightProgress = (gameState.gameTime - 0.5) * 2; // 0 to 1 during night
+            nightAlpha = 0.5 + (nightProgress * 0.2); // 0.5 to 0.7
         } else {
-            nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
+            // Dawn transition: 0.0 -> 0.0 alpha, 0.25 -> 0.3 alpha, 0.5 -> 0.0 alpha
+            const dawnProgress = gameState.gameTime * 2; // 0 to 1 during day
+            if (dawnProgress < 0.5) {
+                nightAlpha = dawnProgress * 0.6; // 0 to 0.3
+            } else {
+                nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
+            }
         }
+        return nightAlpha;
     }
 
-    if (nightAlpha > 0) {
-        ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    const nightAlpha = calculateNightAlpha();
 
-    if (gameState.damageIndicator.active) {
-        ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * RENDERING.DAMAGE_INDICATOR_ALPHA})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    // Damage indicator will be drawn in screen space after ctx.restore()
+    // Store damage indicator state for later use
+    const damageIndicatorActive = gameState.damageIndicator.active;
+    const damageIndicatorIntensity = gameState.damageIndicator.intensity;
 
-    drawParticles();
+    // NOTE: drawParticles() moved to AFTER overlays so particles render on top
 
     // Draw spawn indicators
     gameState.spawnIndicators.forEach(indicator => {
@@ -2499,117 +992,105 @@ function drawGame() {
 
     // Reuse viewport bounds from updateGame (cached per frame)
     const viewport = gameState.cachedViewport || getViewportBounds(canvas);
-    
+
+    // v0.8.1.2: Render props (after ground, before entities) - single player arcade only
+    if (isSinglePlayerArcade) {
+        propRenderSystem.render(gameState, viewport);
+    }
+
     // Draw entities with viewport culling and small feature culling
-    // Optimized: use for loops instead of forEach for better performance
-    for (let i = 0; i < gameState.shells.length; i++) {
-        const shell = gameState.shells[i];
-        if (isInViewport(shell, viewport.left, viewport.top, viewport.right, viewport.bottom) &&
-            isVisibleOnScreen(shell)) {
-            shell.draw(ctx);
-        }
-    }
-    
-    for (let i = 0; i < gameState.bullets.length; i++) {
-        const bullet = gameState.bullets[i];
-        if (isInViewport(bullet, viewport.left, viewport.top, viewport.right, viewport.bottom) &&
-            isVisibleOnScreen(bullet)) {
-            bullet.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.grenades.length; i++) {
-        const grenade = gameState.grenades[i];
-        if (isInViewport(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            grenade.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.acidProjectiles.length; i++) {
-        const projectile = gameState.acidProjectiles[i];
-        if (isInViewport(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            projectile.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.acidPools.length; i++) {
-        const pool = gameState.acidPools[i];
-        if (isInViewport(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pool.draw();
-        }
-    }
-    
-    // Batch pickup rendering with culling (optimized loops)
-    for (let i = 0; i < gameState.healthPickups.length; i++) {
-        const pickup = gameState.healthPickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.ammoPickups.length; i++) {
-        const pickup = gameState.ammoPickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.damagePickups.length; i++) {
-        const pickup = gameState.damagePickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.nukePickups.length; i++) {
-        const pickup = gameState.nukePickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.speedPickups.length; i++) {
-        const pickup = gameState.speedPickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.rapidFirePickups.length; i++) {
-        const pickup = gameState.rapidFirePickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.shieldPickups.length; i++) {
-        const pickup = gameState.shieldPickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    for (let i = 0; i < gameState.adrenalinePickups.length; i++) {
-        const pickup = gameState.adrenalinePickups[i];
-        if (isInViewport(pickup, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            pickup.draw();
-        }
-    }
-    
-    // Zombies with culling (most important for performance) - optimized loop
-    for (let i = 0; i < gameState.zombies.length; i++) {
-        const zombie = gameState.zombies[i];
-        if (isInViewport(zombie, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            zombie.draw();
-        }
-    }
+    entityRenderSystem.drawEntities(gameState, ctx, viewport);
 
     drawPlayers();
 
     ctx.restore();
 
-    gameState.damageNumbers.forEach(num => num.draw(ctx));
-    drawCrosshair();
+    // Vignette overlay (drawn in screen space after camera transform is restored)
+    if (vignetteGradient) {
+        ctx.fillStyle = vignetteGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Lighting overlay (drawn in screen space after camera transform is restored)
+    if (lightingGradient) {
+        ctx.fillStyle = lightingGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Enhanced post-processing: Additional bloom-like glow effect
+        if (enhancedPostProcessing) {
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = lightingGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    // Damage Indicator (drawn in screen space after camera transform is restored)
+    if (damageIndicatorActive) {
+        ctx.fillStyle = `rgba(255, 0, 0, ${damageIndicatorIntensity * RENDERING.DAMAGE_INDICATOR_ALPHA})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Day/Night Cycle Overlay (drawn in screen space after camera transform is restored)
+    if (nightAlpha > 0) {
+        ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Draw particles AFTER all overlays so they're visible on top
+    // Particles need to be drawn in world space, so we restore the camera transform
+    ctx.save();
+    if (isSinglePlayerArcade) {
+        cameraSystem.applyTransform(ctx);
+    }
+    // Apply screen shake for particles too
+    if (gameState.shakeAmount > 0.1) {
+        const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        ctx.translate(shakeX, shakeY);
+    }
+    drawParticles();
+
+    // Draw volumetric blood pools
+    if (bloodSimulationSystem.enabled) {
+        const bloodData = bloodSimulationSystem.getBloodData();
+        if (bloodData.length > 0) {
+            ctx.fillStyle = '#8B0000'; // Dark red blood color
+            bloodData.forEach(cell => {
+                const alpha = Math.min(1, cell.height); // Height determines opacity
+                ctx.globalAlpha = alpha * 0.7; // Max 70% opacity
+                const radius = bloodSimulationSystem.cellSize / 2;
+                ctx.beginPath();
+                ctx.arc(cell.worldX, cell.worldY, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0; // Reset alpha
+        }
+    }
+
+    ctx.restore();
+
+    // v0.8.1.2: Draw damage numbers (convert world coordinates to screen space in single player arcade)
+    gameState.damageNumbers.forEach(num => {
+        if (isSinglePlayerArcade) {
+            // Convert world coordinates to screen coordinates
+            const screenPos = cameraSystem.worldToScreen(num.x, num.y);
+            // Temporarily override position for drawing
+            const originalX = num.x;
+            const originalY = num.y;
+            num.x = screenPos.x;
+            num.y = screenPos.y;
+            num.draw(ctx);
+            // Restore original position (for update calculations)
+            num.x = originalX;
+            num.y = originalY;
+        } else {
+            num.draw(ctx);
+        }
+    });
+    drawCrosshairUtil(mouse);
 
     // Draw low health vignette before HUD
 
@@ -2673,87 +1154,17 @@ function drawGame() {
 }
 
 function gameOver() {
-    gameState.gameRunning = false;
-    saveHighScore();
-
-    // Update and save multiplier stats
-    gameState.players.forEach(player => {
-        if (player.maxMultiplierThisSession > gameState.allTimeMaxMultiplier) {
-            gameState.allTimeMaxMultiplier = player.maxMultiplierThisSession;
-        }
-    });
-    saveMultiplierStats();
-
-    const p1 = gameState.players[0];
-    const p2 = gameState.players[1];
-
-    let scoreMsg = `You survived ${gameState.wave} waves!\nKilled: ${gameState.zombiesKilled}`;
-
-    if (gameState.isCoop && p2) {
-        scoreMsg = `Team survived ${gameState.wave} waves!\nTotal Kills: ${gameState.zombiesKilled}`;
-    }
-
-    gameHUD.showGameOver(scoreMsg);
+    gameStateManager.gameOver();
 }
 
 function restartGame() {
-    playRestartSound();
-    if (!gameState.menuMusicMuted) {
-        playMenuMusic();
-    }
-    gameState.showMainMenu = true;
-    gameState.showAbout = false;
-    gameState.gameRunning = false;
-    gameState.gamePaused = false;
-    gameState.showCoopLobby = false;
-    gameState.showLobby = false;
-    gameState.showAILobby = false;
-    gameHUD.hidePauseMenu();
-    gameHUD.hideGameOver();
-    resetGameState(canvas.width, canvas.height);
+    // Track restart for badge
+    playerProfileSystem.trackGameRestart();
+    gameStateManager.restartGame();
 }
 
 function startGame() {
-    stopMenuMusic();
-    gameState.gameRunning = true;
-    gameState.gamePaused = false;
-    gameState.showLobby = false;
-    gameState.showCoopLobby = false;
-    gameState.showAILobby = false;
-
-    // Do NOT reset players here for coop, we want to keep the lobby configuration
-    if (!gameState.isCoop) {
-        resetGameState(canvas.width, canvas.height);
-    } else {
-        // Just reset game objects, keep players
-        gameState.score = 0;
-        gameState.wave = 1;
-        gameState.zombiesKilled = 0;
-        gameState.bullets = [];
-        gameState.zombies = [];
-        gameState.particles = [];
-        gameState.healthPickups = [];
-        gameState.ammoPickups = [];
-        gameState.damagePickups = [];
-        gameState.nukePickups = [];
-        gameState.grenades = [];
-        gameState.acidProjectiles = [];
-        gameState.acidPools = [];
-
-        // Reset all players (including AI)
-        gameState.players.forEach((p, index) => {
-            p.health = PLAYER_MAX_HEALTH;
-            p.stamina = PLAYER_STAMINA_MAX;
-            // Spawn players with slight offset to avoid overlap
-            p.x = canvas.width / 2 + (index * 50);
-            p.y = canvas.height / 2;
-        });
-    }
-
-    gameState.showMainMenu = false;
-
-    triggerWaveNotification();
-    spawnZombies(gameState.zombiesPerWave);
+    gameStateManager.startGame();
 }
 
 function cycleWeapon(direction, player) {
@@ -2778,7 +1189,7 @@ gameEngine.update = (dt) => {
     if (gameState.showCoopLobby) {
         updateCoopLobby();
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout) {
         updateGame();
     }
 
@@ -2786,7 +1197,7 @@ gameEngine.update = (dt) => {
     inputSystem.update(settingsManager.settings.gamepad);
 
     // Check for Gamepad Actions (Mostly P1 if we allow it, or Global Menus)
-    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && gameState.gameRunning) {
+    if (inputSystem.isConnected() && !gameState.showSettingsPanel && !gameState.showMainMenu && !gameState.showLobby && !gameState.showCoopLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout && gameState.gameRunning) {
 
         // Find local player using gamepad
         const localPlayer = gameState.players.find(p => p.inputSource === 'gamepad');
@@ -2852,32 +1263,98 @@ gameEngine.draw = () => {
         gameState.lastFpsUpdateTime = now;
     }
 
-    // Render WebGPU layer (background/compute) if enabled
-    if (isWebGPUActive()) {
-        const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
-        webgpuRenderer.render(dt);
-    }
+    // Note: WebGPU render is called AFTER drawGame() so particles are synced before rendering
+    // This ensures particles synced in drawParticles() are included in the WebGPU frame
 
     if (gameState.showCoopLobby) {
         gameHUD.draw(); // Draw lobby
     }
-    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby) {
-        drawGame(); // Only draw game if not in lobby
+    else if (!gameState.showMainMenu && !gameState.gamePaused && !gameState.showLobby && !gameState.showAILobby && !gameState.showGallery && !gameState.showAbout) {
+        drawGame(); // Only draw game if not in lobby/menu
     }
     // Only draw game if not in lobbies/main menu (drawGame handles mainmenu/lobby drawing internally too but structured oddly)
     // Let's rely on drawGame() for everything except pure lobby updates
-    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby) {
+    else if (gameState.showMainMenu || gameState.showLobby || gameState.showAILobby || gameState.showGallery || gameState.showAbout) {
         drawGame();
     }
     // If paused
     else if (gameState.gamePaused) {
         drawGame();
     }
+
+    // Render WebGPU layer (background/compute) AFTER drawGame() so particles are synced first
+    if (isWebGPUActive()) {
+        const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
+        // Pass camera position for parallax
+        const cameraPos = cameraSystem.getPosition();
+        webgpuRenderer.render(dt, cameraPos);
+    }
 };
 
 // Event Listeners
 document.addEventListener('keydown', (e) => {
     activeInputSource = 'mouse';
+
+    // Username modal input handling (when modal is open)
+    if (gameState.showUsernameModal && gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputFocused) {
+        const result = gameHUD.mainMenuScreen.handleUsernameModalKey(e.key);
+        if (result === 'submit') {
+            e.preventDefault();
+            // Submit username
+            if (gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
+                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
+                saveUsername();
+                playerProfileSystem.setUsername(gameState.username);
+                multiplayerSystem.updateUsernameOnServer();
+            }
+            gameHUD.mainMenuScreen.closeUsernameModal();
+            return;
+        } else if (result === 'cancel') {
+            e.preventDefault();
+            // Cancel modal
+            gameHUD.mainMenuScreen.closeUsernameModal();
+            return;
+        } else if (result === true) {
+            // Character input handled
+            e.preventDefault();
+            return;
+        }
+    }
+
+    // Chat input handling (when chat is focused)
+    if (gameState.showLobby && gameState.multiplayer.chatFocused && !gameState.multiplayer.isGameStarting) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Send message
+            const message = gameState.multiplayer.chatInput?.trim();
+            if (message && message.length > 0 && message.length <= 200) {
+                multiplayerSystem.sendChatMessage(message);
+                gameState.multiplayer.chatInput = '';
+            }
+            gameState.multiplayer.chatFocused = false;
+            return;
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            // Clear input and unfocus
+            gameState.multiplayer.chatInput = '';
+            gameState.multiplayer.chatFocused = false;
+            return;
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            // Handle backspace
+            if (gameState.multiplayer.chatInput) {
+                gameState.multiplayer.chatInput = gameState.multiplayer.chatInput.slice(0, -1);
+            }
+            return;
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // Regular character input (prevent default to avoid browser shortcuts)
+            e.preventDefault();
+            if (gameState.multiplayer.chatInput.length < 200) {
+                gameState.multiplayer.chatInput += e.key;
+            }
+            return;
+        }
+    }
 
     if (e.key === 'Escape') {
         if (gameState.showSettingsPanel) {
@@ -2905,6 +1382,9 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
+    // Prevent game input when chat is focused
+    if (gameState.multiplayer.chatFocused) return;
+
     if (gameState.showMainMenu) return;
     if (gameState.showSettingsPanel) return;
 
@@ -2928,11 +1408,20 @@ document.addEventListener('keydown', (e) => {
     if (keys[controls.weapon7] && localPlayer) switchWeapon(WEAPONS.rocketLauncher, localPlayer);
 
     // Actions
-    if (key === controls.grenade && localPlayer) throwGrenade(mouse, canvas, localPlayer);
+    if (key === controls.grenade && localPlayer) {
+        // v0.8.1.2: In single player arcade mode, convert mouse coordinates to world space
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        let target = mouse;
+        if (isSinglePlayerArcade) {
+            const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+            target = { x: worldPos.x, y: worldPos.y };
+        }
+        throwGrenade(target, canvas, localPlayer);
+    }
     if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
     if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
 
-    if (gameState.gamePaused || !gameState.gameRunning) {
+    if (gameState.gamePaused || (!gameState.gameRunning && !gameHUD.gameOver)) {
         if (key === controls.reload) restartGame();
         if (gameState.gamePaused && (key === 'm')) restartGame();
     }
@@ -2964,11 +1453,16 @@ canvas.addEventListener('mousemove', (e) => {
     mouse.x = pos.x;
     mouse.y = pos.y;
 
+    // Handle news ticker dragging
+    if (gameHUD.newsTickerDragging) {
+        gameHUD.updateNewsTickerDrag(mouse.x);
+    }
+
     if (gameState.showSettingsPanel) {
         settingsPanel.handleMouseMove(mouse.x, mouse.y);
     } else if (gameState.showLevelUp) {
         gameHUD.updateLevelUpHover(mouse.x, mouse.y);
-    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout) {
+    } else if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || gameState.showAILobby || gameState.showAbout || gameState.showGallery || gameState.gamePaused || gameHUD.gameOver) {
         gameHUD.updateMenuHover(mouse.x, mouse.y);
     }
 });
@@ -2999,6 +1493,11 @@ canvas.addEventListener('mousedown', (e) => {
 
     // Main Menu
     if (gameState.showMainMenu) {
+        // Check for news ticker drag first
+        if (gameHUD.startNewsTickerDrag(clickX, clickY)) {
+            return; // Don't process button clicks if starting drag
+        }
+
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
 
         // Try to start menu music on first interaction if it's not playing
@@ -3011,9 +1510,14 @@ canvas.addEventListener('mousedown', (e) => {
 
         if (clickedButton === 'single') {
             gameState.isCoop = false;
+            gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
             startGame();
+        } else if (clickedButton === 'survival') {
+            // Survival mode is coming soon - button is disabled
+            // Do nothing for now
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
+            gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
             startGame(); // TODO: Implement campaign mode
         } else if (clickedButton === 'local_coop') {
             gameState.showMainMenu = false;
@@ -3029,18 +1533,58 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'settings') {
             gameState.showSettingsPanel = true;
             settingsPanel.open();
+            playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'username') {
-            const newUsername = window.prompt('Enter your name:', gameState.username);
-            if (newUsername !== null && newUsername.trim() !== '') {
-                gameState.username = newUsername.trim();
+            // Open username modal
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.openUsernameModal();
+            }
+        } else if (clickedButton === 'username_ok') {
+            // Submit username from modal
+            if (gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
+                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
                 saveUsername();
+                playerProfileSystem.setUsername(gameState.username);
+                multiplayerSystem.updateUsernameOnServer();
+            }
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.closeUsernameModal();
+            }
+        } else if (clickedButton === 'username_cancel' || clickedButton === 'username_background') {
+            // Cancel username modal
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.closeUsernameModal();
+            }
+        } else if (clickedButton === 'username_input') {
+            // Focus input field
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.usernameInputFocused = true;
             }
         } else if (clickedButton === 'multiplayer') {
             gameState.showMainMenu = false;
             gameState.showLobby = true;
             connectToMultiplayer();
+        } else if (clickedButton === 'gallery') {
+            gameState.showGallery = true;
+            gameState.showMainMenu = false;
+            playerProfileSystem.trackGalleryVisit();
+            // Reset gallery scroll when entering
+            if (gameHUD.galleryScrollY !== undefined) {
+                gameHUD.galleryScrollY = 0;
+                gameHUD.galleryTargetScrollY = 0;
+            }
         } else if (clickedButton === 'about') {
             gameState.showAbout = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'profile') {
+            gameState.showProfile = true;
+            gameState.showMainMenu = false;
+        } else if (clickedButton === 'achievements') {
+            gameState.showAchievements = true;
+            gameState.showMainMenu = false;
+            playerProfileSystem.trackAchievementVisit();
+        } else if (clickedButton === 'battlepass') {
+            gameState.showBattlepass = true;
             gameState.showMainMenu = false;
         } else if (clickedButton === 'mute_music') {
             gameState.menuMusicMuted = !gameState.menuMusicMuted;
@@ -3050,6 +1594,16 @@ canvas.addEventListener('mousedown', (e) => {
             } else {
                 playMenuMusic();
             }
+        }
+        return;
+    }
+
+    // Gallery Screen
+    if (gameState.showGallery) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'gallery_back') {
+            gameState.showGallery = false;
+            gameState.showMainMenu = true;
         }
         return;
     }
@@ -3064,12 +1618,44 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
 
+    // Profile Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
+    if (gameState.showProfile) {
+        return;
+    }
+
+    // Achievement Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
+    if (gameState.showAchievements) {
+        return;
+    }
+
+    // Battlepass Screen - click handling now done via DOM events in overlay
+    // No need to handle canvas clicks, the overlay handles all interactions
+    if (gameState.showBattlepass) {
+        return;
+    }
+
     // Multiplayer Lobby
     if (gameState.showLobby) {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+
+        // Handle chat input click
+        if (clickedButton === 'chat_input') {
+            gameState.multiplayer.chatFocused = true;
+            if (!gameState.multiplayer.chatInput) {
+                gameState.multiplayer.chatInput = '';
+            }
+            return;
+        } else if (clickedButton !== null) {
+            // Clicked elsewhere - unfocus chat
+            gameState.multiplayer.chatFocused = false;
+        }
+
         if (clickedButton === 'lobby_back') {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
+            gameState.multiplayer.chatFocused = false; // Unfocus chat when leaving lobby
             if (!gameState.menuMusicMuted) {
                 playMenuMusic();
             }
@@ -3142,6 +1728,63 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
 
+    // Game Over Screen
+    if (gameHUD.gameOver) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'gameover_lobby') {
+            // Return to multiplayer lobby
+            gameState.showLobby = true;
+            gameState.showMainMenu = false;
+            gameState.gameRunning = false;
+            gameState.isCoop = false;
+            gameState.gamePaused = false;
+            gameHUD.hideGameOver();
+            if (!gameState.menuMusicMuted) {
+                playMenuMusic();
+            }
+
+            // Reset multiplayer game starting state to prevent stuck "GO!" screen
+            gameState.multiplayer.isGameStarting = false;
+            gameState.multiplayer.gameStartTime = 0;
+
+            // Ensure multiplayer connection is active
+            if (!gameState.multiplayer.socket || !gameState.multiplayer.connected) {
+                connectToMultiplayer();
+            } else {
+                // Socket is connected - re-register player to rejoin lobby
+                gameState.multiplayer.active = true;
+                gameState.multiplayer.isReady = false; // Reset ready state
+                // Re-register with server to ensure we're back in the lobby
+                if (gameState.multiplayer.socket.connected) {
+                    multiplayerSystem.updateUsernameOnServer();
+                }
+            }
+
+            resetGameState(canvas.width, canvas.height);
+        } else if (clickedButton === 'gameover_menu') {
+            // Return to main menu
+            restartGame();
+        }
+        return;
+    }
+
+    // Pause Menu
+    if (gameState.gamePaused && !gameState.showSettingsPanel) {
+        const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
+        if (clickedButton === 'pause_resume') {
+            resumeGame();
+        } else if (clickedButton === 'pause_restart') {
+            restartGame();
+        } else if (clickedButton === 'pause_settings') {
+            gameState.showSettingsPanel = true;
+            settingsPanel.open();
+            playerProfileSystem.trackSettingsVisit();
+        } else if (clickedButton === 'pause_menu') {
+            restartGame();
+        }
+        return;
+    }
+
     if (gameState.gameRunning && !gameState.gamePaused) {
         if (e.button === 0) {
             initAudio();
@@ -3156,6 +1799,9 @@ canvas.addEventListener('mousedown', (e) => {
 
 canvas.addEventListener('mouseup', (e) => {
     if (e.button === 0) mouse.isDown = false;
+    if (gameHUD.newsTickerDragging) {
+        gameHUD.endNewsTickerDrag();
+    }
     if (gameState.showSettingsPanel) settingsPanel.handleMouseUp();
 });
 
@@ -3165,6 +1811,28 @@ canvas.addEventListener('mouseleave', () => mouse.isDown = false);
 canvas.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
         settingsPanel.handleWheel(e);
+        return;
+    }
+
+    // Gallery scrolling
+    if (gameState.showGallery) {
+        e.preventDefault();
+        const scrollSpeed = 30;
+        if (gameHUD.galleryTargetScrollY !== undefined) {
+            gameHUD.galleryTargetScrollY -= e.deltaY * 0.5; // Invert for natural scrolling
+        }
+        return;
+    }
+
+    // Achievement screen scrolling - now handled by DOM overlay
+    if (gameState.showAchievements) {
+        e.preventDefault(); // Prevent page scroll, overlay handles its own scrolling
+        return;
+    }
+
+    // Battlepass screen scrolling - now handled by DOM overlay
+    if (gameState.showBattlepass) {
+        e.preventDefault(); // Prevent page scroll, overlay handles its own scrolling
         return;
     }
 
@@ -3199,7 +1867,22 @@ window.addEventListener('blur', () => {
 // Initialization
 loadHighScore();
 loadUsername();
+
+// Initialize Profile System (after username is loaded)
+playerProfileSystem.loadProfile();
+playerProfileSystem.initializeSystems();
+
+// Sync username from profile if it exists
+const profile = playerProfileSystem.getProfile();
+if (profile && profile.username) {
+    gameState.username = profile.username;
+}
 loadMenuMusicMuted();
 loadMultiplierStats();
 checkServerHealth(); // Start checking server status
+gameHUD.leaderboardDisplay.fetch(); // Fetch initial leaderboard
+
+// Make clearScoreboard available globally for console access
+window.clearScoreboard = clearScoreboard;
+
 gameEngine.start();

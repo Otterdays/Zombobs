@@ -95,6 +95,12 @@ export const gameState = {
     showCoopLobby: false,
     showAILobby: false,
     showAbout: false,
+    showGallery: false,
+    showProfile: false,
+    showAchievements: false,
+    showUsernameModal: false,
+    showBattlepass: false,
+    showBadges: false,
 
     multiplayer: {
         active: false,
@@ -108,7 +114,12 @@ export const gameState = {
         isLeader: false,
         isReady: false,
         isGameStarting: false,
-        gameStartTime: 0
+        gameStartTime: 0,
+        // Chat state
+        chatMessages: [],
+        chatInput: '',
+        chatFocused: false,
+        chatScrollPosition: 0
     },
     username: 'Survivor',
     menuMusicMuted: false,
@@ -159,6 +170,7 @@ export const gameState = {
     acidProjectiles: [],
     acidPools: [],
     spawnIndicators: [],
+    props: [], // v0.8.1.2: World props (rocks, debris, burnt cars) - single player arcade only
 
     // Visual effects
     shakeAmount: 0,
@@ -184,6 +196,16 @@ export const gameState = {
     adrenalineEndTime: 0,
     killStreak: 0,
     lastKillTime: 0,
+    // Multi-kill tracking (V0.7.1)
+    recentKills: [], // Array of {time, zombieType} for multi-kill detection
+    maxKillStreak: 0, // Track highest streak in session
+    // Weapon switch animation (V0.7.1)
+    weaponSwitchFlash: {
+        active: false,
+        startTime: 0,
+        duration: 150, // 150ms flash
+        weapon: null // Weapon that was switched to
+    },
 
     waveNotification: {
         active: false,
@@ -217,6 +239,13 @@ export const gameState = {
         startTime: 0 // When the cycle started
     },
     isNight: false,
+
+    // Game Session Tracking
+    gameStartTime: 0, // Timestamp when current game session started
+
+    // Achievement Notifications
+    achievementNotifications: [], // Array of achievement notifications to display
+    sessionResults: null, // Session results from profile system (rank XP, achievements, etc.)
 };
 
 // Compatibility getters/setters for single-player code
@@ -321,6 +350,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
     gameState.spawnIndicators = [];
+    gameState.props = []; // v0.8.1.2: Reset props for new game
 
     // Clear timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
@@ -336,6 +366,9 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.adrenalineEndTime = 0;
     gameState.killStreak = 0;
     gameState.lastKillTime = 0;
+    gameState.maxKillStreak = 0; // V0.7.1: Track highest streak in session
+    gameState.recentKills = []; // V0.7.1: Track recent kills for multi-kill detection
+    gameState.weaponSwitchFlash = { active: false, startTime: 0, duration: 150, weapon: null }; // V0.7.1: Reset weapon switch flash
 
     gameState.waveNotification.active = false;
 
@@ -343,4 +376,11 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.gameTime = 0;
     gameState.dayNightCycle.startTime = Date.now();
     gameState.isNight = false;
+
+    // Reset game start time (will be set when game actually starts)
+    gameState.gameStartTime = 0;
+
+    // Clear session results
+    gameState.sessionResults = null;
+    gameState.achievementNotifications = [];
 }

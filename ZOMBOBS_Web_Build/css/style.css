@@ -26,7 +26,10 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 0; /* Background/Heavy Compute layer */
+            z-index: 0; /* Background layer (fog, atmosphere) - renders behind gameplay */
+            background: transparent;
+            /* Hidden by default, will be shown when WebGPU is active */
+            display: none;
         }
         #gameCanvas {
             position: relative;

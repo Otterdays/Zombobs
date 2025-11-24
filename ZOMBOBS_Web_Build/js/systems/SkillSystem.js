@@ -78,19 +78,130 @@ export const SKILLS_POOL = [
             player.hasRegeneration = true;
         },
         upgradeable: true
+    },
+    {
+        id: 'thick_skin',
+        name: 'Thick Skin',
+        icon: '🛡️',
+        description: 'Reduce damage taken by 10%',
+        effect: (player) => {
+            if (!player.damageReduction) player.damageReduction = 1.0;
+            player.damageReduction *= 0.9; // 10% reduction = 90% of damage
+        },
+        upgradeable: true
+    },
+    {
+        id: 'lucky_strike',
+        name: 'Lucky Strike',
+        icon: '🍀',
+        description: '15% chance for double damage',
+        effect: (player) => {
+            if (!player.luckyStrikeChance) player.luckyStrikeChance = 0;
+            player.luckyStrikeChance += 0.15;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'quick_hands',
+        name: 'Quick Hands',
+        icon: '⚡',
+        description: '50% faster weapon switching',
+        effect: (player) => {
+            if (!player.weaponSwitchSpeedMultiplier) player.weaponSwitchSpeedMultiplier = 1.0;
+            player.weaponSwitchSpeedMultiplier *= 0.5; // 50% faster = 50% of original time
+        },
+        upgradeable: true
+    },
+    {
+        id: 'scavenger',
+        name: 'Scavenger',
+        icon: '🔍',
+        description: '25% more pickup spawn rate',
+        effect: (player) => {
+            if (!player.pickupSpawnRateMultiplier) player.pickupSpawnRateMultiplier = 1.0;
+            player.pickupSpawnRateMultiplier *= 1.25;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'adrenaline',
+        name: 'Adrenaline',
+        icon: '💉',
+        description: '20% speed boost for 3s after kill',
+        effect: (player) => {
+            player.hasAdrenaline = true;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'armor_plating',
+        name: 'Armor Plating',
+        icon: '🛡️',
+        description: 'Gain 10 shield points',
+        effect: (player) => {
+            if (!player.shield) player.shield = 0;
+            player.shield += 10;
+            if (player.shield > 100) player.shield = 100; // Cap shield at 100
+        },
+        upgradeable: true
+    },
+    {
+        id: 'long_range',
+        name: 'Long Range',
+        icon: '📏',
+        description: '20% increased bullet range',
+        effect: (player) => {
+            if (!player.bulletRangeMultiplier) player.bulletRangeMultiplier = 1.0;
+            player.bulletRangeMultiplier *= 1.2;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'fast_fingers',
+        name: 'Fast Fingers',
+        icon: '👆',
+        description: '15% faster reload (stacks with Iron Grip)',
+        effect: (player) => {
+            if (!player.reloadSpeedMultiplier) player.reloadSpeedMultiplier = 1.0;
+            player.reloadSpeedMultiplier *= 0.85; // 15% faster = 85% of original time
+        },
+        upgradeable: true
+    },
+    {
+        id: 'bloodlust',
+        name: 'Bloodlust',
+        icon: '🩸',
+        description: 'Heal 2 HP per kill',
+        effect: (player) => {
+            player.hasBloodlust = true;
+        },
+        upgradeable: true
+    },
+    {
+        id: 'steady_aim',
+        name: 'Steady Aim',
+        icon: '🎯',
+        description: '30% reduced bullet spread',
+        effect: (player) => {
+            if (!player.bulletSpreadReduction) player.bulletSpreadReduction = 1.0;
+            player.bulletSpreadReduction *= 0.7; // 30% reduction = 70% of original spread
+        },
+        upgradeable: true
     }
 ];
 
 class SkillSystem {
     constructor() {
         this.xpValues = {
-            normal: 10,
-            fast: 20,
-            exploding: 30,
-            armored: 25,
-            ghost: 35,
-            spitter: 30,
-            boss: 500
+            normal: 7,      // Reduced by 10% from 8 (was 1.5x increase from 5)
+            fast: 14,       // Reduced by 10% from 15 (was 1.5x increase from 10)
+            exploding: 21,  // Reduced by 10% from 23 (was 1.5x increase from 15)
+            armored: 16,    // Reduced by 10% from 18 (was 1.5x increase from 12)
+            ghost: 24,      // Reduced by 10% from 27 (was 1.5x increase from 18)
+            spitter: 21,    // Reduced by 10% from 23 (was 1.5x increase from 15)
+            flying: 18,     // Balanced for medium difficulty (between Ghost 24 and Spitter 21)
+            crawler: 16,    // Balanced between Fast 14 and Armored 16
+            boss: 338       // Reduced by 10% from 375 (was 1.5x increase from 250)
         };
     }
 
@@ -108,10 +219,11 @@ class SkillSystem {
     levelUp() {
         gameState.level++;
 
-        // Calculate next level XP requirement
-        const baseXP = XP_BASE_REQUIREMENT;
-        const scaling = Math.pow(XP_SCALING_FACTOR, gameState.level - 1);
-        gameState.nextLevelXP = Math.floor(baseXP * scaling);
+        // Calculate next level XP requirement (linear progression: +20 per level, starting at 100)
+        gameState.nextLevelXP = XP_BASE_REQUIREMENT + (gameState.level - 1) * 20;
+
+        // Reset XP to 0 so XP bar resets properly after level up
+        gameState.xp = 0;
 
         // Multiplayer Logic
         if (gameState.isCoop && gameState.multiplayer.active) {
@@ -147,13 +259,13 @@ class SkillSystem {
             return activeSkillIds.includes(skill.id);
         });
 
-        // Shuffle and pick 2
+        // Shuffle and pick 3
         const shuffled = [...availableSkills].sort(() => Math.random() - 0.5);
-        const choices = shuffled.slice(0, 2);
+        const choices = shuffled.slice(0, 3);
 
-        // If we only have 1 or 0 choices, duplicate one or pick from all
-        if (choices.length < 2) {
-            while (choices.length < 2) {
+        // If we have less than 3 choices, fill with random skills
+        if (choices.length < 3) {
+            while (choices.length < 3) {
                 const randomSkill = SKILLS_POOL[Math.floor(Math.random() * SKILLS_POOL.length)];
                 if (!choices.find(c => c.id === randomSkill.id)) {
                     choices.push(randomSkill);

@@ -95,11 +95,22 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1800px;
             display: grid;
-            grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr);
+            grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr) minmax(0, 1.4fr);
             gap: 32px;
             perspective: 1000px;
+        }
+
+        @media (max-width: 1600px) {
+            .page {
+                grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr);
+            }
+            .scoreboard-card {
+                grid-column: 1 / -1;
+                max-width: 600px;
+                margin: 0 auto;
+            }
         }
 
         @media (max-width: 1400px) {
@@ -165,6 +176,67 @@
             align-items: baseline;
             justify-content: space-between;
             gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .top-play-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #fff;
+            background: linear-gradient(135deg, #ff5252, #ff1744);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.15),
+                0 0 20px rgba(255, 23, 68, 0.4);
+            transition: all 0.2s ease-out;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+            text-decoration: none;
+        }
+
+        .top-play-button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg) translateY(-100%);
+            transition: transform 0.5s;
+        }
+
+        .top-play-button:hover::after {
+            transform: rotate(45deg) translateY(100%);
+        }
+
+        .top-play-button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.3),
+                0 0 35px rgba(255, 23, 68, 0.6);
+            filter: brightness(1.1);
+        }
+
+        .top-play-button:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .top-play-button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
             margin-bottom: 12px;
         }
 
@@ -272,6 +344,14 @@
             line-height: 1.7;
             color: var(--text-muted);
             margin-bottom: 24px;
+        }
+
+        .hero-text p {
+            margin-bottom: 16px;
+        }
+
+        .hero-text p:last-child {
+            margin-bottom: 0;
         }
 
         .feature-grid {
@@ -455,6 +535,149 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
+        .scoreboard-card {
+            padding: 24px 24px 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px) saturate(120%);
+            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            border-radius: 16px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s backwards;
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .scoreboard-card::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .scoreboard-card::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        :root[data-theme="light"] .scoreboard-card {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .scoreboard-entry {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .scoreboard-entry:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .scoreboard-entry.rank-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.08));
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .scoreboard-entry.rank-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.12), rgba(169, 169, 169, 0.06));
+            border-color: rgba(192, 192, 192, 0.25);
+        }
+
+        .scoreboard-entry.rank-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.12), rgba(184, 115, 51, 0.06));
+            border-color: rgba(205, 127, 50, 0.25);
+        }
+
+        .scoreboard-rank {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .scoreboard-entry.rank-1 .scoreboard-rank {
+            color: #ffd700;
+        }
+
+        .scoreboard-entry.rank-2 .scoreboard-rank {
+            color: #c0c0c0;
+        }
+
+        .scoreboard-entry.rank-3 .scoreboard-rank {
+            color: #cd7f32;
+        }
+
+        .scoreboard-score {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-soft);
+            margin-bottom: 6px;
+            text-shadow: 0 0 8px rgba(255, 23, 68, 0.4);
+        }
+
+        .scoreboard-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .scoreboard-detail {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .scoreboard-detail strong {
+            color: var(--text-main);
+        }
+
+        .scoreboard-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.7;
+            margin-top: -4px;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+
+        .scoreboard-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            opacity: 0.7;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 6px;
+            margin-top: 4px;
+        }
+
+        .scoreboard-empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-style: italic;
+        }
+
         .side-heading {
             font-size: 12px;
             font-weight: 700;
@@ -615,11 +838,18 @@
                 <div class="title-row">
                     <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
                     <div class="badge-row">
-                        <span class="tagline">V0.5.3</span>
+                        <span class="tagline">V0.8.1.7 ALPHA</span>
                         <div class="engine-info">
-                            <span class="engine-name">ZOMBS-XFX-NGIN V0.5.3</span>
+                            <span class="engine-name">ZOMBS-XFX-NGIN V0.8.1.7 ALPHA</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="top-play-button-container">
+                    <a href="zombie-game.html" class="top-play-button">
+                        <span>▶</span>
+                        <span>Play Now</span>
+                    </a>
                 </div>
 
                 <div class="pill-row">
@@ -629,28 +859,31 @@
                     <span class="pill">Socket.io Multiplayer</span>
                 </div>
 
-                <p class="hero-text">
-                    Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 4 unique weapons including 
-                    the devastating Flamethrower, throw grenades, collect health and ammo pickups, and face off against 6 zombie variants 
-                    including Ghost, Exploding, Armored, and Spitter types. **NEW in V0.5.3**: Modern glassmorphism multiplayer lobby with animated background, 
-                    comprehensive UI font scaling fixes (all fonts now scale properly 50%-150%), UI scale preset buttons, and optimized off-screen indicators. 
-                    **V0.5.2**: 15 engine micro-optimizations including Math.sqrt() elimination, forEach→for loops, Quadtree reuse, settings caching, and more 
-                    (30-50% FPS improvement). **V0.5.1**: Optimized multiplayer with zombie speed synchronization, delta compression (50-80% bandwidth reduction), 
-                    adaptive update rates (5-20Hz), advanced interpolation (60-80% less jitter), velocity-based extrapolation, Socket.IO binary optimizations 
-                    (10-20% CPU reduction), and latency measurement. Features cloud-hosted multiplayer on Hugging Face Spaces with automatic server health checks, 
-                    local co-op mode, AI squad mode, kill streak combos, comprehensive power-up system (damage buff, speed boost, rapid fire, shield & nuke) with 
-                    real-time HUD timers, controller support, boss waves, day/night cycle with dynamic difficulty, sprint system with stamina management, and a 
-                    fully functional multiplayer lobby system. Enhanced with critical hits, hit markers, spawn indicators, off-screen threat warnings, reload 
-                    progress bars, floating damage numbers, bullet trails, shell casings, screen shake, directional blood splatter, menu music, and horror 
-                    atmosphere effects. Built with pure HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
-                </p>
+                <div class="hero-text">
+                    <p>
+                        Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 7 unique weapons including 
+                        the devastating Flamethrower, SMG, Sniper, and RPG. Throw grenades, collect health and ammo pickups, and face off against 
+                        8 zombie variants including Ghost, Exploding, Armored, Spitter, Flying, Crawler, and massive Boss zombies.
+                    </p>
+                    <p>
+                        Master the skill system with 16 upgradeable skills, progress through 9 permanent ranks with achievements and seasonal battlepass rewards. 
+                        Play solo, team up in local co-op with up to 4 players, or join the multiplayer lobby for coordinated survival. Features include 
+                        kill streak combos, comprehensive power-ups, boss waves, day/night cycle with dynamic difficulty, sprint system with stamina management, 
+                        and a fully functional multiplayer lobby system.
+                    </p>
+                    <p>
+                        Enhanced with critical hits, hit markers, spawn indicators, off-screen threat warnings, reload progress bars, floating damage numbers, 
+                        bullet trails, shell casings, screen shake, directional blood splatter, menu music, and horror atmosphere effects. Built with pure 
+                        HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
+                    </p>
+                </div>
 
                 <div class="feature-grid">
                     <div class="feature">
                         <div class="feature-icon">🔫</div>
                         <div>
-                            <div class="feature-label">4 Distinct Weapons</div>
-                            <div>Pistol, Shotgun, Rifle, Flamethrower. Scroll wheel switching &amp; auto-reload.</div>
+                            <div class="feature-label">7 Distinct Weapons</div>
+                            <div>Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG. Scroll wheel switching &amp; auto-reload.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -670,8 +903,8 @@
                     <div class="feature">
                         <div class="feature-icon">🛡️</div>
                         <div>
-                            <div class="feature-label">6 Zombie Variants</div>
-                            <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral), and Spitter (Acid) zombies.</div>
+                            <div class="feature-label">8 Zombie Variants</div>
+                            <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral), Spitter (Acid), Flying (Winged), Crawler (Low-Profile), and Boss zombies.</div>
                         </div>
                     </div>
                     <div class="feature">
@@ -712,7 +945,7 @@
                     <div class="feature">
                         <div class="feature-icon">🌐</div>
                         <div>
-                            <div class="feature-label">Multiplayer Lobby (V0.5.3)</div>
+                            <div class="feature-label">Multiplayer Lobby (V0.5.3+)</div>
                             <div>Modern glassmorphism design with animated background, player cards, enhanced connection status, and cloud-hosted on Hugging Face Spaces.</div>
                         </div>
                     </div>
@@ -877,6 +1110,118 @@
                             <div>Red screen flash and directional feedback when taking damage, helping you identify threat direction quickly.</div>
                         </div>
                     </div>
+                    <div class="feature">
+                        <div class="feature-icon">🏅</div>
+                        <div>
+                            <div class="feature-label">Rank & Progression</div>
+                            <div>9 permanent ranks with 5 tiers each. Earn rank XP from scores and wave completions. Display your rank badge in lobbies.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🏆</div>
+                        <div>
+                            <div class="feature-label">Achievement System</div>
+                            <div>30+ unlockable achievements across 5 categories. Earn rank XP rewards and unlockable titles. Track progress in achievement gallery.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🎁</div>
+                        <div>
+                            <div class="feature-label">Battlepass System</div>
+                            <div>Seasonal progression track with 50 tiers. Season 1: Outbreak (60-day season). Free track with Rank XP, Titles, Emblems, and Cosmetics.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <div>
+                            <div class="feature-label">Global Leaderboard</div>
+                            <div>Compete for top 10 global scores. Real-time leaderboard updates via Socket.IO. Your score highlighted when in top 10.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">👤</div>
+                        <div>
+                            <div class="feature-label">Player Profile</div>
+                            <div>Comprehensive statistics tracking. View rank, stats, achievements, and battlepass summary. Persistent profile across sessions.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🎯</div>
+                        <div>
+                            <div class="feature-label">16 Skills System</div>
+                            <div>Expand capabilities with strategic skill choices. 3-choice level-up system. Skills can be upgraded multiple times for stacking effects.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🏗️</div>
+                        <div>
+                            <div class="feature-label">Base Building <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Build walls, gates, and auto-turrets to defend against the horde. Strategic fortification system for survival.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌐</div>
+                        <div>
+                            <div class="feature-label">Online Multiplayer <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Full networked gameplay with synchronized zombie hordes. Real-time co-op survival across the internet.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🚀</div>
+                        <div>
+                            <div class="feature-label">Rocket Launcher <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>High-damage explosive weapon with devastating AOE. Perfect for clearing dense zombie hordes.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌳</div>
+                        <div>
+                            <div class="feature-label">Skill Trees & Perks <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Expanded progression system with branching skill trees and permanent perk unlocks.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🗺️</div>
+                        <div>
+                            <div class="feature-label">Multiple Maps <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Urban, forest, and military base environments. Each map with unique layouts and strategic advantages.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌧️</div>
+                        <div>
+                            <div class="feature-label">Dynamic Weather <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Rain, fog, and storms affect visibility and gameplay. Weather impacts zombie behavior and player tactics.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🕷️</div>
+                        <div>
+                            <div class="feature-label">More Zombie Variants <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Crawlers, Summoners, Jumpers, and Swarmers. New enemy types with unique behaviors and challenges.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔨</div>
+                        <div>
+                            <div class="feature-label">Crafting System <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Resource gathering and item crafting. Create weapons, ammo, and survival equipment from scavenged materials.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🚗</div>
+                        <div>
+                            <div class="feature-label">Vehicles <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Driveable cars for escape and tactical positioning. Use vehicles to run down zombies or make quick getaways.</div>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📖</div>
+                        <div>
+                            <div class="feature-label">Story Mode <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                            <div>Narrative objectives and story-driven missions. Uncover the mystery behind the zombie apocalypse.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="cta-row">
@@ -904,7 +1249,7 @@
                 </div>
                 <div class="stat">
                     <span>Engine</span>
-                    <strong>ZOMBS-XFX-NGIN V0.5.3</strong>
+                    <strong>ZOMBS-XFX-NGIN V0.8.1.7 ALPHA</strong>
                 </div>
                 <div class="stat">
                     <span>Architecture</span>
@@ -974,6 +1319,66 @@
                 </div>
             </div>
 
+            <div>
+                <div class="side-heading">V0.8.1.7 ALPHA</div>
+                <ul class="mini-list">
+                    <li><span>💥</span> <strong>WebGPU Explosions</strong>: Large-scale explosions enabled with 8x radius support</li>
+                    <li><span>🎨</span> <strong>Particle Overhaul</strong>: Optimized rendering with 2000 particle limit for massive effects</li>
+                    <li><span>🌐</span> <strong>Particle Parallax</strong>: Camera-relative movement for world-space feel (V0.8.1.5)</li>
+                    <li><span>🔧</span> <strong>Explosion Fixes</strong>: Critical rendering fixes with enhanced alpha blending (V0.8.1.4)</li>
+                    <li><span>🚗</span> <strong>Prop Enhancements</strong>: Animated smoke effects and zombie-themed props (V0.8.1.3)</li>
+                    <li><span>🌍</span> <strong>Living World</strong>: Camera system, moving ground, and procedural props (V0.8.1.2)</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.8.0 ALPHA</div>
+                <ul class="mini-list">
+                    <li><span>🔧</span> <strong>Major Refactor</strong>: GameHUD.js modularization with 9 screen classes</li>
+                    <li><span>📉</span> <strong>Code Reduction</strong>: Reduced GameHUD.js from ~4,715 to ~1,757 lines (63% reduction)</li>
+                    <li><span>🏗️</span> <strong>Architecture</strong>: Improved separation of concerns and maintainability</li>
+                    <li><span>✅</span> <strong>Backward Compatible</strong>: All existing functionality preserved</li>
+                    <li><span>🎯</span> <strong>Screen Classes</strong>: MainMenuScreen, LobbyScreen, GameOverScreen, and 6 more</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.7.2 ALPHA</div>
+                <ul class="mini-list">
+                    <li><span>🎮</span> <strong>Game Over Improvements</strong>: Navigation buttons, multiplayer lobby return</li>
+                    <li><span>🗄️</span> <strong>MongoDB Migration</strong>: Persistent highscore storage with cloud database</li>
+                    <li><span>🎨</span> <strong>Main Menu Redesign</strong>: Improved layout with better positioning</li>
+                    <li><span>💬</span> <strong>Lobby Chat System</strong>: Real-time chat with security features</li>
+                    <li><span>⚖️</span> <strong>XP Balance</strong>: Linear progression formula, reduced XP values</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.7.1.1 ALPHA</div>
+                <ul class="mini-list">
+                    <li><span>🐛</span> <strong>Bug Fix</strong>: Fixed duplicate variable declaration syntax error</li>
+                    <li><span>📦</span> <strong>Docker Config</strong>: Fixed server file references for Hugging Face deployment</li>
+                    <li><span>🔄</span> <strong>Version Update</strong>: All version indicators updated to V0.7.1.1 ALPHA</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.7.1</div>
+                <ul class="mini-list">
+                    <li><span>🏅</span> <strong>Rank System</strong>: 9 permanent ranks with 5 tiers each, persistent across sessions</li>
+                    <li><span>🏆</span> <strong>Achievements</strong>: 30+ unlockable achievements across 5 categories with rewards</li>
+                    <li><span>🎁</span> <strong>Battlepass</strong>: Season 1: Outbreak (60-day season, 50 tiers)</li>
+                    <li><span>👤</span> <strong>Player Profile</strong>: Comprehensive statistics tracking and profile screen</li>
+                    <li><span>📊</span> <strong>Global Leaderboard</strong>: Server-side score tracking with top 10 display</li>
+                    <li><span>🎨</span> <strong>Visual Settings</strong>: Text rendering, rank badge, crosshair, health bar customization</li>
+                </ul>
+            </div>
+            <div>
+                <div class="side-heading">V0.7.0</div>
+                <ul class="mini-list">
+                    <li><span>⚖️</span> <strong>Balance Overhaul</strong>: Major combat balance adjustments</li>
+                    <li><span>🎯</span> <strong>Crit Rate</strong>: Reduced from 10% to ~3.33% (2/3 reduction)</li>
+                    <li><span>💪</span> <strong>Zombie HP</strong>: All zombie HP doubled (except Boss)</li>
+                    <li><span>🔫</span> <strong>Weapon Damage</strong>: All weapon damage values doubled</li>
+                    <li><span>🐛</span> <strong>Bug Fix</strong>: Hoarder skill ammo multiplier now persists across weapon switches</li>
+                </ul>
+            </div>
             <div>
                 <div class="side-heading">V0.5.3</div>
                 <ul class="mini-list">
@@ -1053,7 +1458,7 @@
                 <div class="side-heading">Core Features</div>
                 <ul class="mini-list">
                     <li><span>✔</span> 4 weapons: Pistol, Shotgun, Rifle, Flamethrower (unique stats)</li>
-                    <li><span>✔</span> 6 zombie types: Normal, Fast, Armored, Exploding, Ghost, Spitter</li>
+                    <li><span>✔</span> 8 zombie types: Normal, Fast, Armored, Exploding, Ghost, Spitter, Flying, Crawler</li>
                     <li><span>✔</span> Melee combat with swipe animation</li>
                     <li><span>✔</span> Grenades with physics &amp; AOE damage</li>
                     <li><span>✔</span> Health &amp; Ammo pickups</li>
@@ -1082,6 +1487,17 @@
                     <li><span>○</span> <strong>Vehicles</strong>: Driveable cars for escape</li>
                     <li><span>○</span> <strong>Narrative</strong>: Story mode objectives</li>
                 </ul>
+            </div>
+        </aside>
+
+        <!-- Scoreboard Container -->
+        <aside class="scoreboard-card" id="scoreboard-container">
+            <div>
+                <div class="side-heading">🏆 Top Scores</div>
+                <div class="scoreboard-label">Local Scores (Browser Storage)</div>
+                <div id="scoreboard-entries">
+                    <div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>
+                </div>
             </div>
         </aside>
         </main>
@@ -1323,6 +1739,145 @@
         
         // Start animation
         animate();
+
+        // Scoreboard System
+        (function() {
+            const SCOREBOARD_KEY = 'zombobs_scoreboard';
+            const scoreboardContainer = document.getElementById('scoreboard-entries');
+
+            function loadScoreboard() {
+                try {
+                    const saved = localStorage.getItem(SCOREBOARD_KEY);
+                    if (saved) {
+                        const scoreboard = JSON.parse(saved);
+                        if (Array.isArray(scoreboard)) {
+                            return scoreboard.sort((a, b) => b.score - a.score).slice(0, 10);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Failed to load scoreboard:', error);
+                }
+                return [];
+            }
+
+            function formatTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                if (hours > 0) {
+                    return `${hours}h ${minutes}m ${secs}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${secs}s`;
+                } else {
+                    return `${secs}s`;
+                }
+            }
+
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) {
+                    return 'Just now';
+                } else if (diffMins < 60) {
+                    return `${diffMins}m ago`;
+                } else if (diffHours < 24) {
+                    return `${diffHours}h ago`;
+                } else if (diffDays < 7) {
+                    return `${diffDays}d ago`;
+                } else {
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                    });
+                }
+            }
+
+            function formatNumber(num) {
+                return num.toLocaleString('en-US');
+            }
+
+            function renderScoreboard() {
+                const scoreboard = loadScoreboard();
+                
+                if (scoreboard.length === 0) {
+                    scoreboardContainer.innerHTML = '<div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>';
+                    return;
+                }
+
+                // Get current username from localStorage as fallback for old entries
+                const currentUsername = (() => {
+                    try {
+                        const saved = localStorage.getItem('zombobs_username');
+                        return (saved && saved.trim() !== '') ? saved.trim() : 'Survivor';
+                    } catch (e) {
+                        return 'Survivor';
+                    }
+                })();
+
+                let html = '';
+                scoreboard.forEach((entry, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                    const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
+                    
+                    // Get username from entry, or use current username from localStorage, or fallback to 'Survivor'
+                    const displayUsername = entry.username && entry.username.trim() !== '' 
+                        ? entry.username.trim() 
+                        : currentUsername;
+                    
+                    html += `
+                        <div class="scoreboard-entry ${rankClass}">
+                            <div class="scoreboard-rank">${rankText}</div>
+                            <div class="scoreboard-score">${formatNumber(entry.score)}</div>
+                            <div class="scoreboard-details">
+                                <div class="scoreboard-detail">
+                                    <span>Wave:</span> <strong>${entry.wave}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Kills:</span> <strong>${formatNumber(entry.kills)}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Time:</span> <strong>${formatTime(entry.timeSurvived)}</strong>
+                                </div>
+                                <div class="scoreboard-detail">
+                                    <span>Multiplier:</span> <strong>${entry.maxMultiplier.toFixed(1)}x</strong>
+                                </div>
+                            </div>
+                            <div class="scoreboard-meta">
+                                ${displayUsername} • ${formatDate(entry.dateTime)}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                scoreboardContainer.innerHTML = html;
+            }
+
+            function clearScoreboard() {
+                try {
+                    localStorage.removeItem(SCOREBOARD_KEY);
+                    console.log('Scoreboard cleared');
+                    renderScoreboard(); // Re-render to show empty state
+                    return true;
+                } catch (error) {
+                    console.log('Failed to clear scoreboard:', error);
+                    return false;
+                }
+            }
+
+            // Make clearScoreboard available globally
+            window.clearScoreboard = clearScoreboard;
+
+            // Render scoreboard on page load
+            renderScoreboard();
+        })();
     </script>
 </body>
 </html>

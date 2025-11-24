@@ -3,6 +3,7 @@ import { canvas } from '../core/canvas.js';
 import { createPlayer } from '../core/gameState.js';
 import { PLAYER_BASE_SPEED } from '../core/constants.js';
 import { shootBullet, reloadWeapon } from '../utils/combatUtils.js';
+import { CompanionDialogue } from './CompanionDialogue.js';
 
 /**
  * CompanionSystem manages AI NPC companions
@@ -26,14 +27,17 @@ export class CompanionSystem {
         if (gameState.players.length >= this.maxCompanions) {
             return null; // Max 4 players
         }
-        
+
         const colorIndex = gameState.players.length; // Use next available color
         const spawnOffset = gameState.players.length * 50; // Offset spawn position
         const aiPlayer = createPlayer(canvas.width / 2 + spawnOffset, canvas.height / 2, colorIndex);
         aiPlayer.inputSource = 'ai';
         aiPlayer.gamepadIndex = null;
+        aiPlayer.gamepadIndex = null;
+        aiPlayer.dialogue = new CompanionDialogue(aiPlayer);
+        aiPlayer.dialogue.trigger('spawn');
         gameState.players.push(aiPlayer);
-        
+
         return aiPlayer;
     }
 
@@ -67,19 +71,19 @@ export class CompanionSystem {
         // Find nearest zombie
         let nearestZombie = null;
         let minDistSquared = Infinity;
-        
+
         for (let i = 0; i < gameState.zombies.length; i++) {
             const zombie = gameState.zombies[i];
             const dx = zombie.x - player.x;
             const dy = zombie.y - player.y;
             const distSquared = dx * dx + dy * dy;
-            
+
             if (distSquared < minDistSquared) {
                 minDistSquared = distSquared;
                 nearestZombie = zombie;
             }
         }
-        
+
         const minDist = Math.sqrt(minDistSquared);
 
         let moveX = 0;
@@ -90,7 +94,7 @@ export class CompanionSystem {
             const dx = nearestZombie.x - player.x;
             const dy = nearestZombie.y - player.y;
             const dist = minDist;
-            
+
             // Face the zombie
             player.angle = Math.atan2(dy, dx);
 
@@ -123,10 +127,12 @@ export class CompanionSystem {
                 // Random inaccuracy
                 targetPos.x += (Math.random() - 0.5) * 20;
                 targetPos.y += (Math.random() - 0.5) * 20;
-                
+
                 shootBullet(targetPos, canvas, player);
+                if (player.dialogue) player.dialogue.trigger('engaging', 0.05);
             } else if (player.currentAmmo <= 0 && !player.isReloading) {
                 reloadWeapon(player);
+                if (player.dialogue) player.dialogue.trigger('reload');
             }
 
         } else {
@@ -141,15 +147,30 @@ export class CompanionSystem {
                 player.angle = Math.atan2(moveY, moveX);
             }
         }
-        
+
         if (!wantsToMove) {
             moveX = 0;
             moveY = 0;
         }
-        
+
         // AI doesn't sprint (moves at base speed)
         player.isSprinting = false;
         player.speed = PLAYER_BASE_SPEED;
+
+        // Update dialogue system
+        if (player.dialogue) {
+            player.dialogue.update();
+
+            // Trigger idle dialogue occasionally
+            if (!nearestZombie && !wantsToMove) {
+                player.dialogue.trigger('idle', 0.001); // Low chance per frame
+            }
+
+            // Trigger low health dialogue
+            if (player.health < player.maxHealth * 0.3) {
+                player.dialogue.trigger('low_health', 0.01);
+            }
+        }
 
         return { moveX, moveY };
     }

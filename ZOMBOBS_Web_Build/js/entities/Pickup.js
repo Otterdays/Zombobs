@@ -14,9 +14,11 @@ export class HealthPickup {
     draw() {
         const t = Date.now() / 500 + this.pulseOffset;
         const pulse = 0.8 + Math.sin(t) * 0.15;
+        // Enhanced pulse for better visibility (V0.7.1)
+        const enhancedPulse = 0.75 + Math.sin(t) * 0.2;
 
-        // Outer glow
-        const glowRadius = this.radius * 2.2 * pulse;
+        // Outer glow - Enhanced visibility (V0.7.1)
+        const glowRadius = this.radius * 2.4 * enhancedPulse;
         const glowGradient = ctx.createRadialGradient(
             this.x, this.y, 0,
             this.x, this.y, glowRadius
@@ -71,9 +73,11 @@ export class AmmoPickup {
     draw() {
         const t = Date.now() / 500 + this.pulseOffset;
         const pulse = 0.8 + Math.sin(t) * 0.15;
+        // Enhanced pulse for better visibility (V0.7.1)
+        const enhancedPulse = 0.75 + Math.sin(t) * 0.2;
 
-        // Outer glow (yellow/orange)
-        const glowRadius = this.radius * 2.2 * pulse;
+        // Outer glow (yellow/orange) - Enhanced visibility (V0.7.1)
+        const glowRadius = this.radius * 2.4 * enhancedPulse;
         const glowGradient = ctx.createRadialGradient(
             this.x, this.y, 0,
             this.x, this.y, glowRadius
@@ -128,18 +132,34 @@ export class DamagePickup {
     draw() {
         const t = Date.now() / 300 + this.pulseOffset; // Fast pulse
         const pulse = 0.8 + Math.sin(t) * 0.2;
+        // Enhanced pulse for rare pickup (V0.7.1)
+        const enhancedPulse = 0.7 + Math.sin(t) * 0.3; // Stronger pulse range
 
-        // Outer glow (Purple)
-        const glowRadius = this.radius * 2.2 * pulse;
+        // Outer glow (Purple) - Enhanced for rare pickup (V0.7.1)
+        const glowRadius = this.radius * 2.8 * enhancedPulse; // Larger glow radius
         const glowGradient = ctx.createRadialGradient(
             this.x, this.y, 0,
             this.x, this.y, glowRadius
         );
-        glowGradient.addColorStop(0, 'rgba(224, 64, 251, 0.9)');
+        glowGradient.addColorStop(0, 'rgba(224, 64, 251, 1.0)'); // Brighter center
+        glowGradient.addColorStop(0.5, 'rgba(224, 64, 251, 0.6)'); // Extended glow
         glowGradient.addColorStop(1, 'rgba(156, 39, 176, 0)');
         ctx.fillStyle = glowGradient;
         ctx.beginPath();
         ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Additional outer glow ring for rare pickup (V0.7.1)
+        const ringRadius = this.radius * 3.5 * enhancedPulse;
+        const ringGradient = ctx.createRadialGradient(
+            this.x, this.y, glowRadius * 0.8,
+            this.x, this.y, ringRadius
+        );
+        ringGradient.addColorStop(0, 'rgba(224, 64, 251, 0.3)');
+        ringGradient.addColorStop(1, 'rgba(156, 39, 176, 0)');
+        ctx.fillStyle = ringGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
         ctx.fill();
 
         // Main disc
@@ -182,6 +202,8 @@ export class NukePickup {
     draw() {
         const t = Date.now() / 200 + this.pulseOffset; // Very fast pulse
         const pulse = 0.8 + Math.sin(t) * 0.2;
+        // Enhanced pulse for very rare pickup (V0.7.1)
+        const enhancedPulse = 0.7 + Math.sin(t) * 0.3; // Stronger pulse range
 
         // Outer glow (Hazard Yellow)
         const glowRadius = this.radius * 2.5 * pulse;

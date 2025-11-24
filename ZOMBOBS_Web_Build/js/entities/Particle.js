@@ -33,58 +33,18 @@ export class Particle {
         this.life--;
     }
 
-    draw(ctx) { // ctx passed in main.js loop? No, main.js uses global ctx usually or imports it. 
-               // Particle.js method signature in main.js: particle.draw() (no args usually, uses imported ctx)
-               // But DamageNumber.draw(ctx) takes ctx.
-               // Let's check main.js: 
-               // gameState.particles.forEach(particle => { if (particle.draw) particle.draw() ... })
-        
-        if (this.customDraw) {
-            this.customDraw();
-            return;
-        }
-        
-        // We need to import ctx if we want to draw here, 
-        // but this file already imports ctx at the top.
-        
-        const alpha = Math.max(0, this.life / this.maxLife);
-        // We can't easily change globalAlpha here without affecting others if not saved/restored 
-        // or if we rely on main.js setting it.
-        // main.js implementation:
-        /*
-            gameState.particles.forEach(particle => {
-                if (particle.draw) {
-                    particle.draw();
-                } else {
-                    const maxLife = particle.maxLife || 30;
-                    ctx.fillStyle = particle.color;
-                    ctx.globalAlpha = Math.max(0, particle.life / maxLife);
-                    ctx.beginPath();
-                    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                }
-            });
-        */
-       // So standard particles don't even use this draw method in main.js!
-       // But I should enable it to encapsulate logic.
-       
-        // Re-importing ctx here to be safe, though it is already imported in the file.
-        // The class currently has a draw() method but main.js ignores it if it's a simple object? 
-        // No, main.js checks `if (particle.draw)`.
-        
-        // Let's make sure we use the imported ctx
-        // import { ctx } from '../core/canvas.js'; // Already at top of file
-    }
+    // Removed draw() method to allow ParticleSystem to handle rendering
+    // This ensures fallback logic (with proper color/alpha handling) is used
 }
 
 export class DamageNumber {
-    constructor(x, y, value, isCrit = false, customColor = null) {
+    constructor(x, y, value, isCrit = false, customColor = null, customFontSize = null) {
         this.x = x + (Math.random() - 0.5) * 10; // Start at zombie's x with some jitter
         this.y = y;
         this.value = value;
         this.isCrit = isCrit;
         this.customColor = customColor; // Optional custom color (e.g., '#00ffff' for cyan)
+        this.customFontSize = customFontSize; // Optional custom font size (V0.7.1)
         this.life = 60; // 1 second at 60fps
         this.maxLife = 60;
         this.vy = isCrit ? -2.0 : -1.5; // Faster upward velocity for crits
@@ -103,7 +63,10 @@ export class DamageNumber {
         ctx.save();
         const alpha = Math.max(0, this.life / this.maxLife);
         const damageQuality = graphicsSettings.getQualityValues('damageNumber');
-        const baseFontSize = this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16;
+        // Use custom font size if provided, otherwise calculate based on crit status
+        const baseFontSize = this.customFontSize !== null 
+            ? this.customFontSize 
+            : (this.isCrit ? (this.value === "CRIT!" ? 20 : 22) : 16);
         const fontSize = baseFontSize * damageQuality.fontSize;
         
         if (this.isCrit) {

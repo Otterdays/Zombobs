@@ -136,6 +136,21 @@ export class RenderingCache {
     }
 
     /**
+     * Get animated ground pattern with offset transform
+     * @param {number} offsetX - X offset for animation
+     * @param {number} offsetY - Y offset for animation
+     * @returns {CanvasPattern|null} Ground pattern or null if not initialized
+     */
+    getAnimatedGroundPattern(offsetX, offsetY) {
+        const pattern = this.getGroundPattern();
+        if (!pattern) return null;
+        
+        // Note: Canvas patterns don't support direct offset transforms
+        // The offset will be applied during rendering via ctx.translate()
+        return pattern;
+    }
+
+    /**
      * Update settings cache
      */
     updateSettings(vignetteEnabled, lightingEnabled) {

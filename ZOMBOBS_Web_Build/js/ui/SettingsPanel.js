@@ -85,7 +85,13 @@ export class SettingsPanel {
         this.targetScrollY = 0;
         this.activeDropdown = null;
         this.rebindingAction = null;
-        this.activeTab = 'video'; // Reset to first tab
+        // Restore last viewed tab (V0.7.1)
+        const lastTab = localStorage.getItem('zombobs_settings_last_tab');
+        if (lastTab && this.tabs.includes(lastTab)) {
+            this.activeTab = lastTab;
+        } else {
+            this.activeTab = 'video'; // Default to first tab
+        }
     }
 
     close() {
@@ -379,6 +385,7 @@ export class SettingsPanel {
         y = this.drawDropdown("Particle Count", "video", "particleCount", ['low', 'high', 'ultra'], y, mouse);
         y = this.drawDropdown("Lighting Quality", "video", "lightingQuality", ['off', 'simple', 'advanced'], y, mouse);
         y = this.drawToggle("Distortion Effects", "video", "distortionEffects", y, mouse);
+        y = this.drawToggle("Spore Cloud Effect", "video", "zombobsFXEnabled", y, mouse);
         
         // General Video Settings
         y = this.drawSectionHeader("GENERAL", y);
@@ -393,10 +400,13 @@ export class SettingsPanel {
         y = this.drawSlider("Blood & Gore", "video", "bloodGoreLevel", 0, 1, y, mouse);
         y = this.drawDropdown("Crosshair Style", "video", "crosshairStyle", ['default', 'dot', 'cross', 'circle'], y, mouse);
         y = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", y, mouse);
+        y = this.drawSlider("Crosshair Size", "video", "crosshairSize", 0.5, 2.0, y, mouse);
+        y = this.drawSlider("Crosshair Opacity", "video", "crosshairOpacity", 0.0, 1.0, y, mouse);
         y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
         y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
         y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
         y = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", y, mouse);
+        y = this.drawDropdown("Enemy Health Bar Style", "video", "enemyHealthBarStyle", ['gradient', 'solid', 'simple'], y, mouse);
         y = this.drawToggle("Reload Bar", "video", "reloadBar", y, mouse);
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);
         y = this.drawDropdown("FPS Limit", "video", "fpsLimit", [0, 30, 60, 120], y, mouse);
@@ -468,6 +478,14 @@ export class SettingsPanel {
         
         y += presetButtonHeight + 10 * presetScale;
         
+        // Text Rendering Quality
+        y = this.drawDropdown("Text Rendering Quality", "video", "textRenderingQuality", ['low', 'medium', 'high'], y, mouse);
+        
+        // UI Elements section
+        y = this.drawSectionHeader("UI ELEMENTS", y);
+        y = this.drawToggle("Show Rank Badge", "video", "showRankBadge", y, mouse);
+        y = this.drawDropdown("Rank Badge Size", "video", "rankBadgeSize", ['small', 'normal', 'large'], y, mouse);
+        
         // New graphics quality settings
         y = this.drawSectionHeader("QUALITY", y);
         y = this.drawSlider("Effect Intensity", "video", "effectIntensity", 0, 2, y, mouse);
@@ -496,6 +514,9 @@ export class SettingsPanel {
         const scale = this.getUIScale();
         y += 20 * scale; // Top padding
         
+        y = this.drawSectionHeader("GAME", y);
+        y = this.drawToggle("Enable AI Companion", "gameplay", "enableAICompanion", y, mouse);
+
         y = this.drawSectionHeader("CONTROLS", y);
         y = this.drawToggle("Auto Sprint", "gameplay", "autoSprint", y, mouse);
         y = this.drawToggle("Auto Reload", "gameplay", "autoReload", y, mouse);
@@ -689,8 +710,9 @@ export class SettingsPanel {
         // Label
         this.ctx.textAlign = 'left';
         this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.font = '13px "Roboto Mono", monospace';
-        this.ctx.fillText(label, labelX, y + 20);
+        const labelFontSize = Math.max(10, Math.round(13 * scale));
+        this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + 20 * scale);
 
         const isHovered = mouse.x >= dropdownX && mouse.x <= dropdownX + dropdownWidth &&
                           mouse.y >= dropdownY && mouse.y <= dropdownY + dropdownHeight &&
@@ -897,8 +919,9 @@ export class SettingsPanel {
             // Label
             this.ctx.textAlign = 'left';
             this.ctx.fillStyle = COLORS.textMain;
-            this.ctx.font = '13px "Roboto Mono", monospace';
-            this.ctx.fillText(label, labelX, y + 20);
+            const labelFontSize = Math.max(10, Math.round(13 * scale));
+            this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillText(label, labelX, y + 20 * scale);
 
             const isRebinding = this.rebindingAction === key;
             const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
@@ -1011,6 +1034,8 @@ export class SettingsPanel {
             if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
                 if (ctrl.type === 'tab') {
                     this.activeTab = ctrl.tab;
+                    // Save last viewed tab (V0.7.1)
+                    localStorage.setItem('zombobs_settings_last_tab', ctrl.tab);
                     this.scrollY = 0;
                     this.targetScrollY = 0;
                     return true;
