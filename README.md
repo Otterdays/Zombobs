@@ -7,25 +7,37 @@
 
 <p align="center">
   <a href="https://developer.mozilla.org/en-US/docs/Web/HTML">
-    <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" height="30" alt="HTML5" />
+    <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5" />
   </a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">
-    <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" height="30" alt="JavaScript" />
+    <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript" />
   </a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API">
-    <img src="https://img.shields.io/badge/Canvas-2D-FF6B6B?style=for-the-badge" height="30" alt="Canvas" />
+    <img src="https://img.shields.io/badge/Canvas_2D-FF6B6B?style=for-the-badge&logo=html5&logoColor=white" alt="Canvas 2D" />
+  </a>
+  <a href="https://www.w3.org/TR/webgpu/">
+    <img src="https://img.shields.io/badge/WebGPU-9900FF?style=for-the-badge&logo=webgpu&logoColor=white" alt="WebGPU" />
+  </a>
+  <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API">
+    <img src="https://img.shields.io/badge/Web_Audio_API-FF6B00?style=for-the-badge&logo=webaudio&logoColor=white" alt="Web Audio API" />
   </a>
   <a href="https://nodejs.org/">
-    <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" height="30" alt="Node.js" />
+    <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
+  </a>
+  <a href="https://expressjs.com/">
+    <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   </a>
   <a href="https://socket.io/">
-    <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" height="30" alt="Socket.io" />
+    <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.io" />
+  </a>
+  <a href="https://www.mongodb.com/">
+    <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
   </a>
   <a href="LEGAL/LICENSE.md">
-    <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
+    <img src="https://img.shields.io/badge/License-PROPRIETARY-FF1744?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.8.1.7_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.1.7 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.8.1.7_ALPHA-00C853?style=for-the-badge" alt="Version 0.8.1.7 ALPHA" />
   </a>
 </p>
 
