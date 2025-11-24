@@ -34,7 +34,7 @@ export class MultiplayerSystem {
         gameState.multiplayer.serverStatus = 'checking';
 
 
-        fetch(`${SERVER_URL}/health`)
+        fetch(`${SERVER_URL}/health`, { credentials: 'include' })
             .then(response => {
                 if (response.ok) {
                     return response.json();
@@ -134,7 +134,7 @@ export class MultiplayerSystem {
                 reconnectionDelayMax: 5000,
                 timeout: 20000,
                 forceNew: false,
-                withCredentials: false // Important for CORS
+                withCredentials: true // Important for CORS with cookies
             });
 
             gameState.multiplayer.socket = socket;
@@ -558,9 +558,18 @@ export class MultiplayerSystem {
 
             // Listen for score submission result
             socket.on('game:score:result', (data) => {
-                if (data.success && data.isInTop10 && gameHUD) {
-                    // Refresh leaderboard if score made it to top 10
-                    gameHUD.leaderboardDisplay.fetch();
+                console.log('[MultiplayerSystem] Score submission result:', data);
+                if (data.success && gameHUD) {
+                    // If server sent updated highscores, use them directly (faster than fetching)
+                    if (data.highscores && Array.isArray(data.highscores)) {
+                        console.log('[MultiplayerSystem] Updating leaderboard from server response:', data.highscores.length, 'entries');
+                        gameHUD.leaderboardDisplay.leaderboard = data.highscores;
+                        gameHUD.leaderboardDisplay.leaderboardLastFetch = Date.now();
+                        gameHUD.leaderboardDisplay.leaderboardFetchState = 'success';
+                    } else {
+                        // Fallback: fetch leaderboard if server didn't send it
+                        gameHUD.leaderboardDisplay.fetch();
+                    }
                 }
             });
 

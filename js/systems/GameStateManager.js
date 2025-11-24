@@ -41,8 +41,8 @@ export class GameStateManager {
         if (gameState.gameStartTime > 0) {
             const timeSurvived = (Date.now() - gameState.gameStartTime) / 1000; // in seconds
             // Determine game mode: arcade if not coop and not multiplayer
-            const gameMode = (!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' : 
-                            (gameState.isCoop ? 'coop' : 'multiplayer');
+            const gameMode = (!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' :
+                (gameState.isCoop ? 'coop' : 'multiplayer');
             console.log('[GameStateManager] Saving scoreboard entry:', {
                 isCoop: gameState.isCoop,
                 multiplayerActive: gameState.multiplayer.active,
@@ -167,7 +167,7 @@ export class GameStateManager {
                 p.y = canvas.height / 2;
             });
         }
-        
+
         // Set game start time for session tracking AFTER resetting state
         gameState.gameStartTime = Date.now();
 
@@ -187,25 +187,30 @@ export class GameStateManager {
         // Skip if score is 0 or invalid
         if (!score || score <= 0) return;
 
+        // Use gameState.multiplayer.active to determine if this was a multiplayer game
+        // This is more reliable than checking connection status, which may be false if socket disconnected
+        const isMultiplayer = gameState.multiplayer.active;
+
         const scoreData = {
             username: gameState.username,
             score: score,
             wave: wave,
             zombiesKilled: zombiesKilled,
-            isMultiplayer: gameState.multiplayer.connected && gameState.multiplayer.socket && gameState.multiplayer.socket.connected
+            isMultiplayer: isMultiplayer
         };
 
         // Try socket.io first if multiplayer connected
         if (gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
             try {
                 gameState.multiplayer.socket.emit('game:score', scoreData);
+                console.log('[GameStateManager] Score submitted via Socket.IO:', { score, wave, isMultiplayer });
             } catch (error) {
                 console.error('[GameStateManager] Error sending score via socket:', error);
                 // Fall back to HTTP POST
                 this.submitScoreViaHTTP(scoreData);
             }
         } else {
-            // Use HTTP POST if not in multiplayer
+            // Use HTTP POST if not in multiplayer or socket disconnected
             this.submitScoreViaHTTP(scoreData);
         }
     }
@@ -221,7 +226,8 @@ export class GameStateManager {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(scoreData)
+                body: JSON.stringify(scoreData),
+                credentials: 'include'
             });
 
             if (response.ok) {
