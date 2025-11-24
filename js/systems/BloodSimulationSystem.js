@@ -43,14 +43,14 @@ export class BloodSimulationSystem {
         this.updateQualitySettings();
 
         if (!this.enabled) {
-            console.log('[BloodSimulation] Disabled (quality preset too low)');
+
             return;
         }
 
         // Initialize blood grid
         this.initializeGrid();
 
-        console.log(`[BloodSimulation] Initialized (${this.gridWidth}x${this.gridHeight} grid, ${this.cellSize}px cells)`);
+
     }
 
     /**

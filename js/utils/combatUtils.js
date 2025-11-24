@@ -479,11 +479,7 @@ export function handleBulletZombieCollisions() {
     // In other modes, use canvas bounds (screen space)
     const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
 
-    // Debug: Count rockets
-    const rocketCount = gameState.bullets.filter(b => b.type === 'rocket').length;
-    if (rocketCount > 0) {
-        console.log('Rockets in bullets array:', rocketCount, 'Total bullets:', gameState.bullets.length);
-    }
+
 
     // Reuse Quadtree instance instead of recreating every frame
     if (!collisionQuadtree) {
@@ -569,7 +565,7 @@ export function handleBulletZombieCollisions() {
             if (checkZombieCollision(bullet, zombie)) {
                 // Handle Rocket collisions FIRST (before marking as hit)
                 if (bullet.type === 'rocket') {
-                    console.log('Rocket collision detected!', bullet.x, bullet.y, bullet.explosionRadius);
+
                     const rocketPlayer = bullet.player || gameState.players[0];
                     triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer);
                     bullet.markedForRemoval = true;

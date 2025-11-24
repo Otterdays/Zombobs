@@ -5,6 +5,15 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [v0.8.1.8] - The Blood Update - GPU-Accelerated Volumetric Blood System
 
 ### Added
+- **Username Input Modal** - Custom UI for username selection (replaces browser prompt)
+  - Styled modal dialog matching game aesthetic (dark theme, red/orange accents)
+  - Input field with focus state and blinking cursor
+  - Keyboard input support (Enter to submit, Escape to cancel)
+  - Character limit: 20 characters
+  - OK/Cancel buttons with hover effects
+  - Click outside modal to cancel
+  - Location: `js/ui/MainMenuScreen.js` - `drawUsernameModal()`, `openUsernameModal()`, `closeUsernameModal()`
+  - State: `gameState.showUsernameModal` flag controls visibility
 - **GPU-Accelerated Volumetric Blood Simulation** - Real-time blood flow physics using cellular automata
   - Voxel-based fluid dynamics with Navier-Stokes approximation
   - Blood pooling and spreading on ground surfaces

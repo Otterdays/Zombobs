@@ -25,6 +25,9 @@ export class MainMenuScreen {
         this.newsTickerBoxWidth = 0;
         this.newsTickerBoxHeight = 0;
         this.newsTickerTextWidth = 0;
+        // Username modal state
+        this.usernameInputText = '';
+        this.usernameInputFocused = false;
     }
 
     getUIScale() {
@@ -257,6 +260,11 @@ export class MainMenuScreen {
 
         // Draw news ticker at bottom (after other elements to appear on top)
         this.drawNewsTicker();
+
+        // Draw username modal if open
+        if (gameState.showUsernameModal) {
+            this.drawUsernameModal();
+        }
     }
 
     drawRankBadge() {
@@ -718,6 +726,11 @@ export class MainMenuScreen {
     }
 
     checkButtonClick(x, y) {
+        // Check username modal clicks first
+        if (gameState.showUsernameModal) {
+            return this.checkUsernameModalClick(x, y);
+        }
+
         const centerX = this.canvas.width / 2;
         const scale = this.getUIScale();
         const mainMenuButtonWidth = 180 * scale;  // Reduced from 200
@@ -787,7 +800,12 @@ export class MainMenuScreen {
     }
 
     updateHover(x, y) {
-        this.hoveredButton = this.checkButtonClick(x, y);
+        // Check username modal hover first
+        if (gameState.showUsernameModal) {
+            this.hoveredButton = this.checkUsernameModalClick(x, y);
+        } else {
+            this.hoveredButton = this.checkButtonClick(x, y);
+        }
         return this.hoveredButton;
     }
 
@@ -820,6 +838,214 @@ export class MainMenuScreen {
         // Reset manual offset to current auto offset to prevent jump when resuming auto-scroll
         // This ensures smooth transition from manual drag back to automatic scrolling
         this.newsTickerManualOffset = this.newsTickerAutoOffset;
+    }
+
+    drawUsernameModal() {
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        // Modal dimensions
+        const modalWidth = 500 * scale;
+        const modalHeight = 250 * scale;
+        const modalX = centerX - modalWidth / 2;
+        const modalY = centerY - modalHeight / 2;
+        const cornerRadius = 12 * scale;
+
+        // Draw dark overlay background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw modal background with gradient
+        this.ctx.save();
+        this.ctx.shadowBlur = 30 * scale;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
+        
+        this.ctx.beginPath();
+        this.ctx.roundRect(modalX, modalY, modalWidth, modalHeight, cornerRadius);
+        this.ctx.closePath();
+        
+        const gradient = this.ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalHeight);
+        gradient.addColorStop(0, 'rgba(30, 30, 30, 0.98)');
+        gradient.addColorStop(1, 'rgba(15, 15, 15, 0.98)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fill();
+        
+        // Border
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeStyle = '#ff1744';
+        this.ctx.lineWidth = 2 * scale;
+        this.ctx.stroke();
+        
+        this.ctx.restore();
+
+        // Title
+        const titleFontSize = Math.max(20, 24 * scale);
+        this.ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#ff1744';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'top';
+        this.ctx.shadowBlur = 8 * scale;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+        this.ctx.fillText('Enter Your Name', centerX, modalY + 20 * scale);
+        this.ctx.shadowBlur = 0;
+
+        // Input field
+        const inputWidth = modalWidth - 80 * scale;
+        const inputHeight = 50 * scale;
+        const inputX = centerX - inputWidth / 2;
+        const inputY = modalY + 70 * scale;
+        const inputCornerRadius = 8 * scale;
+
+        // Input background
+        this.ctx.save();
+        if (this.usernameInputFocused) {
+            this.ctx.shadowBlur = 15 * scale;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.5)';
+        }
+        
+        this.ctx.beginPath();
+        this.ctx.roundRect(inputX, inputY, inputWidth, inputHeight, inputCornerRadius);
+        this.ctx.closePath();
+        
+        const inputGradient = this.ctx.createLinearGradient(inputX, inputY, inputX, inputY + inputHeight);
+        inputGradient.addColorStop(0, this.usernameInputFocused ? 'rgba(40, 40, 40, 0.95)' : 'rgba(25, 25, 25, 0.95)');
+        inputGradient.addColorStop(1, this.usernameInputFocused ? 'rgba(30, 30, 30, 0.95)' : 'rgba(15, 15, 15, 0.95)');
+        this.ctx.fillStyle = inputGradient;
+        this.ctx.fill();
+        
+        // Input border
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeStyle = this.usernameInputFocused ? '#ff9800' : '#555555';
+        this.ctx.lineWidth = 2 * scale;
+        this.ctx.stroke();
+        
+        this.ctx.restore();
+
+        // Input text
+        const inputTextFontSize = Math.max(16, 18 * scale);
+        this.ctx.font = `${inputTextFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#e0e0e0';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        
+        // Show placeholder if empty
+        const displayText = this.usernameInputText || 'Survivor';
+        const textColor = this.usernameInputText ? '#e0e0e0' : '#888888';
+        this.ctx.fillStyle = textColor;
+        
+        // Add cursor if focused
+        const cursorX = inputX + 15 * scale + this.ctx.measureText(displayText).width;
+        const cursorY = inputY + inputHeight / 2;
+        
+        this.ctx.fillText(displayText, inputX + 15 * scale, cursorY);
+        
+        // Blinking cursor
+        if (this.usernameInputFocused) {
+            const cursorBlink = Math.floor(Date.now() / 500) % 2;
+            if (cursorBlink) {
+                this.ctx.fillStyle = '#ff9800';
+                this.ctx.fillRect(cursorX + 2 * scale, cursorY - 12 * scale, 2 * scale, 24 * scale);
+            }
+        }
+
+        // Buttons
+        const buttonWidth = 150 * scale;
+        const buttonHeight = 40 * scale;
+        const buttonY = modalY + modalHeight - 70 * scale;
+        const buttonSpacing = 20 * scale;
+        
+        const okButtonX = centerX - buttonWidth - buttonSpacing / 2;
+        const cancelButtonX = centerX + buttonSpacing / 2;
+        
+        const okHovered = this.hoveredButton === 'username_ok';
+        const cancelHovered = this.hoveredButton === 'username_cancel';
+        
+        // OK Button
+        this.hud.drawMenuButton('OK', okButtonX, buttonY, buttonWidth, buttonHeight, okHovered, false);
+        
+        // Cancel Button
+        this.hud.drawMenuButton('Cancel', cancelButtonX, buttonY, buttonWidth, buttonHeight, cancelHovered, false);
+    }
+
+    openUsernameModal() {
+        gameState.showUsernameModal = true;
+        this.usernameInputText = gameState.username || '';
+        this.usernameInputFocused = true;
+    }
+
+    closeUsernameModal() {
+        gameState.showUsernameModal = false;
+        this.usernameInputText = '';
+        this.usernameInputFocused = false;
+    }
+
+    checkUsernameModalClick(x, y) {
+        if (!gameState.showUsernameModal) return null;
+
+        const scale = this.getUIScale();
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        const modalWidth = 500 * scale;
+        const modalHeight = 250 * scale;
+        const modalX = centerX - modalWidth / 2;
+        const modalY = centerY - modalHeight / 2;
+
+        // Check if click is outside modal (close on background click)
+        if (x < modalX || x > modalX + modalWidth || y < modalY || y > modalY + modalHeight) {
+            return 'username_background';
+        }
+
+        // Input field
+        const inputWidth = modalWidth - 80 * scale;
+        const inputHeight = 50 * scale;
+        const inputX = centerX - inputWidth / 2;
+        const inputY = modalY + 70 * scale;
+
+        if (x >= inputX && x <= inputX + inputWidth && y >= inputY && y <= inputY + inputHeight) {
+            return 'username_input';
+        }
+
+        // Buttons
+        const buttonWidth = 150 * scale;
+        const buttonHeight = 40 * scale;
+        const buttonY = modalY + modalHeight - 70 * scale;
+        const buttonSpacing = 20 * scale;
+        
+        const okButtonX = centerX - buttonWidth - buttonSpacing / 2;
+        const cancelButtonX = centerX + buttonSpacing / 2;
+
+        if (x >= okButtonX && x <= okButtonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+            return 'username_ok';
+        }
+
+        if (x >= cancelButtonX && x <= cancelButtonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+            return 'username_cancel';
+        }
+
+        return null;
+    }
+
+    handleUsernameModalKey(key) {
+        if (!gameState.showUsernameModal || !this.usernameInputFocused) return false;
+
+        if (key === 'Enter') {
+            return 'submit';
+        } else if (key === 'Escape') {
+            return 'cancel';
+        } else if (key === 'Backspace') {
+            this.usernameInputText = this.usernameInputText.slice(0, -1);
+            return true;
+        } else if (key.length === 1) {
+            // Limit to 20 characters
+            if (this.usernameInputText.length < 20) {
+                this.usernameInputText += key;
+            }
+            return true;
+        }
+
+        return false;
     }
 }
 

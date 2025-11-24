@@ -1128,7 +1128,8 @@ export class GameHUD {
             return;
         }
         if (this.mainMenu) {
-            this.hoveredButton = this.mainMenuScreen.updateHover(mouseX, mouseY);
+            this.mainMenuScreen.updateHover(mouseX, mouseY);
+            this.hoveredButton = this.mainMenuScreen.hoveredButton;
             return;
         }
         this.hoveredButton = null;

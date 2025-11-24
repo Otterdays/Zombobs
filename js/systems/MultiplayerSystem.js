@@ -32,7 +32,7 @@ export class MultiplayerSystem {
         if (gameState.multiplayer.status === 'connected') return;
 
         gameState.multiplayer.serverStatus = 'checking';
-        console.log('Checking server health at:', SERVER_URL);
+
 
         fetch(`${SERVER_URL}/health`)
             .then(response => {
@@ -42,7 +42,7 @@ export class MultiplayerSystem {
                 throw new Error('Network response was not ok');
             })
             .then(data => {
-                console.log('Server is online:', data);
+
                 gameState.multiplayer.serverStatus = 'online';
             })
             .catch(error => {
@@ -61,45 +61,45 @@ export class MultiplayerSystem {
         // Use Socket.IO's built-in ping/pong mechanism for latency measurement
         // Socket.IO sends ping/pong automatically, we just need to measure the round-trip time
         let pingInterval = null;
-        
+
         // Listen for ping events (server sends ping)
         socket.io.on('ping', () => {
             gameState.lastPingTime = Date.now();
         });
-        
+
         // Listen for pong events (server responds)
         socket.io.on('pong', () => {
             if (gameState.lastPingTime) {
                 const latency = Date.now() - gameState.lastPingTime;
                 // Use exponential moving average for smoother latency tracking
-                gameState.networkLatency = gameState.networkLatency 
+                gameState.networkLatency = gameState.networkLatency
                     ? gameState.networkLatency * 0.8 + latency * 0.2
                     : latency;
                 gameState.multiplayer.latency = gameState.networkLatency;
             }
         });
-        
+
         // Also measure custom ping/pong if server supports it
         pingInterval = setInterval(() => {
             if (!socket.connected) {
                 if (pingInterval) clearInterval(pingInterval);
                 return;
             }
-            
+
             const pingStart = Date.now();
             socket.emit('ping', Date.now(), (response) => {
                 if (response) {
                     const pingEnd = Date.now();
                     const latency = pingEnd - pingStart;
                     // Use exponential moving average for smoother latency tracking
-                    gameState.networkLatency = gameState.networkLatency 
+                    gameState.networkLatency = gameState.networkLatency
                         ? gameState.networkLatency * 0.8 + latency * 0.2
                         : latency;
                     gameState.multiplayer.latency = gameState.networkLatency;
                 }
             });
         }, 5000); // Measure every 5 seconds
-        
+
         // Clean up on disconnect
         socket.on('disconnect', () => {
             if (pingInterval) {
@@ -141,11 +141,7 @@ export class MultiplayerSystem {
 
             socket.on('connect', () => {
                 console.log('✅ Successfully connected to multiplayer server');
-                console.log('Connection details:', {
-                    id: socket.id,
-                    transport: socket.io.engine?.transport?.name || 'unknown',
-                    url: SERVER_URL
-                });
+
                 gameState.multiplayer.connected = true;
                 gameState.multiplayer.status = 'connected';
                 gameState.multiplayer.playerId = socket.id;
@@ -155,7 +151,7 @@ export class MultiplayerSystem {
                     name: gameState.username || `Survivor-${socket.id.slice(-4)}`,
                     rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
                 });
-                
+
                 // Start latency measurement (ping/pong)
                 this.startLatencyMeasurement(socket);
             });
@@ -171,10 +167,7 @@ export class MultiplayerSystem {
             });
 
             socket.on('lobby:update', (players) => {
-                console.log('[Lobby Update] Received from server', {
-                    playerCount: players?.length || 0,
-                    localPlayerId: gameState.multiplayer.playerId
-                });
+
                 gameState.multiplayer.players = Array.isArray(players) ? players : [];
                 // Update local leader/ready status from server data
                 const localPlayer = players.find(p => p.id === gameState.multiplayer.playerId);
@@ -183,13 +176,7 @@ export class MultiplayerSystem {
                     const oldLeader = gameState.multiplayer.isLeader;
                     gameState.multiplayer.isLeader = localPlayer.isLeader || false;
                     gameState.multiplayer.isReady = localPlayer.isReady || false;
-                    console.log('[Lobby Update] Local player state updated', {
-                        name: localPlayer.name,
-                        isLeader: gameState.multiplayer.isLeader,
-                        isReady: gameState.multiplayer.isReady,
-                        readyChanged: oldReady !== gameState.multiplayer.isReady,
-                        leaderChanged: oldLeader !== gameState.multiplayer.isLeader
-                    });
+
                 } else {
                     console.warn('[Lobby Update] Local player not found in update', {
                         localPlayerId: gameState.multiplayer.playerId,
@@ -200,17 +187,16 @@ export class MultiplayerSystem {
 
             socket.on('game:start', () => {
                 console.log('🎮 Game start signal received from server');
-                console.log('[game:start] Multiplayer players:', gameState.multiplayer.players);
-                console.log('[game:start] Local player ID:', gameState.multiplayer.playerId);
+
 
                 if (gameState.showLobby) {
                     // Enable co-op mode for multiplayer
                     gameState.isCoop = true;
-                    console.log('[game:start] Co-op mode enabled');
+
 
                     // Synchronize players from lobby to game state
                     const multiplayerPlayers = gameState.multiplayer.players || [];
-                    console.log('[game:start] Syncing players from lobby. Count:', multiplayerPlayers.length);
+
 
                     gameState.players = multiplayerPlayers.map((lobbyPlayer, index) => {
                         const isLocalPlayer = lobbyPlayer.id === gameState.multiplayer.playerId;
@@ -225,19 +211,12 @@ export class MultiplayerSystem {
                         player.name = lobbyPlayer.name;
                         player.inputSource = isLocalPlayer ? 'mouse' : 'remote';
 
-                        console.log('[game:start] Created player:', {
-                            id: player.id,
-                            name: player.name,
-                            isLocal: isLocalPlayer,
-                            inputSource: player.inputSource,
-                            color: player.color.name
-                        });
+
 
                         return player;
                     });
 
-                    console.log('[game:start] Player sync complete. Total players:', gameState.players.length);
-                    console.log('[game:start] Player IDs:', gameState.players.map(p => ({ id: p.id, name: p.name })));
+
 
                     // Ensure game is not paused when starting
                     gameState.gamePaused = false;
@@ -263,17 +242,7 @@ export class MultiplayerSystem {
             // Handle remote player state updates
             socket.on('player:state:update', (data) => {
                 // Debug: Log received state updates (throttled to avoid spam)
-                if (!window._lastStateUpdateLog || Date.now() - window._lastStateUpdateLog > 2000) {
-                    console.log('[player:state:update] Received state update', {
-                        playerId: data.playerId,
-                        isCoop: gameState.isCoop,
-                        gameRunning: gameState.gameRunning,
-                        hasX: data.x !== undefined,
-                        hasY: data.y !== undefined,
-                        hasAngle: data.angle !== undefined
-                    });
-                    window._lastStateUpdateLog = Date.now();
-                }
+
 
                 // Check if we're in multiplayer mode and game is running
                 if (!gameState.isCoop) {
@@ -343,7 +312,7 @@ export class MultiplayerSystem {
                         const originalX = remotePlayer.x;
                         const originalY = remotePlayer.y;
                         const originalAngle = remotePlayer.angle;
-                        
+
                         if (data.x !== undefined) remotePlayer.x = data.x;
                         if (data.y !== undefined) remotePlayer.y = data.y;
                         if (data.angle !== undefined) remotePlayer.angle = data.angle;
@@ -446,12 +415,12 @@ export class MultiplayerSystem {
                 const now = Date.now();
                 const updateInterval = Math.max(50, now - gameState.lastZombieUpdateBroadcast || 100);
                 const frameTime = this.gameEngine.timeStep || 16.67;
-                
+
                 // Calculate adaptive lerp factor based on update frequency
                 // Formula: lerpFactor = Math.min(0.5, updateInterval / frameTime)
                 // Higher update interval = faster lerp to catch up
                 const lerpFactor = Math.min(0.5, Math.max(0.1, updateInterval / (frameTime * 2)));
-                
+
                 // Update zombie positions from leader
                 zombiesData.forEach(data => {
                     const zombie = gameState.zombies.find(z => z.id === data.id);
@@ -459,7 +428,7 @@ export class MultiplayerSystem {
                         // Store previous position for velocity calculation
                         const oldX = zombie.x;
                         const oldY = zombie.y;
-                        
+
                         // Apply synced speed if provided
                         if (data.speed !== undefined) {
                             zombie.speed = data.speed;
@@ -467,7 +436,7 @@ export class MultiplayerSystem {
                         if (data.baseSpeed !== undefined) {
                             zombie.baseSpeed = data.baseSpeed;
                         }
-                        
+
                         // Calculate velocity from position delta
                         if (zombie.targetX !== undefined && zombie.targetY !== undefined) {
                             const timeSinceLastUpdate = (now - zombie.lastUpdateTime) || updateInterval;
@@ -476,7 +445,7 @@ export class MultiplayerSystem {
                                 zombie.vy = (data.y - zombie.targetY) / timeSinceLastUpdate;
                             }
                         }
-                        
+
                         // Set target for interpolation
                         zombie.targetX = data.x;
                         zombie.targetY = data.y;
@@ -496,7 +465,7 @@ export class MultiplayerSystem {
                         }
                     }
                 });
-                
+
                 gameState.lastZombieUpdateBroadcast = now;
             });
 
@@ -517,7 +486,7 @@ export class MultiplayerSystem {
                 const zombieIndex = gameState.zombies.findIndex(z => z.id === data.zombieId);
                 if (zombieIndex !== -1) {
                     const zombie = gameState.zombies[zombieIndex];
-                    
+
                     // Clean up state tracking for dead zombie (multiplayer sync)
                     gameState.lastZombieState.delete(zombie.id);
 
@@ -598,19 +567,19 @@ export class MultiplayerSystem {
             // --- Chat System Listeners ---
             socket.on('chat:message:new', (message) => {
                 if (!message || !message.message) return;
-                
+
                 // Add message to chat history
                 if (!gameState.multiplayer.chatMessages) {
                     gameState.multiplayer.chatMessages = [];
                 }
-                
+
                 gameState.multiplayer.chatMessages.push(message);
-                
+
                 // Limit chat history to last 50 messages
                 if (gameState.multiplayer.chatMessages.length > 50) {
                     gameState.multiplayer.chatMessages.shift();
                 }
-                
+
                 // Auto-scroll to bottom if user hasn't manually scrolled up
                 // (This will be handled in the UI rendering)
             });
@@ -682,8 +651,8 @@ export class MultiplayerSystem {
             name: gameState.username || `Survivor-${gameState.multiplayer.playerId?.slice(-4) || '0000'}`,
             rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
         });
-        
-        console.log('[Multiplayer] Username updated on server:', gameState.username);
+
+
     }
 }
 

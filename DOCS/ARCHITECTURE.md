@@ -1135,6 +1135,10 @@ This hybrid approach provides:
 
 **Main Menu Layout**:
 - **Top Center**: Username box (styled container, 320px wide, 50px tall, positioned at 30px from top)
+  - Clicking opens username input modal (replaces browser prompt)
+  - Modal styled to match game aesthetic (dark theme, red/orange accents)
+  - Keyboard input support with blinking cursor
+  - OK/Cancel buttons with hover effects
 - **Top Right**: Rank badge displayed next to username box
 - **Right Side (Top)**: Global Leaderboard (positioned at 100px from top, right-aligned)
   - Shows top 10 scores with rank, username, score, and wave
@@ -1251,7 +1255,15 @@ This hybrid approach provides:
   - Reduced from ~4,715 lines to ~1,757 lines (63% reduction)
   - 9 screen classes handle full-screen UI rendering and interaction
 - **Screen Classes**:
-  - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, version display
+  - `MainMenuScreen.js` - Main menu with leaderboard, news ticker, version display, username input modal
+    - **Username Modal**: Custom UI dialog for username selection (replaces browser prompt)
+      - Styled to match game aesthetic (dark theme, red/orange accents, Roboto Mono font)
+      - Input field with focus state and blinking cursor
+      - Keyboard input support (Enter to submit, Escape to cancel, Backspace to delete)
+      - Character limit: 20 characters
+      - OK/Cancel buttons with hover effects matching menu buttons
+      - Click outside modal to cancel
+      - Methods: `openUsernameModal()`, `closeUsernameModal()`, `drawUsernameModal()`, `checkUsernameModalClick()`, `handleUsernameModalKey()`
   - `LobbyScreen.js` - Multiplayer lobby with player cards, chat system, connection status
   - `CoopLobbyScreen.js` - Local co-op lobby for player setup
   - `AILobbyScreen.js` - AI companion lobby for adding AI players

@@ -98,6 +98,7 @@ export const gameState = {
     showGallery: false,
     showProfile: false,
     showAchievements: false,
+    showUsernameModal: false,
     showBattlepass: false,
     showBadges: false,
 

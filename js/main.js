@@ -153,11 +153,11 @@ updateGpuCanvasVisibility();
 
 webgpuRenderer.init().then(initialized => {
     if (initialized) {
-        console.log('WebGPU renderer ready');
+
         // Apply initial settings
         applyWebGPUSettings();
     } else {
-        console.log('WebGPU renderer unavailable, using Canvas 2D fallback');
+
     }
     // Update gpuCanvas visibility based on WebGPU availability
     updateGpuCanvasVisibility();
@@ -185,24 +185,18 @@ function updateGpuCanvasVisibility() {
     const webgpuAvailable = webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
     const webgpuActive = webgpuEnabled && webgpuAvailable;
 
-    console.log('[gpuCanvas] Updating visibility:', {
-        webgpuEnabled,
-        webgpuAvailable,
-        webgpuActive,
-        isAvailable: webgpuRenderer?.isAvailable(),
-        hasNavigatorGpu: !!navigator.gpu
-    });
+
 
     if (webgpuActive) {
         gpuCanvas.style.display = 'block';
         gpuCanvas.style.visibility = 'visible';
         gpuCanvas.style.opacity = '1';
-        console.log('[gpuCanvas] Showing canvas');
+
     } else {
         gpuCanvas.style.display = 'none';
         gpuCanvas.style.visibility = 'hidden';
         gpuCanvas.style.opacity = '0';
-        console.log('[gpuCanvas] Hiding canvas');
+
     }
 }
 
@@ -1301,6 +1295,32 @@ gameEngine.draw = () => {
 document.addEventListener('keydown', (e) => {
     activeInputSource = 'mouse';
 
+    // Username modal input handling (when modal is open)
+    if (gameState.showUsernameModal && gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputFocused) {
+        const result = gameHUD.mainMenuScreen.handleUsernameModalKey(e.key);
+        if (result === 'submit') {
+            e.preventDefault();
+            // Submit username
+            if (gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
+                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
+                saveUsername();
+                playerProfileSystem.setUsername(gameState.username);
+                multiplayerSystem.updateUsernameOnServer();
+            }
+            gameHUD.mainMenuScreen.closeUsernameModal();
+            return;
+        } else if (result === 'cancel') {
+            e.preventDefault();
+            // Cancel modal
+            gameHUD.mainMenuScreen.closeUsernameModal();
+            return;
+        } else if (result === true) {
+            // Character input handled
+            e.preventDefault();
+            return;
+        }
+    }
+
     // Chat input handling (when chat is focused)
     if (gameState.showLobby && gameState.multiplayer.chatFocused && !gameState.multiplayer.isGameStarting) {
         if (e.key === 'Enter') {
@@ -1515,13 +1535,30 @@ canvas.addEventListener('mousedown', (e) => {
             settingsPanel.open();
             playerProfileSystem.trackSettingsVisit();
         } else if (clickedButton === 'username') {
-            const newUsername = window.prompt('Enter your name:', gameState.username);
-            if (newUsername !== null && newUsername.trim() !== '') {
-                gameState.username = newUsername.trim();
+            // Open username modal
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.openUsernameModal();
+            }
+        } else if (clickedButton === 'username_ok') {
+            // Submit username from modal
+            if (gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputText.trim() !== '') {
+                gameState.username = gameHUD.mainMenuScreen.usernameInputText.trim();
                 saveUsername();
                 playerProfileSystem.setUsername(gameState.username);
-                // Update username on server if connected to multiplayer
                 multiplayerSystem.updateUsernameOnServer();
+            }
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.closeUsernameModal();
+            }
+        } else if (clickedButton === 'username_cancel' || clickedButton === 'username_background') {
+            // Cancel username modal
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.closeUsernameModal();
+            }
+        } else if (clickedButton === 'username_input') {
+            // Focus input field
+            if (gameHUD.mainMenuScreen) {
+                gameHUD.mainMenuScreen.usernameInputFocused = true;
             }
         } else if (clickedButton === 'multiplayer') {
             gameState.showMainMenu = false;
