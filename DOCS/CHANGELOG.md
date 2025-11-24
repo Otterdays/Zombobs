@@ -2,6 +2,48 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.7] - Console Error Fixes & Deployment Improvements
+
+### Fixed
+- **Hugging Face Server Console Errors** - Suppressed Permissions Policy warnings and third-party script errors
+  - Added Permissions Policy meta tag with only recognized features
+  - Added console error suppression for Hugging Face WAF/bot protection errors (challenge.js)
+  - Suppressed "Unrecognized feature" warnings for ambient-light-sensor, battery, document-domain, layout-animations, legacy-image-formats, oversized-images, vr, wake-lock
+  - Location: `huggingface-space-SERVER/server.js`
+
+- **Itch.io Console Errors** - Fixed Permissions Policy warnings and path issues
+  - Added Permissions Policy meta tag to suppress monetization and xr warnings
+  - Added console warning suppression for Itch.io iframe Permissions Policy errors
+  - Fixed CSS/JS path references for Itch.io deployment (removed `./` prefix for compatibility)
+  - Added meta tags (description, theme-color) for better SEO and mobile support
+  - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
+
+### Changed
+- **Hugging Face Server Visual Improvements** - Enhanced status page appearance
+  - Improved background with gradient overlays and red/green accent colors
+  - Enhanced stats container with glassmorphism effects, backdrop blur, and red border glow
+  - Better play button with larger size, shine animation, and enhanced shadows
+  - Improved stat cards with gradient backgrounds, hover lift effects, and smooth transitions
+  - Enhanced status indicator with better glow and text shadow
+  - Location: `huggingface-space-SERVER/server.js`
+
+- **Version Consistency** - Updated all version references to V0.8.1.7 ALPHA
+  - Updated `js/ui/MainMenuScreen.js` version display
+  - Updated `js/ui/AboutScreen.js` version and engine display
+  - Updated server package.json files (huggingface-space-SERVER, LOCAL_SERVER)
+  - Updated `launch.ps1` server version variable
+  - All version displays now consistently show V0.8.1.7 ALPHA
+
+### Files Modified
+- `huggingface-space-SERVER/server.js` - Console error suppression, visual improvements, Permissions Policy meta tag
+- `zombie-game.html` - Permissions Policy meta tag, console warning suppression, path fixes
+- `ZOMBOBS_Web_Build/zombie-game.html` - Same fixes as source file
+- `js/ui/MainMenuScreen.js` - Version display updated to V0.8.1.7 ALPHA
+- `js/ui/AboutScreen.js` - Version and engine display updated to V0.8.1.7 ALPHA
+- `huggingface-space-SERVER/package.json` - Version updated to 0.8.1.7-ALPHA
+- `LOCAL_SERVER/package.json` - Version updated to 0.8.1.7-ALPHA
+- `launch.ps1` - Server version variable updated to 0.8.1.7-ALPHA
+
 ## [v0.8.1.8] - The Blood Update - GPU-Accelerated Volumetric Blood System
 
 ### Added

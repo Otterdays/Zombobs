@@ -4,6 +4,21 @@
 
 ## 2025 - Active Development Notes
 
+### Console Error Fixes & Deployment Improvements [2025-01-XX]
+- ✅ **Hugging Face Server Console Errors Fixed** - Suppressed Permissions Policy warnings
+  - Added Permissions Policy meta tag with only recognized features
+  - Suppressed third-party script errors (challenge.js from Hugging Face WAF)
+  - Enhanced server status page visuals with glassmorphism and improved animations
+  - Location: `huggingface-space-SERVER/server.js`
+- ✅ **Itch.io Console Errors Fixed** - Fixed Permissions Policy warnings and path issues
+  - Added Permissions Policy meta tag to suppress monetization/xr warnings
+  - Fixed CSS/JS paths for Itch.io compatibility (removed `./` prefix)
+  - Added console warning suppression for Itch.io iframe errors
+  - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
+- ✅ **Version Consistency** - Updated all files to V0.8.1.7 ALPHA
+  - MainMenuScreen, AboutScreen, server package.json files, launch.ps1
+  - All version displays now consistent across the project
+
 ### ZombobsFX Spore Cloud Integration [2025-01-XX]
 - ✅ **ZombobsFX Spore Cloud Effect** - Integrated 100k particle background effect into WebGPU renderer
   - **Integration**: Moved `ZombobsFX.js` to `js/core/` and refactored to accept existing device/context

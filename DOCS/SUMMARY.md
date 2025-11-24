@@ -333,6 +333,14 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
 
 ## Recent Updates (V0.8.1.7 ALPHA)
+- **Console Error Fixes (V0.8.1.7)**: Fixed Permissions Policy warnings on Hugging Face and Itch.io pages
+  - Suppressed "Unrecognized feature" warnings (monetization, xr, etc.)
+  - Added console error suppression for third-party scripts
+  - Fixed CSS/JS path issues for Itch.io deployment
+- **Hugging Face Server Improvements (V0.8.1.7)**: Enhanced visual appearance of server status page
+  - Glassmorphism effects, gradient backgrounds, improved hover animations
+  - Better stat cards and play button with enhanced shadows and glow
+- **Version Consistency (V0.8.1.7)**: All version references updated to V0.8.1.7 ALPHA across all files
 - **Off-Screen Indicator Color Fix (V0.8.1.7)**: Fixed zombie spawn arrow color variation
   - Fixed arrows always appearing red after camera system changes
   - Color calculation now uses world-space distance instead of screen-space distance
