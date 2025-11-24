@@ -1,4 +1,5 @@
 import { gpuCanvas } from './canvas.js';
+import { ZombobsFX } from './ZombobsFX.js';
 
 export class WebGPURenderer {
     constructor() {
@@ -72,6 +73,10 @@ export class WebGPURenderer {
         this.bloodRenderBindGroup = null;
         this.bloodComputeBindGroupLayout = null;
         this.bloodRenderBindGroupLayout = null;
+
+        // ZombobsFX spore cloud effect
+        this.zombobsFX = null;
+        this.zombobsFXEnabled = false;
     }
 
     async init() {
@@ -565,6 +570,17 @@ export class WebGPURenderer {
                 primitive: { topology: 'triangle-strip' },
             });
 
+            // Initialize ZombobsFX spore cloud effect
+            if (!this.fallbackMode) {
+                this.zombobsFX = new ZombobsFX();
+                try {
+                    await this.zombobsFX.init(this.device, this.context, this.format, gpuCanvas);
+                } catch (error) {
+                    console.warn('Failed to initialize ZombobsFX:', error);
+                    this.zombobsFX = null;
+                }
+            }
+
             this.isInitialized = true;
 
             return true;
@@ -624,6 +640,12 @@ export class WebGPURenderer {
 
             const encoder = this.device.createCommandEncoder();
 
+            // Update ZombobsFX compute pass BEFORE render pass starts
+            if (this.zombobsFXEnabled && this.zombobsFX && this.zombobsFX.isReady()) {
+                const deltaTime = dt || 0.016; // Use provided dt or default
+                this.zombobsFX.updateCompute(encoder, deltaTime / 1000); // Convert ms to seconds
+            }
+
             if (this.particleCount > 0 && this.particleBuffer && this.particleComputeBindGroup) {
                 const cPass = encoder.beginComputePass();
                 cPass.setPipeline(this.computePipeline);
@@ -648,6 +670,11 @@ export class WebGPURenderer {
             pass.setPipeline(this.renderPipeline);
             pass.setBindGroup(0, this.bindGroup); // Background uses separate bind group
             pass.draw(3, 1, 0, 0);
+
+            // Render ZombobsFX spore cloud effect (above background, below game entities)
+            if (this.zombobsFXEnabled && this.zombobsFX && this.zombobsFX.isReady()) {
+                this.zombobsFX.render(pass);
+            }
 
             // Render background particles with separate bind group (read-only storage)
             if (this.particleCount > 0 && this.particleBuffer && this.particleRenderBindGroup) {
@@ -714,6 +741,10 @@ export class WebGPURenderer {
             this.distortionEnabled = newEnabled;
             this.uniformsDirty = true;
         }
+    }
+
+    setZombobsFXEnabled(enabled) {
+        this.zombobsFXEnabled = enabled;
     }
 
     setLightingQuality(level) {

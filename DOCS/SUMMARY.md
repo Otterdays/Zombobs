@@ -339,6 +339,15 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Added separate `colorDistance` threshold (1500 units arcade, 400 units other modes) for more sensitive color variation
   - Arrows now properly transition from red (close) to yellow/green (far) based on actual world-space distance
   - Location: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
+- **ZombobsFX Spore Cloud Effect (V0.8.1.7)**: 100k particle background effect with mouse interaction
+  - GPU-accelerated compute shader updates 100,000 particles per frame
+  - Mouse repulsion: particles repel from cursor position creating interactive "antidote" effect
+  - Color gradient: Zombie Purple to Toxic Green based on particle life
+  - Additive blending creates glowing "radioactive core" effect when particles overlap
+  - Renders above procedural background but below game entities
+  - Toggleable via Video settings: "Spore Cloud Effect" (default: enabled)
+  - Integrated into WebGPURenderer using shared device/context (no duplicate initialization)
+  - Location: `js/core/ZombobsFX.js`, integrated in `js/core/WebGPURenderer.js`
 - **WebGPU Explosions & Particle Overhaul**: Enabled large-scale explosions for grenades and rockets
   - Removed early return in `ParticleSystem.js` that was disabling explosions
   - Updated `WebGPURenderer.js` to support larger particles (8x radius) and more particles (2000 limit)

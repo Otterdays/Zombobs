@@ -4,6 +4,25 @@
 
 ## 2025 - Active Development Notes
 
+### ZombobsFX Spore Cloud Integration [2025-01-XX]
+- ✅ **ZombobsFX Spore Cloud Effect** - Integrated 100k particle background effect into WebGPU renderer
+  - **Integration**: Moved `ZombobsFX.js` to `js/core/` and refactored to accept existing device/context
+  - **Refactoring**: Removed duplicate WebGPU initialization, now uses shared device/context from WebGPURenderer
+  - **Shader Fixes**: Fixed WebGPU shader errors by using separate bind group layouts (compute: read_write, render: read-only-storage)
+  - **Separate Groups**: Compute shader uses `@group(0)` with read_write storage, render uses `@group(1)` with read-only storage
+  - **100k Particles**: GPU-accelerated compute shader updates all particles per frame
+  - **Mouse Interaction**: Particles repel from cursor position (normalized -1 to 1 coordinates)
+  - **Color Gradient**: Zombie Purple to Toxic Green based on particle life
+  - **Additive Blending**: Creates glowing "radioactive core" effect when particles overlap
+  - **Render Order**: Renders after background shader, before game particles
+  - **Settings Integration**: Added toggle in Video settings tab ("Spore Cloud Effect")
+  - **Settings Key**: `video.zombobsFXEnabled` (boolean, default: true)
+  - **Real-time Updates**: Setting changes apply immediately via `setZombobsFXEnabled()`
+  - **Initialization**: ZombobsFX initialized during `WebGPURenderer.init()` if WebGPU available
+  - **Performance**: Shared device/context eliminates duplicate WebGPU initialization overhead
+  - **Location**: `js/core/ZombobsFX.js`, integrated in `js/core/WebGPURenderer.js`, settings in `js/ui/SettingsPanel.js`, `js/main.js`
+  - **Status**: ✅ WORKING - 100k particle spore cloud renders correctly with mouse interaction
+
 ### Car Fire & Skull Enhancement [2025-01-XX]
 - ✅ **Fixed Zombie Spawn Arrow Color Variation** - Restored distance-based color variation for off-screen zombie indicators
   - **Problem**: After camera system changes, arrows always appeared red regardless of zombie distance

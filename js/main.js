@@ -218,6 +218,8 @@ function applyWebGPUSettings() {
     webgpuRenderer.setLightingQuality(lighting);
     const particles = settingsManager.getSetting('video', 'particleCount') ?? 'high';
     webgpuRenderer.setParticleCount(particles);
+    const zombobsFX = settingsManager.getSetting('video', 'zombobsFXEnabled') ?? true;
+    webgpuRenderer.setZombobsFXEnabled(zombobsFX);
 }
 
 // Listen for settings changes and update renderer/systems
@@ -275,6 +277,9 @@ settingsManager.addChangeListener((category, key, value) => {
             }
             if (key === 'distortionEffects') {
                 webgpuRenderer.setDistortionEffects(value);
+            }
+            if (key === 'zombobsFXEnabled') {
+                webgpuRenderer.setZombobsFXEnabled(value);
             }
             if (key === 'lightingQuality') {
                 webgpuRenderer.setLightingQuality(value);
@@ -1053,6 +1058,29 @@ function drawGame() {
         ctx.translate(shakeX, shakeY);
     }
     drawParticles();
+
+    // Draw volumetric blood pools
+    if (bloodSimulationSystem.enabled) {
+        const bloodData = bloodSimulationSystem.getBloodData();
+        if (bloodData.length > 0) {
+            console.log(`[BloodRender] Drawing ${bloodData.length} blood cells`);
+            ctx.fillStyle = '#8B0000'; // Dark red blood color
+            bloodData.forEach(cell => {
+                const alpha = Math.min(1, cell.height); // Height determines opacity
+                ctx.globalAlpha = alpha * 0.7; // Max 70% opacity
+                const radius = bloodSimulationSystem.cellSize / 2;
+                ctx.beginPath();
+                ctx.arc(cell.worldX, cell.worldY, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0; // Reset alpha
+        } else {
+            console.log('[BloodRender] No blood cells to render');
+        }
+    } else {
+        console.log('[BloodRender] Blood simulation disabled');
+    }
+
     ctx.restore();
 
     // v0.8.1.2: Draw damage numbers (convert world coordinates to screen space in single player arcade)

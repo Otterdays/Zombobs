@@ -37,8 +37,14 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ### Files Modified
 - `js/core/WebGPURenderer.js` - Added blood simulation buffers and pipelines (properties only, shaders pending)
 - `js/utils/combatUtils.js` - Integrated blood spawning on zombie damage/death
-- `js/main.js` - Added blood system initialization and update loop
+- `js/main.js` - Added blood system initialization, update loop, and rendering
 - `js/systems/BloodSimulationSystem.js` - New file: Complete blood simulation system
+
+### Fixed
+- **Critical: Blood Not Visible** - Added missing blood rendering code in `main.js`
+  - Blood simulation was running but never drawn to screen
+  - Now renders blood pools as dark red circles with opacity based on blood height
+  - Blood appears immediately after particles in render order
 
 ### Future Enhancements (Planned)
 - WebGPU compute shader integration for GPU-accelerated simulation (1000x faster)
@@ -46,7 +52,19 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - Blood trails flowing downhill with terrain detection
 - Gameplay mechanics: Blood pools slow zombies by 20%
 
-## [v0.8.1.7] - Zombie Health Increase & Car Fire & Skull Enhancement
+## [v0.8.1.7] - Zombie Health Increase, Car Fire & Skull Enhancement, ZombobsFX Spore Cloud
+
+### Added
+- **ZombobsFX Spore Cloud Effect** - 100k particle background effect with mouse interaction
+  - GPU-accelerated compute shader updates 100,000 particles per frame
+  - Mouse repulsion effect: particles repel from cursor position
+  - Color gradient: Zombie Purple to Toxic Green based on particle life
+  - Additive blending creates glowing "radioactive core" effect when particles overlap
+  - Renders above procedural background but below game entities
+  - Toggleable via Video settings: "Spore Cloud Effect" (default: enabled)
+  - Integrated into WebGPURenderer using shared device/context (no duplicate initialization)
+  - Location: `js/core/ZombobsFX.js`, integrated in `js/core/WebGPURenderer.js`
+  - Settings key: `video.zombobsFXEnabled` (boolean, default: true)
 
 ### Changed
 - **Zombie Health Increase** - All zombie HP increased by 1.25x (25% increase)

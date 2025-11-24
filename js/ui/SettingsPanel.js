@@ -385,6 +385,7 @@ export class SettingsPanel {
         y = this.drawDropdown("Particle Count", "video", "particleCount", ['low', 'high', 'ultra'], y, mouse);
         y = this.drawDropdown("Lighting Quality", "video", "lightingQuality", ['off', 'simple', 'advanced'], y, mouse);
         y = this.drawToggle("Distortion Effects", "video", "distortionEffects", y, mouse);
+        y = this.drawToggle("Spore Cloud Effect", "video", "zombobsFXEnabled", y, mouse);
         
         // General Video Settings
         y = this.drawSectionHeader("GENERAL", y);

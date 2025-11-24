@@ -102,26 +102,6 @@ export class BloodSimulationSystem {
     }
 
     /**
-     * Add blood at a specific world position
-     * @param {number} worldX - World X coordinate
-     * @param {number} worldY - World Y coordinate
-     * @param {number} amount - Blood amount (0.0 - 1.0)
-     */
-    addBlood(worldX, worldY, amount = 0.5) {
-        if (!this.enabled) return;
-
-        // Queue the blood spawn for next update
-        this.spawnQueue.push({
-            worldX,
-            worldY,
-            amount: amount * (settingsManager.getSetting('video', 'bloodGoreLevel') ?? 1.0)
-        });
-    }
-
-    /**
-     * Convert world coordinates to grid cell index
-     * @param {number} worldX 
-     * @param {number} worldY 
      * @returns {number} Grid cell index, or -1 if out of bounds
      */
     worldToGridIndex(worldX, worldY) {
@@ -135,6 +115,33 @@ export class BloodSimulationSystem {
         const normalizedY = gridY < 0 ? gridY + this.gridHeight : gridY;
 
         return normalizedY * this.gridWidth + normalizedX;
+    }
+
+    /**
+     * Add blood at a specific world position
+     * @param {number} worldX - World X coordinate
+     * @param {number} worldY - World Y coordinate
+     * @param {number} amount - Blood amount (0.0 - 1.0)
+     */
+    addBlood(worldX, worldY, amount = 0.5) {
+        if (!this.enabled) {
+            console.log('[BloodSimulation] Blood spawn blocked - system disabled');
+            return;
+        }
+
+        const goreLevel = settingsManager.getSetting('video', 'bloodGoreLevel') ?? 1.0;
+        const finalAmount = amount * goreLevel;
+
+        console.log(`[BloodSimulation] Adding blood at (${worldX.toFixed(1)}, ${worldY.toFixed(1)}) - amount: ${finalAmount.toFixed(2)}`);
+
+        // Queue the blood spawn for next update
+        this.spawnQueue.push({
+            worldX,
+            worldY,
+            amount: finalAmount
+        });
+
+        console.log(`[BloodSimulation] Queue size: ${this.spawnQueue.length}, Active blood cells: ${this.getBloodData().length}`);
     }
 
     /**
@@ -169,16 +176,24 @@ export class BloodSimulationSystem {
      * Process queued blood spawns
      */
     processSpawnQueue() {
+        if (this.spawnQueue.length > 0) {
+            console.log(`[BloodSimulation] Processing ${this.spawnQueue.length} spawns`);
+        }
+
         while (this.spawnQueue.length > 0) {
             const spawn = this.spawnQueue.shift();
             const index = this.worldToGridIndex(spawn.worldX, spawn.worldY);
 
             if (index >= 0 && index < this.bloodGrid.length) {
                 const cell = this.bloodGrid[index];
+                const oldHeight = cell.height;
                 cell.height = Math.min(1.0, cell.height + spawn.amount);
                 cell.viscosity = 0.8; // Fresh blood is thick
                 cell.worldX = spawn.worldX;
                 cell.worldY = spawn.worldY;
+                console.log(`[BloodSimulation] Cell ${index}: height ${oldHeight.toFixed(2)} -> ${cell.height.toFixed(2)} at (${spawn.worldX.toFixed(1)}, ${spawn.worldY.toFixed(1)})`);
+            } else {
+                console.warn(`[BloodSimulation] Invalid grid index: ${index} for position (${spawn.worldX}, ${spawn.worldY})`);
             }
         }
     }

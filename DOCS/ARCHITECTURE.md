@@ -7,7 +7,7 @@ The game has been refactored into a modular ES6 architecture:
 - `zombie-game.html`: Entry point and structure
 - `css/style.css`: Visual styling
 - `js/main.js`: Main game loop and initialization (entry point)
-- `js/core/`: Core game systems (constants, canvas, game state)
+- `js/core/`: Core game systems (constants, canvas, game state, WebGPU renderer, ZombobsFX)
 - `js/companions/`: AI NPC companion system (CompanionSystem)
 - `js/entities/`: Game entity classes (Bullet, Zombie, Particle, etc.)
 - `js/systems/`: Game systems (Audio, Graphics, Particle, Settings, Input)
@@ -106,6 +106,7 @@ This modular structure improves maintainability, testability, and scalability.
 - Maintain a uniform buffer for time, resolution, bloom intensity, distortion toggle, and lighting quality level
 - Render a full-screen procedural background with noise/fog/vignette and optional distortion and rim lighting
 - Update particles via a compute shader and render them with a point-list pipeline
+- **ZombobsFX Integration**: 100k particle spore cloud effect with mouse repulsion (above background, below game entities)
 - Gracefully fall back to Canvas 2D if WebGPU is unavailable
 - **Performance**: Dirty flag system for efficient uniform buffer updates
 
@@ -114,18 +115,60 @@ This modular structure improves maintainability, testability, and scalability.
 - `setDistortionEffects(enabled)` — boolean (marks uniforms dirty when changed)
 - `setLightingQuality(level)` — `off` | `simple` | `advanced` (marks uniforms dirty when changed)
 - `setParticleCount(level)` — `low` (CPU/off) | `high` (10k) | `ultra` (50k) (optimized buffer reuse)
+- `setZombobsFXEnabled(enabled)` — boolean (toggles 100k particle spore cloud effect)
 - `static isWebGPUAvailable()` — Consolidated WebGPU availability check
+
+**ZombobsFX Spore Cloud Effect**:
+- **100k Particles**: GPU-accelerated compute shader updates all particles
+- **Mouse Interaction**: Particles repel from cursor position (normalized -1 to 1 coordinates)
+- **Color Gradient**: Zombie Purple to Toxic Green based on particle life
+- **Additive Blending**: Creates glowing "radioactive core" effect when particles overlap
+- **Render Order**: Renders after background shader, before game particles
+- **Settings**: Toggleable via `video.zombobsFXEnabled` (default: true)
+- **Integration**: Uses shared WebGPU device/context from WebGPURenderer (no duplicate initialization)
+- **Location**: `js/core/ZombobsFX.js` - Integrated into `WebGPURenderer.render()`
 
 **Performance Features**:
 - **Dirty Flag System**: Only writes to uniform buffer when values actually change
 - **Buffer Reuse**: Particle buffers reused when count doesn't change, only recreated when size increases
 - **Error Handling**: Graceful fallback to Canvas 2D on render errors
 - **Bind Group Caching**: Efficient bind group management with `_createParticleBindGroups()` helper
+- **ZombobsFX**: Shared device/context eliminates duplicate WebGPU initialization overhead
 
 **Integration**:
 - Reads settings from `SettingsManager` via `js/main.js` and applies changes live
 - Respects `video.webgpuEnabled` and only renders when enabled and available
 - Consolidated checks via `isWebGPUActive()` helper in main.js
+- ZombobsFX initialized during WebGPURenderer.init() and rendered in render() loop
+
+#### ZombobsFX.js
+**Purpose**: 100k particle spore cloud background effect with mouse interaction
+
+**Exports**:
+- `ZombobsFX` class - Spore cloud particle effect system
+
+**Methods**:
+- `async init(device, context, format, canvas)` - Initialize with existing WebGPU device/context
+- `setupInput()` - Setup mouse move listener for cursor tracking
+- `render(commandEncoder, renderPass, dt)` - Render compute and draw passes (called from WebGPURenderer)
+- `isReady()` - Check if effect is initialized and ready to render
+
+**Features**:
+- **100k Particles**: GPU-accelerated compute shader updates all particles per frame
+- **Mouse Repulsion**: Particles repel from cursor position (normalized -1 to 1 coordinates)
+- **Color Gradient**: Zombie Purple to Toxic Green based on particle life
+- **Additive Blending**: Creates glowing "radioactive core" effect when particles overlap
+- **Double Buffering**: Ping-pong particle buffers for compute shader updates
+- **Separate Bind Groups**: Compute uses read_write storage, render uses read-only storage
+- **Shader Groups**: Compute shader uses `@group(0)`, render uses `@group(1)`
+
+**Integration**:
+- Uses shared WebGPU device/context from WebGPURenderer (no duplicate initialization)
+- Renders in WebGPURenderer.render() after background shader, before game particles
+- Toggleable via `video.zombobsFXEnabled` setting (default: true)
+- Settings applied in real-time via `webgpuRenderer.setZombobsFXEnabled()`
+
+**Dependencies**: `core/canvas.js` (for canvas reference), WebGPU device/context from WebGPURenderer
 
 #### gameState.js
 **Purpose**: Centralized game state management

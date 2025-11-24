@@ -3,57 +3,62 @@ export class ZombobsFX {
         this.canvas = null;
         this.device = null;
         this.context = null;
+        this.format = null;
         this.pipeline = null;
         this.computePipeline = null;
-        this.particleBindGroups = [];
+        this.computeBindGroups = [];
+        this.renderBindGroups = [];
+        
+        // ============================================
+        // INTENSITY ADJUSTMENT PARAMETERS
+        // ============================================
+        // Adjust these values to control effect intensity:
+        
+        // Particle count - More particles = denser cloud (performance impact)
+        // Range: 10,000 - 200,000 (default: 100,000)
         this.numParticles = 100000; // 100k Particles!
+        
+        // Particle size - Larger = more visible particles (in vertex shader, line ~132)
+        // Current: 0.008 (0.8% of screen), try 0.005-0.015 for adjustment
+        
+        // Repel strength - How strongly particles react to mouse (in updateCompute, line ~294)
+        // Current: 2.0, try 1.0-5.0 for adjustment
+        
+        // Alpha multiplier - Overall opacity of particles (in vertex shader, line ~143)
+        // Current: 0.8 (80% opacity), try 0.5-1.0 for adjustment
+        
+        // Flow speed - Particle movement speed (in compute shader, line ~78)
+        // Current: 0.002, try 0.001-0.005 for adjustment
+        
+        // Repel distance - Mouse interaction range (in compute shader, line ~86)
+        // Current: 0.3 (30% of screen), try 0.2-0.5 for adjustment
+        
         this.mouseX = 0;
         this.mouseY = 0;
+        this.frame = 0;
+        this.initialized = false;
         
         // Parameters
         this.paramsBuffer = null;
-        this.simParams = {
-            deltaTime: 0.016,
-            cursorX: 0.0,
-            cursorY: 0.0,
-            repelStrength: 2.0
-        };
+        this.particleBuffers = null;
     }
 
-    async init(targetCanvasInfo) {
-        // 1. Setup WebGPU Context
-        if (!navigator.gpu) {
-            console.error("WebGPU not supported on this browser.");
-            return;
+    async init(device, context, format, canvas) {
+        // Use provided device/context instead of creating new ones
+        this.device = device;
+        this.context = context;
+        this.format = format;
+        this.canvas = canvas;
+
+        if (!this.device || !this.context || !this.format || !this.canvas) {
+            console.error("ZombobsFX: Missing required parameters (device, context, format, canvas)");
+            return false;
         }
-
-        const adapter = await navigator.gpu.requestAdapter();
-        this.device = await adapter.requestDevice();
-
-        // Create or attach to canvas
-        if (typeof targetCanvasInfo === 'string') {
-            this.canvas = document.querySelector(targetCanvasInfo);
-        } else {
-            this.canvas = targetCanvasInfo;
-        }
-        
-        // Ensure canvas is overlayed correctly if you want it as a background/foreground
-        // this.canvas.style.position = 'absolute'; 
-        // this.canvas.style.top = '0'; 
-        // this.canvas.style.zIndex = '-1'; // Background
-
-        this.context = this.canvas.getContext('webgpu');
-        this.format = navigator.gpu.getPreferredCanvasFormat();
-
-        this.context.configure({
-            device: this.device,
-            format: this.format,
-            alphaMode: 'premultiplied',
-        });
 
         await this.createAssets();
         this.setupInput();
-        this.animate();
+        this.initialized = true;
+        return true;
     }
 
     async createAssets() {
@@ -74,9 +79,14 @@ export class ZombobsFX {
                 repelStrength : f32,
             };
 
+            // Compute shader bindings (read_write) - group 0
             @group(0) @binding(0) var<uniform> params : SimParams;
             @group(0) @binding(1) var<storage, read_write> particlesA : array<Particle>;
             @group(0) @binding(2) var<storage, read_write> particlesB : array<Particle>;
+
+            // Render shader bindings (read-only) - group 1
+            @group(1) @binding(0) var<uniform> renderParams : SimParams;
+            @group(1) @binding(1) var<storage, read> renderParticles : array<Particle>;
 
             // Pseudo-random generator
             fn rand(n: vec2<f32>) -> f32 {
@@ -92,17 +102,20 @@ export class ZombobsFX {
                 var p = particlesA[index];
 
                 // Curl Noise-ish movement
+                // ADJUSTMENT: Change 0.002 to adjust flow speed (0.001 = slower, 0.005 = faster)
                 let noiseScale = 3.0;
                 let angle = rand(p.pos * 0.1) * 6.28;
                 let flow = vec2<f32>(cos(angle), sin(angle)) * 0.002;
 
                 // Mouse Repulsion (The "Antidote" Effect)
+                // ADJUSTMENT: Change 0.3 to adjust mouse interaction range (0.2 = smaller, 0.5 = larger)
                 let dx = p.pos.x - params.cursorX;
                 let dy = p.pos.y - params.cursorY;
                 let dist = sqrt(dx*dx + dy*dy);
                 var repel = vec2<f32>(0.0, 0.0);
                 
                 if (dist < 0.3) {
+                    // ADJUSTMENT: Change 0.05 to adjust repel force multiplier (0.02 = weaker, 0.1 = stronger)
                     let force = (0.3 - dist) * params.repelStrength;
                     repel = normalize(vec2<f32>(dx, dy)) * force * 0.05;
                 }
@@ -134,7 +147,6 @@ export class ZombobsFX {
             fn vs_main(
                 @builtin(vertex_index) vIndex : u32,
                 @builtin(instance_index) iIndex : u32,
-                @location(0) pos : vec2<f32>, // From particle buffer (manual fetch needed usually, but we use storage)
             ) -> VertexOutput {
                 // Quad vertices
                 var pos_vertex = array<vec2<f32>, 6>(
@@ -142,7 +154,7 @@ export class ZombobsFX {
                     vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0)
                 );
                 
-                let particle = particlesA[iIndex];
+                let particle = renderParticles[iIndex];
                 let vertex_pos = pos_vertex[vIndex] * 0.008; // Particle Size
 
                 var output : VertexOutput;
@@ -169,7 +181,6 @@ export class ZombobsFX {
             `
         });
 
-        // 3. Buffers
         // Initial Particle Data
         const initialParticleData = new Float32Array(this.numParticles * 6); // 4 floats (pos, vel) + 2 (life, pad)
         for (let i = 0; i < this.numParticles; ++i) {
@@ -194,24 +205,42 @@ export class ZombobsFX {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
-        // 4. Pipelines
-        // Compute Pipeline
+        // Pipelines
+        // Separate bind group layouts: compute needs read_write, render needs read-only
         const computeBindGroupLayout = this.device.createBindGroupLayout({
             entries: [
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
-                { binding: 1, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'storage' } },
-                { binding: 2, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'storage' } },
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // read_write for compute
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // read_write for compute
             ]
         });
 
+        const renderBindGroupLayout = this.device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+                { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }, // read-only for vertex
+            ]
+        });
+
+        // Create pipeline layouts
+        // Compute pipeline only needs compute bind group layout (uses @group(0))
+        this.computePipelineLayout = this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] });
+        // Render pipeline uses @group(1), so pipeline layout needs bind group layout at index 1
+        // Index 0 can be empty/dummy since render shader doesn't use it
+        // Create a minimal bind group layout for index 0 (won't be used, but required by WebGPU)
+        const dummyBindGroupLayout = this.device.createBindGroupLayout({ entries: [] });
+        this.renderPipelineLayout = this.device.createPipelineLayout({ 
+            bindGroupLayouts: [dummyBindGroupLayout, renderBindGroupLayout] // Index 0 (dummy), Index 1 (render)
+        });
+
         this.computePipeline = this.device.createComputePipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
+            layout: this.computePipelineLayout,
             compute: { module: shaderModule, entryPoint: 'simulate' }
         });
 
         // Render Pipeline
         this.pipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
+            layout: this.renderPipelineLayout,
             vertex: { module: shaderModule, entryPoint: 'vs_main' },
             fragment: { module: shaderModule, entryPoint: 'fs_main', targets: [{ 
                 format: this.format,
@@ -224,7 +253,8 @@ export class ZombobsFX {
         });
 
         // Create Bind Groups (Double buffering for ping-pong)
-        this.particleBindGroups = [
+        // Compute bind groups (read_write storage)
+        this.computeBindGroups = [
             this.device.createBindGroup({
                 layout: computeBindGroupLayout,
                 entries: [
@@ -242,51 +272,78 @@ export class ZombobsFX {
                 ]
             })
         ];
+
+        // Render bind groups (read-only storage for vertex shader)
+        this.renderBindGroups = [
+            this.device.createBindGroup({
+                layout: renderBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.paramsBuffer } },
+                    { binding: 1, resource: { buffer: this.particleBuffers[0] } },
+                ]
+            }),
+            this.device.createBindGroup({
+                layout: renderBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.paramsBuffer } },
+                    { binding: 1, resource: { buffer: this.particleBuffers[1] } },
+                ]
+            })
+        ];
     }
 
     setupInput() {
-        window.addEventListener('mousemove', (e) => {
+        if (!this.canvas) return;
+        
+        // Remove existing listener if any (prevent duplicates)
+        if (this.mouseMoveHandler) {
+            window.removeEventListener('mousemove', this.mouseMoveHandler);
+        }
+        
+        this.mouseMoveHandler = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             // Map mouse to -1 to 1
             this.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouseY = -(((e.clientY - rect.top) / rect.height) * 2 - 1); // Flip Y
-        });
+        };
+        
+        window.addEventListener('mousemove', this.mouseMoveHandler);
     }
 
-    animate() {
+    // Update compute pass - must be called BEFORE render pass starts
+    updateCompute(commandEncoder, dt = 0.016) {
+        if (!this.initialized || !this.paramsBuffer || !this.computeBindGroups) {
+            return;
+        }
+
         // Update Uniforms
-        const paramsData = new Float32Array([0.016, this.mouseX, this.mouseY, 2.0]);
+        const paramsData = new Float32Array([dt, this.mouseX, this.mouseY, 2.0]);
         this.device.queue.writeBuffer(this.paramsBuffer, 0, paramsData);
 
-        const commandEncoder = this.device.createCommandEncoder();
-
-        // 1. Compute Pass
-        const passEncoder = commandEncoder.beginComputePass();
-        passEncoder.setPipeline(this.computePipeline);
-        passEncoder.setBindGroup(0, this.particleBindGroups[this.frame % 2]);
-        passEncoder.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
-        passEncoder.end();
-
-        // 2. Render Pass
-        const textureView = this.context.getCurrentTexture().createView();
-        const renderPass = commandEncoder.beginRenderPass({
-            colorAttachments: [{
-                view: textureView,
-                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1.0 }, // Dark Purple Background
-                loadOp: 'clear',
-                storeOp: 'store',
-            }]
-        });
-        renderPass.setPipeline(this.pipeline);
-        renderPass.setBindGroup(0, this.particleBindGroups[this.frame % 2]);
-        renderPass.draw(6, this.numParticles); // Draw 6 vertices (quad) per particle
-        renderPass.end();
-
-        this.device.queue.submit([commandEncoder.finish()]);
+        // Compute Pass (update particles)
+        const computePass = commandEncoder.beginComputePass();
+        computePass.setPipeline(this.computePipeline);
+        computePass.setBindGroup(0, this.computeBindGroups[this.frame % 2]);
+        computePass.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
+        computePass.end();
 
         this.frame++;
-        requestAnimationFrame(() => this.animate());
     }
-    
-    frame = 0;
+
+    // Render method - called during render pass
+    render(renderPass) {
+        if (!this.initialized || !this.renderBindGroups) {
+            return;
+        }
+
+        // Render Pass (draw particles) - uses existing renderPass from WebGPURenderer
+        renderPass.setPipeline(this.pipeline);
+        renderPass.setBindGroup(1, this.renderBindGroups[(this.frame - 1) % 2]); // Use previous frame's buffer (after compute updates)
+        renderPass.draw(6, this.numParticles); // Draw 6 vertices (quad) per particle
+    }
+
+    isReady() {
+        return this.initialized && this.paramsBuffer && this.computeBindGroups && this.renderBindGroups && this.pipeline && this.computePipeline;
+    }
 }
+
