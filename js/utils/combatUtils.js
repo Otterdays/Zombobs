@@ -16,6 +16,7 @@ import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
+import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
 let collisionQuadtree = null;
@@ -737,6 +738,8 @@ export function handleBulletZombieCollisions() {
                         }
 
                         createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                        // Add volumetric blood on kill (more blood)
+                        bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
                     } else {
                         // Zombie survives but is burning
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
@@ -744,6 +747,8 @@ export function handleBulletZombieCollisions() {
                             gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, bullet.damage));
                         }
                         createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                        // Add volumetric blood on hit (less blood)
+                        bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
                         // Trigger hit marker
                         gameState.hitMarker.active = true;

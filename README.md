@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.8.1.6_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.1.6 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.8.1.7_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.1.7 ALPHA" />
   </a>
 </p>
 
@@ -52,6 +52,35 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.8.1.7 ALPHA
+
+### 💪 Zombie Health Increase & Visual Enhancements
+
+> **Combat balance update: Increased zombie durability and enhanced world atmosphere**
+
+- **💪 Zombie Health Increase** - All zombie HP increased by 1.25x (25% increase)
+  - Base zombie health now scales from 5 HP (waves 1-2) to 25+ HP (waves 26+)
+  - Boss zombies now have minimum 1000 HP at wave 5+ (was 750 HP)
+  - All special zombie variants inherit the increased base health
+  - Makes combat more challenging and strategic
+  - Location: `js/entities/Zombie.js`, `js/entities/BossZombie.js`
+
+- **🔥 Fire Effects for Burnt Cars** - Atmospheric world decoration
+  - Flickering fire particles spawn from car windows and engine area
+  - 4-7 fire particles per car with realistic sine wave animation
+  - Orange/yellow/red color variations with additive glow effect
+  - Shorter lifetime (1-2 seconds) for dynamic visual effect
+  - Location: `js/entities/Prop.js`
+
+- **💀 Enhanced Skull Design** - Improved zombie skull props
+  - Added 6 teeth along jaw line with proper positioning
+  - Enhanced crack system with 5 crack lines of varying thickness
+  - Bone texture with 4 fixed detail marks per skull instance
+  - Enhanced eye sockets with depth gradients and inner glow
+  - Cheekbone definition and enhanced nasal cavity
+  - Outer glow with green/yellow tint for eerie atmosphere
+  - Location: `js/entities/Prop.js`
 
 ## 🔥 What's New in V0.8.1.6 ALPHA
 

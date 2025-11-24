@@ -2,6 +2,134 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.8] - The Blood Update - GPU-Accelerated Volumetric Blood System
+
+### Added
+- **GPU-Accelerated Volumetric Blood Simulation** - Real-time blood flow physics using cellular automata
+  - Voxel-based fluid dynamics with Navier-Stokes approximation
+  - Blood pooling and spreading on ground surfaces
+  - Viscosity simulation (thick blood physics with damping)
+  - Evaporation over time (blood dries and fades)
+  - Quality-based grid sizing (64x64 High, 128x128 Ultra)
+  - CPU fallback physics when WebGPU unavailable
+  - Location: `js/systems/BloodSimulationSystem.js`
+
+- **Blood Spawn Integration** - Blood spawns when zombies are damaged
+  - Kills spawn more blood (0.8 intensity) for dramatic effect
+  - Hits spawn less blood (0.3 intensity) for proportional feedback
+  - Blood amount scaled by gore level setting
+  - Integration: `js/utils/combatUtils.js` - added to `createBloodSplatter()` calls
+
+- **Quality Scaling System** - Adaptive quality based on video preset
+  - **Low/Medium**: Disabled (uses particle splatter only)
+  - **High**: 64x64 grid, 10px cells, 30fps update rate
+  - **Ultra**: 128x128 grid, 5px cells, 60fps update rate
+  - Honors `bloodGoreLevel` setting for intensity scaling
+
+### Technical Details
+- **Blood Grid System**: Circular buffer pattern with world-space coordinates
+- **Physics Model**: Neighbor averaging + pressure gradients + viscosity damping + evaporation
+- **Performance**: Throttled updates based on quality (16-32ms intervals)
+- **Coordinate Space**: World-space wrapping using modulo for infinite tiling effect
+- **Memory**: Dynamic grid allocation based on quality preset
+- **Spawn Queue**: Asynchronous blood spawning prevents frame drops
+
+### Files Modified
+- `js/core/WebGPURenderer.js` - Added blood simulation buffers and pipelines (properties only, shaders pending)
+- `js/utils/combatUtils.js` - Integrated blood spawning on zombie damage/death
+- `js/main.js` - Added blood system initialization and update loop
+- `js/systems/BloodSimulationSystem.js` - New file: Complete blood simulation system
+
+### Future Enhancements (Planned)
+- WebGPU compute shader integration for GPU-accelerated simulation (1000x faster)
+- Volumetric rendering with height-mapped shading and specular highlights
+- Blood trails flowing downhill with terrain detection
+- Gameplay mechanics: Blood pools slow zombies by 20%
+
+## [v0.8.1.7] - Zombie Health Increase & Car Fire & Skull Enhancement
+
+### Changed
+- **Zombie Health Increase** - All zombie HP increased by 1.25x (25% increase)
+  - Base zombie health formula: `Math.floor((2 + Math.floor(wave / 3)) * 2.5)` (was `(2 + Math.floor(wave / 3)) * 2`)
+  - **Examples**:
+    - Waves 1-2: 5 HP (was 4 HP)
+    - Waves 3-5: 7 HP (was 6 HP)
+    - Waves 6-8: 10 HP (was 8 HP)
+    - Waves 9-11: 12 HP (was 10 HP)
+    - Waves 12-14: 15 HP (was 12 HP)
+  - All special zombie variants (Fast, Exploding, Ghost, Spitter, Flying, Crawler, Armored) inherit the increased base health
+  - Location: `js/entities/Zombie.js:22`
+
+- **Boss Zombie Health Increase** - Boss HP increased by 1.25x with minimum 1000 HP for wave 5+
+  - Boss health formula: `Math.max(1000, Math.floor((500 + (wave * 50)) * 1.25))`
+  - **Examples**:
+    - Wave 5: 1000 HP (minimum enforced, was 750 HP)
+    - Wave 10: 1250 HP (was 1000 HP)
+    - Wave 15: 1562 HP (was 1250 HP)
+    - Wave 20: 1875 HP (was 1500 HP)
+    - Wave 25: 2187 HP (was 1750 HP)
+  - Ensures wave 5 boss has at least 1000 HP as requested
+  - Location: `js/entities/BossZombie.js:17`
+
+### Added
+- **Fire Effects for Burnt Cars** - Added flickering fire particles to burnt car props
+  - Fire particles spawn from windows (left and right) and engine/hood area
+  - 4-7 fire particles per car with realistic flickering animation
+  - Fire colors: orange, yellow, red variations (#ff6600, #ff8800, #ffaa00, #ffff00, #ff4400, #ff0000)
+  - Particles use sine wave flickering for opacity and size variation
+  - Shorter lifetime than smoke (1-2 seconds) for dynamic effect
+  - Rendered with `screen` composite mode for additive glow effect
+  - Location: `js/entities/Prop.js` - `initFireParticles()`, `drawBurntCar()`, `update()` methods
+
+- **Enhanced Skull Design** - Improved zombie skull props with more anatomical detail and glow effects
+  - **Anatomical Details**:
+    - Added 6 teeth along jaw line with proper positioning
+    - Enhanced crack system with 5 crack lines of varying thickness
+    - Bone texture with 4 fixed detail marks per skull instance
+    - Enhanced eye sockets with depth gradients and inner glow
+    - Cheekbone definition lines for more realistic structure
+    - Enhanced nasal cavity with radial gradient for depth
+    - Bone color variation with subtle gradient (white to yellow/brown tint)
+  - **Glow Effects**:
+    - Outer glow using shadow blur with green/yellow tint (rgba(200, 255, 150, 0.3))
+    - Inner eye socket glow with dark radial gradients for ominous effect
+    - Subtle shadow beneath skull for depth perception
+  - Location: `js/entities/Prop.js` - `drawSkull()` method, constructor
+
+### Changed
+- **Prop Update System** - Extended to handle both smoke and fire particles
+
+### Documentation
+- Updated `DOCS/DIFFICULTY_PROGRESSION.md` with new health values and formulas
+- Updated wave breakdown table with new HP values and shots to kill
+- Updated difficulty milestones with new health ranges
+- Updated boss health examples with new formula and values
+- Updated code references with new line numbers and formulas
+  - Fire particles update alongside smoke with flickering effects
+  - Flickering uses sine wave with phase offset for realistic variation
+  - Fire particles respawn at original spawn locations (windows/engine)
+  - Location: `js/entities/Prop.js` - `update()` method
+
+### Fixed
+- **Off-Screen Zombie Indicator Color Variation** - Fixed zombie spawn arrows always appearing red after camera system changes
+  - **Root Cause**: Color calculation was using screen-space distance but comparing to world-space distance threshold (5000 units)
+  - **Solution**: Changed color calculation to use world-space distance (`worldDistSquared`) instead of screen-space distance
+  - **Color Sensitivity Enhancement**: Added separate `colorDistance` threshold (1500 units arcade, 400 units other modes) for more sensitive color variation
+  - Arrows now properly transition from red (close) to yellow/green (far) based on actual world-space distance
+  - Color variation now occurs at closer distances, making the distance indicator more useful and noticeable
+  - Location: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
+
+### Technical Details
+- Fire particles stored per prop instance (similar to smoke particles)
+- Texture marks for skulls stored in constructor to prevent flickering
+- Fire rendering uses `globalCompositeOperation = 'screen'` for additive blending
+- All enhancements maintain performance with limited particle counts
+- Fire particle positions relative to car (not world space)
+- Off-screen indicator fix: World-space distance used for color calculation ensures accurate distance representation in arcade mode
+- Screen-space distance still used for arrow direction and positioning (correct behavior)
+- Color ratio clamped to 1.0 for safety
+- Separate thresholds: `indicatorDistance` (5000/800) for visibility, `colorDistance` (1500/400) for color sensitivity
+
 ## [v0.8.1.6] - WebGPU Explosions & Particle Overhaul
 
 ### Added

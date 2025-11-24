@@ -60,6 +60,18 @@ export class WebGPURenderer {
         this.gameParticleCount = 0;
         this.gameParticleBuffer = null;
         this.gameParticleRenderBindGroup = null;
+
+        // Blood simulation system
+        this.bloodSimulationEnabled = false;
+        this.bloodGridBuffer = null;
+        this.bloodGridWidth = 128;
+        this.bloodGridHeight = 128;
+        this.bloodComputePipeline = null;
+        this.bloodRenderPipeline = null;
+        this.bloodComputeBindGroup = null;
+        this.bloodRenderBindGroup = null;
+        this.bloodComputeBindGroupLayout = null;
+        this.bloodRenderBindGroupLayout = null;
     }
 
     async init() {

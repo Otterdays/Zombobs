@@ -65,6 +65,7 @@ import { ProfileScreen } from './ui/ProfileScreen.js';
 import { AchievementScreen } from './ui/AchievementScreen.js';
 import { BattlepassScreen } from './ui/BattlepassScreen.js';
 import { BadgeScreen } from './ui/BadgeScreen.js';
+import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -126,6 +127,9 @@ applyTextRenderingQualityToAll();
 
 // v0.8.1.2: Initialize ground texture system
 groundTextureSystem.init();
+
+// Initialize volumetric blood simulation system
+bloodSimulationSystem.init();
 
 // Input state
 const keys = {};
@@ -545,6 +549,9 @@ function updateGame() {
 
     // Update particles
     updateParticles();
+
+    // Update blood simulation (volumetric blood)
+    bloodSimulationSystem.update(16.67); // Use fixed timeStep (1000/60 = 16.67ms for 60 FPS)
 
     // Update shells (only update those near viewport - shells are small and fast to despawn)
     gameState.shells = gameState.shells.filter(shell => {

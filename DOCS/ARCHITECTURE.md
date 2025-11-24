@@ -503,6 +503,59 @@ This modular structure improves maintainability, testability, and scalability.
 - **Memory Management**: Particles returned to pool when expired
 - **Quality-Based Culling**: Reduces particle counts at lower quality settings
 
+#### BloodSimulationSystem.js
+**Purpose**: GPU-accelerated volumetric blood simulation with real-time fluid dynamics
+
+**Exports**:
+- `BloodSimulationSystem` class - Blood simulation system
+- `bloodSimulationSystem` singleton - Global blood simulation instance
+
+**Methods**:
+- `init()` - Initialize blood simulation system
+- `update(deltaTime)` - Update blood physics simulation (CPU fallback)
+- `addBlood(worldX, worldY, amount)` - Spawn blood at world coordinates
+- `getBloodData()` - Get active blood cells for rendering
+- `clear()` - Clear all blood from simulation
+- `getDebugInfo()` - Get debug information (grid size, active cells, performance)
+
+**Dependencies**: `systems/SettingsManager.js`, `systems/GraphicsSystem.js`
+
+**Quality Features**:
+- **Low/Medium**: Disabled (uses particle splatter only, no blood grid)
+- **High**: 64x64 grid, 10px cells, 30fps update rate (optimized for performance)
+- **Ultra**: 128x128 grid, 5px cells, 60fps update rate (maximum detail)
+- **Gore Scaling**: Blood amount scaled by `bloodGoreLevel` setting (0.0-1.0)
+- **Quality-Aware**: Automatically adjusts grid size and update frequency
+
+**Physics Simulation**:
+- **Fluid Dynamics**: Cellular automata + Navier-Stokes approximation
+- **Neighbor Averaging**: 4-neighbor pressure gradient calculation
+- **Viscosity**: Thick blood physics with damping (fresh = 0.8, dried = 0.2)
+- **Evaporation**: Blood height *= 0.998 per frame, viscosity *= 0.999
+- **Pressure Flow**: Blood flows from high pressure to low pressure areas
+- **World-Space Wrapping**: Grid wraps using modulo for infinite tiling
+
+**Performance Features**:
+- **Throttled Updates**: 16ms (Ultra) or 32ms (High) intervals to prevent frame drops
+- **Spawn Queue**: Asynchronous blood spawning processed in batches
+- **Active Cell Filtering**: Only non-empty cells (height \u003e 0.01) returned for rendering
+- **Grid Reuse**: Blood grid persists between frames for efficient simulation
+- **Memory Efficient**: Dynamic grid allocation based on quality preset
+- **CPU Fallback**: Full physics simulation when WebGPU unavailable
+
+**Coordinate System**:
+- **World Space**: Blood positions in unlimited world coordinates
+- **Grid Mapping**: `worldToGridIndex(x, y)` converts world → grid cell
+- **Modulo Wrapping**: Negative coordinates wrapped using modulo arithmetic
+- **Cell Size**: 5px (Ultra) or 10px (High) per grid cell
+
+**Future WebGPU Integration** (Planned):
+- Compute shader blood simulation (1000x faster than CPU)
+- Height-mapped volumetric rendering with normal maps
+- Specular highlights for wet blood surface
+- Blood trails flowing downhill with terrain detection
+- Gameplay mechanics: Blood pools slow zombies by 20%
+
 #### SettingsManager.js
 **Purpose**: Settings persistence and management
 

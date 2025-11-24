@@ -106,7 +106,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.1.6 ALPHA: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | 2000 Particle Limit | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | Background Shader Effects | V0.8.1.4: Explosion Fixes 🔧 | Critical Rendering Fix | Enhanced Alpha Blending | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | Zombie-Themed Props | V0.8.1.2: Living World 🌍 | Camera System | Moving Ground | Procedural Props | V0.8.0: Major Refactor! 🚀 | GameHUD Modularization | 63% Code Reduction | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
 
 // Weapon definitions
 export const WEAPONS = {
