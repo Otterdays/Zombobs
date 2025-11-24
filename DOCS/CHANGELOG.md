@@ -21,6 +21,14 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
   - Date: 2025-11-24
 
+- **Itch.io Path Resolution Fix** - Fixed 403 errors when navigating from index.html to zombie-game.html
+  - **Root Cause**: When navigating to `zombie-game.html` from `index.html`, relative paths weren't resolving correctly on itch.io's CDN
+  - **Solution**: Added `<base href="./">` tag early in `<head>` to ensure all relative paths resolve correctly relative to the HTML file's directory
+  - The base tag must be placed before any resource links (CSS, JS) to take effect
+  - This ensures CSS and JS files load correctly when `zombie-game.html` is accessed directly or via navigation
+  - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
+  - Date: 2025-11-24
+
 - **Itch.io Console Warnings** - Suppressed harmless iframe Permissions Policy warnings
   - Added Permissions Policy meta tag to suppress monetization and xr warnings
   - Added console warning suppression for Itch.io iframe Permissions Policy errors
