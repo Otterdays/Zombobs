@@ -203,5 +203,75 @@ export class LeaderboardDisplay {
         // Reset text alignment
         ctx.textAlign = 'center';
     }
+
+    /**
+     * Refresh server cache from MongoDB and update leaderboard
+     * Call this from browser console: window.gameHUD?.leaderboardDisplay?.refresh()
+     */
+    async refresh() {
+        console.log('[LeaderboardDisplay] Refreshing server cache from MongoDB...');
+        
+        try {
+            // Refresh server cache from MongoDB
+            const refreshResponse = await fetch(`${SERVER_URL}/api/highscores/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+                console.log(`[LeaderboardDisplay] Server cache refreshed: ${refreshData.count} entries`);
+            } else {
+                console.error('[LeaderboardDisplay] Failed to refresh server cache');
+            }
+        } catch (error) {
+            console.error('[LeaderboardDisplay] Error refreshing server cache:', error);
+        }
+        
+        // Reset fetch state and fetch fresh data
+        this.leaderboardLastFetch = 0;
+        this.leaderboardFetchState = 'loading';
+        this.leaderboard = [];
+        await this.fetch();
+        
+        console.log(`[LeaderboardDisplay] Refresh complete. Entries: ${this.leaderboard.length}`);
+    }
+
+    /**
+     * Fully reset the leaderboard - clears server cache and database
+     * Call this from browser console: window.gameHUD?.leaderboardDisplay?.reset()
+     * WARNING: This will delete all leaderboard entries!
+     */
+    async reset() {
+        console.warn('[LeaderboardDisplay] FULL RESET - This will clear all leaderboard data!');
+        
+        try {
+            // Clear server cache and database
+            const clearResponse = await fetch(`${SERVER_URL}/api/highscores/clear`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clearDatabase: true })
+            });
+            
+            if (clearResponse.ok) {
+                const clearData = await clearResponse.json();
+                console.log('[LeaderboardDisplay] Server cache and database cleared:', clearData);
+            } else {
+                console.error('[LeaderboardDisplay] Failed to clear server data');
+            }
+        } catch (error) {
+            console.error('[LeaderboardDisplay] Error clearing server data:', error);
+        }
+        
+        // Clear client-side state
+        this.leaderboard = [];
+        this.leaderboardLastFetch = 0;
+        this.leaderboardFetchState = 'loading';
+        
+        // Fetch fresh (empty) data
+        await this.fetch();
+        
+        console.log('[LeaderboardDisplay] Full reset complete. Leaderboard is now empty.');
+    }
 }
 

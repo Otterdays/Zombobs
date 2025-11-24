@@ -1031,6 +1031,70 @@ app.post('/api/highscore', async (req, res) => {
   }
 });
 
+// Refresh cache from MongoDB (useful after manual DB cleanup)
+app.post('/api/highscores/refresh', async (req, res) => {
+  try {
+    if (highscoresCollection) {
+      // Refresh cache from database
+      highscoresCache = await getHighscoresFromDB();
+      console.log(`[highscores] Cache refreshed from DB: ${highscoresCache.length} entries`);
+      res.json({ 
+        success: true, 
+        message: 'Cache refreshed',
+        count: highscoresCache.length,
+        highscores: highscoresCache
+      });
+    } else {
+      // No MongoDB connection - clear cache
+      highscoresCache = [];
+      console.log('[highscores] Cache cleared (no MongoDB connection)');
+      res.json({ 
+        success: true, 
+        message: 'Cache cleared (MongoDB not connected)',
+        count: 0,
+        highscores: []
+      });
+    }
+  } catch (error) {
+    console.error('[highscores] Error refreshing cache:', error);
+    res.status(500).json({ error: 'Failed to refresh cache' });
+  }
+});
+
+// Clear cache and optionally clear database
+app.post('/api/highscores/clear', async (req, res) => {
+  try {
+    const { clearDatabase = false } = req.body;
+    
+    // Clear in-memory cache
+    highscoresCache = [];
+    console.log('[highscores] In-memory cache cleared');
+    
+    let dbCleared = false;
+    if (clearDatabase && highscoresCollection) {
+      try {
+        const result = await highscoresCollection.deleteMany({});
+        console.log(`[highscores] Database cleared: ${result.deletedCount} entries deleted`);
+        dbCleared = true;
+      } catch (dbError) {
+        console.error('[highscores] Error clearing database:', dbError);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: dbCleared ? 'Cache and database cleared' : 'Cache cleared',
+      cacheCleared: true,
+      databaseCleared: dbCleared,
+      count: 0,
+      highscores: []
+    });
+  } catch (error) {
+    console.error('[highscores] Error clearing cache:', error);
+    res.status(500).json({ error: 'Failed to clear cache' });
+  }
+});
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   // Get user ID from handshake cookies
