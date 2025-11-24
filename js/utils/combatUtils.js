@@ -978,6 +978,8 @@ export function handleBulletZombieCollisions() {
                     }
                     // Create blood splatter on kill
                     createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                    // Add volumetric blood on kill (more blood)
+                    bloodSimulationSystem.addBlood(zombieX, zombieY, 0.8);
                 } else {
                     // Zombie survived - broadcast hit to other clients (leader only)
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
@@ -1000,6 +1002,8 @@ export function handleBulletZombieCollisions() {
                     }
                     // Create blood splatter on hit (not kill)
                     createBloodSplatter(zombie.x, zombie.y, impactAngle, false);
+                    // Add volumetric blood on hit (less blood)
+                    bloodSimulationSystem.addBlood(zombie.x, zombie.y, 0.3);
 
                     // --- START: Apply Slow-on-Hit ---
                     if (zombie.originalSpeed === undefined) {

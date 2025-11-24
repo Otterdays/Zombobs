@@ -1063,7 +1063,6 @@ function drawGame() {
     if (bloodSimulationSystem.enabled) {
         const bloodData = bloodSimulationSystem.getBloodData();
         if (bloodData.length > 0) {
-            console.log(`[BloodRender] Drawing ${bloodData.length} blood cells`);
             ctx.fillStyle = '#8B0000'; // Dark red blood color
             bloodData.forEach(cell => {
                 const alpha = Math.min(1, cell.height); // Height determines opacity
@@ -1074,11 +1073,7 @@ function drawGame() {
                 ctx.fill();
             });
             ctx.globalAlpha = 1.0; // Reset alpha
-        } else {
-            console.log('[BloodRender] No blood cells to render');
         }
-    } else {
-        console.log('[BloodRender] Blood simulation disabled');
     }
 
     ctx.restore();

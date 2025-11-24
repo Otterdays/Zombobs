@@ -15,8 +15,8 @@ export class ZombobsFX {
         // Adjust these values to control effect intensity:
         
         // Particle count - More particles = denser cloud (performance impact)
-        // Range: 10,000 - 200,000 (default: 100,000)
-        this.numParticles = 100000; // 100k Particles!
+        // Range: 10,000 - 200,000 (default: 25,000 - reduced from 100k for lower intensity)
+        this.numParticles = 25000; // Reduced to 25k for 75% intensity reduction
         
         // Particle size - Larger = more visible particles (in vertex shader, line ~132)
         // Current: 0.008 (0.8% of screen), try 0.005-0.015 for adjustment
@@ -155,8 +155,9 @@ export class ZombobsFX {
                 );
                 
                 let particle = renderParticles[iIndex];
-                // ADJUSTMENT: Change 0.008 to adjust particle size (0.005 = smaller, 0.015 = larger)
-                let vertex_pos = pos_vertex[vIndex] * 0.008; // Particle Size
+                // ADJUSTMENT: Change 0.005 to adjust particle size (0.003 = smaller, 0.015 = larger)
+                // Reduced from 0.008 to 0.005 for 75% intensity reduction
+                let vertex_pos = pos_vertex[vIndex] * 0.005; // Particle Size
 
                 var output : VertexOutput;
                 output.Position = vec4<f32>(particle.pos + vertex_pos, 0.0, 1.0);
@@ -167,8 +168,9 @@ export class ZombobsFX {
                 let toxicGreen = vec3<f32>(0.2, 1.0, 0.1);
                 let zombiePurple = vec3<f32>(0.6, 0.0, 0.8);
                 
-                // ADJUSTMENT: Change 0.8 to adjust overall particle opacity (0.5 = more transparent, 1.0 = fully opaque)
-                output.color = vec4<f32>(mix(zombiePurple, toxicGreen, lifeFactor), lifeFactor * 0.8);
+                // ADJUSTMENT: Change 0.2 to adjust overall particle opacity (0.1 = more transparent, 1.0 = fully opaque)
+                // Reduced from 0.8 to 0.2 for 75% intensity reduction
+                output.color = vec4<f32>(mix(zombiePurple, toxicGreen, lifeFactor), lifeFactor * 0.2);
                 return output;
             }
 
