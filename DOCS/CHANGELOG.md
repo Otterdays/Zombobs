@@ -11,10 +11,20 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Suppressed "Unrecognized feature" warnings for ambient-light-sensor, battery, document-domain, layout-animations, legacy-image-formats, oversized-images, vr, wake-lock
   - Location: `huggingface-space-SERVER/server.js`
 
-- **Itch.io Console Errors** - Fixed Permissions Policy warnings and path issues
+- **Itch.io 403 Forbidden Errors** - Fixed critical resource loading failures on itch.io
+  - **Root Cause**: Relative paths with `./` prefix (e.g., `./js/main.js`) caused 403 errors on itch.io's CDN
+  - **Solution**: Removed `./` prefix from all resource paths (CSS, JS) for itch.io compatibility
+  - Changed `<script src="./js/main.js">` to `<script src="js/main.js">`
+  - Changed `<link href="./css/style.css">` to `<link href="css/style.css">`
+  - Changed `<link href="./css/ui-overlay.css">` to `<link href="css/ui-overlay.css">`
+  - Game now loads correctly on itch.io without 403 errors
+  - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
+  - Date: 2025-11-24
+
+- **Itch.io Console Warnings** - Suppressed harmless iframe Permissions Policy warnings
   - Added Permissions Policy meta tag to suppress monetization and xr warnings
   - Added console warning suppression for Itch.io iframe Permissions Policy errors
-  - Fixed CSS/JS path references for Itch.io deployment (removed `./` prefix for compatibility)
+  - Warnings are from itch.io's iframe wrapper, not game code (safe to ignore)
   - Added meta tags (description, theme-color) for better SEO and mobile support
   - Location: `zombie-game.html`, `ZOMBOBS_Web_Build/zombie-game.html`
 

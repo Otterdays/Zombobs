@@ -134,6 +134,10 @@ export class MultiplayerSystem {
                 // Still try to connect, but cookie might not be set
                 this.connectSocketIO(gameHUD);
             });
+        } else {
+            console.error('Socket.io not found. Make sure the CDN script is loaded.');
+            gameState.multiplayer.status = 'error';
+            gameState.multiplayer.connected = false;
         }
     }
 
