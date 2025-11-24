@@ -189,9 +189,19 @@ export class LeaderboardDisplay {
             // Multiplayer indicator (if applicable, right after username)
             if (isMultiplayer) {
                 ctx.textAlign = 'right';
-                ctx.fillStyle = 'rgba(0, 255, 200, 0.9)';
-                ctx.font = `${Math.max(7, 8 * scale)}px "Roboto Mono", monospace`;
+                // Larger font size and bold weight for better visibility and pixel density
+                const mpFontSize = Math.max(11, 12 * scale);
+                ctx.font = `bold ${mpFontSize}px "Roboto Mono", monospace`;
+                // Full opacity for maximum clarity
+                ctx.fillStyle = 'rgba(0, 255, 200, 1.0)';
+                // Add subtle stroke for better definition and pixel density
+                ctx.strokeStyle = 'rgba(0, 200, 150, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.lineJoin = 'round';
+                // Draw stroke first, then fill for crisp edges
+                ctx.strokeText('MP', rightX - 135 * scale, y);
                 ctx.fillText('MP', rightX - 135 * scale, y);
+                // Reset font to leaderboard size
                 ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
             }
 
