@@ -458,10 +458,10 @@ export class WebGPURenderer {
                         let a = particleData[idx + 5u];
                         let radius = particleData[idx + 6u];
                         
-                        // Make particles MUCH bigger - multiply radius by 5 and ensure minimum size
+                        // Make particles MUCH bigger - multiply radius by 8 and ensure minimum size
                         // Use select() instead of max() for WGSL compatibility
-                        let baseSize = radius * 5.0;
-                        let size = select(10.0, baseSize, baseSize > 10.0); // At least 10 pixels, or 5x radius
+                        let baseSize = radius * 8.0;
+                        let size = select(10.0, baseSize, baseSize > 10.0); // At least 10 pixels, or 8x radius
                         
                         // Quad corners for triangle-strip: order must be top-left, bottom-left, top-right, bottom-right
                         // This creates triangles: (0,1,2) and (1,2,3)
@@ -652,7 +652,7 @@ export class WebGPURenderer {
                 // Draw 4 vertices per particle (quad), so total vertices = particleCount * 4
                 const vertexCount = this.gameParticleCount * 4;
                 pass.draw(vertexCount, 1, 0, 0);
-                console.log('[WebGPU] render: Drawing', this.gameParticleCount, 'particles (', vertexCount, 'vertices)');
+                // console.log('[WebGPU] render: Drawing', this.gameParticleCount, 'particles (', vertexCount, 'vertices)');
             } else {
                 if (this.gameParticleCount > 0) {
                     console.warn('[WebGPU] render: Particles exist but not rendering - count:', this.gameParticleCount, 'buffer:', !!this.gameParticleBuffer, 'bindGroup:', !!this.gameParticleRenderBindGroup);
@@ -815,9 +815,9 @@ export class WebGPURenderer {
             return;
         }
 
-        console.log('[WebGPU] syncGameParticles: Syncing', particles.length, 'particles');
+        // console.log('[WebGPU] syncGameParticles: Syncing', particles.length, 'particles');
 
-        const count = Math.min(particles.length, 500); // Limit to 500 particles for performance
+        const count = Math.min(particles.length, 2000); // Limit to 2000 particles for performance
         const stride = 32; // 8 floats * 4 bytes: pos(2) + color(4) + radius(1) + life(1) + maxLife(1) = 9, but we'll use 8 for alignment
         const requiredSize = count * stride;
 
@@ -878,7 +878,7 @@ export class WebGPURenderer {
 
         // Write to buffer
         this.device.queue.writeBuffer(this.gameParticleBuffer, 0, particleData.buffer);
-        console.log('[WebGPU] syncGameParticles: Wrote', count, 'particles to buffer, buffer size:', requiredSize, 'bytes');
+        // console.log('[WebGPU] syncGameParticles: Wrote', count, 'particles to buffer, buffer size:', requiredSize, 'bytes');
 
         // Update count and create bind group if needed
         this.gameParticleCount = count;
@@ -891,7 +891,7 @@ export class WebGPURenderer {
                     { binding: 1, resource: { buffer: this.gameParticleBuffer } },
                 ],
             });
-            console.log('[WebGPU] syncGameParticles: Created bind group, particle count:', this.gameParticleCount);
+            // console.log('[WebGPU] syncGameParticles: Created bind group, particle count:', this.gameParticleCount);
         } else {
             console.warn('[WebGPU] syncGameParticles: Failed to create bind group - layout:', !!this.gameParticleBindGroupLayout, 'buffer:', !!this.gameParticleBuffer);
         }

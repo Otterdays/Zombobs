@@ -187,7 +187,7 @@ export function createBloodSplatter(x, y, angle, isKill = false) {
 }
 
 export function createExplosion(x, y, size = 1.0) {
-    console.log('createExplosion called!', x, y, size);
+
 
     // Safety check - ensure we have valid coordinates
     if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
@@ -195,12 +195,11 @@ export function createExplosion(x, y, size = 1.0) {
         return;
     }
 
-    // TEMPORARILY DISABLED: Generic canvas explosions
-    return;
+
 
     // Force create explosion even if at particle limit - explosions are critical
     const originalLength = gameState.particles.length;
-    console.log('Particle count before explosion:', originalLength);
+
 
     const limit = getParticleLimit();
     const availableSlots = Math.max(0, limit - gameState.particles.length);
@@ -466,9 +465,11 @@ export function updateParticles() {
 export function drawParticles() {
     // Check if WebGPU is active - if so, use WebGPU for enhanced particle rendering
     // WebGPU canvas is now on top (z-index 2) so particles render above gameplay
-    if (typeof isWebGPUActive === 'function' && isWebGPUActive()) {
-        const webgpuRenderer = window.webgpuRenderer;
-        if (webgpuRenderer && webgpuRenderer.syncGameParticles) {
+    const webgpuRenderer = window.webgpuRenderer;
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+
+    if (webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable()) {
+        if (webgpuRenderer.syncGameParticles) {
             // Sync particles to WebGPU renderer for enhanced rendering (5x size, soft glow, hardware blending)
             webgpuRenderer.syncGameParticles(gameState.particles);
             return; // Skip Canvas 2D drawing - WebGPU handles it

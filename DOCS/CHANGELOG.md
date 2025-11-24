@@ -2,6 +2,22 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.6] - WebGPU Explosions & Particle Overhaul
+
+### Added
+- **WebGPU Explosions** - Enabled large-scale explosions for grenades and rockets using WebGPU
+  - Removed early return in `ParticleSystem.js` that was disabling explosions
+  - Updated `WebGPURenderer.js` to support larger particles (8x radius) and more particles (2000 limit)
+  - Fixed WebGPU detection in `ParticleSystem.js` to correctly sync particles
+  - Location: `js/systems/ParticleSystem.js`, `js/core/WebGPURenderer.js`
+
+### Changed
+- **Particle Rendering** - Optimized WebGPU particle rendering
+  - Increased particle size multiplier in shader for more impactful visuals
+  - Reduced console log spam in `WebGPURenderer.js`
+  - Ensured correct synchronization between game state and WebGPU renderer
+  - Location: `js/core/WebGPURenderer.js`
+
 ## [v0.8.1.5] - WebGPU Particle Parallax & Documentation Update
 
 ### Added

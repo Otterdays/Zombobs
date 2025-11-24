@@ -199,7 +199,7 @@ export class Rocket extends Bullet {
         // Continuous smoke trail (1-2 particles per frame)
         const trailOffsetX = this.x - Math.cos(this.angle) * 12; // Behind rocket
         const trailOffsetY = this.y - Math.sin(this.angle) * 12;
-        
+
         // Smoke particles (gray, drift and fade)
         for (let i = 0; i < 2; i++) {
             const smokeAngle = this.angle + Math.PI + (Math.random() - 0.5) * 0.3; // Behind rocket with slight spread
@@ -234,9 +234,9 @@ export class Rocket extends Bullet {
 
     explode() {
         if (this.markedForRemoval) return;
-        console.log('Rocket exploding at:', this.x, this.y, 'radius:', this.explosionRadius, 'damage:', this.explosionDamage);
+
         this.markedForRemoval = true;
-        
+
         // Trigger explosion at rocket position
         triggerExplosion(this.x, this.y, this.explosionRadius, this.explosionDamage, true, this.player);
     }
