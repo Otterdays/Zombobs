@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-red.svg?style=for-the-badge" height="30" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.8.0_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.0 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.8.1.6_ALPHA-00C853?style=for-the-badge" height="30" alt="Version 0.8.1.6 ALPHA" />
   </a>
 </p>
 
@@ -52,6 +52,44 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.8.1.6 ALPHA
+
+### 💥 WebGPU Explosions & Particle Overhaul
+
+> **Massive visual improvements: Large-scale explosions and particle system enhancements**
+
+- **💥 WebGPU Explosions** - Enabled large-scale explosions for grenades and rockets
+  - **8x Radius Support**: Particles can now be up to 8x larger for more impactful visuals
+  - **2000 Particle Limit**: Massive explosions with up to 2000 particles for epic effects
+  - **Optimized Rendering**: Enhanced WebGPU particle rendering with improved synchronization
+  - **Location**: `js/systems/ParticleSystem.js`, `js/core/WebGPURenderer.js`
+
+- **🌐 Particle Parallax (V0.8.1.5)** - Camera-relative particle movement
+  - Particles now move relative to the camera in single player arcade mode
+  - Background shader parallax effects (20% of camera speed)
+  - World-space feel with particles wrapping around screen
+  - Location: `js/core/WebGPURenderer.js`, `js/main.js`
+
+- **🔧 Explosion Fixes (V0.8.1.4)** - Critical rendering improvements
+  - Fixed invisible explosion particles for grenades and rockets
+  - Enhanced alpha blending and color conversion (hex to rgba)
+  - Minimum alpha of 0.3 for large explosion particles (radius > 50)
+  - Fixed render order for proper particle synchronization
+  - Location: `js/entities/Particle.js`, `js/systems/ParticleSystem.js`
+
+- **🚗 Prop Enhancements (V0.8.1.3)** - Atmospheric world decoration
+  - **Enhanced Burnt Cars**: Larger cars (60-90px width) with animated smoke effects
+  - **New Zombie Props**: Skulls, zombie arms, and zombie legs for atmospheric decoration
+  - **Improved Distribution**: Better prop variety with adjusted spawn percentages
+  - Location: `js/entities/Prop.js`, `js/systems/PropSpawnSystem.js`
+
+- **🌍 Living World (V0.8.1.2)** - World-space gameplay system
+  - **Camera System**: World-space camera following player, keeping them centered
+  - **Moving Ground Texture**: Animated ground pattern with parallax scrolling (30% of camera speed)
+  - **Procedural Props**: Chunk-based prop spawning system (500x500px chunks)
+  - **Coordinate System**: Full world-to-screen and screen-to-world conversion utilities
+  - Location: `js/systems/CameraSystem.js`, `js/systems/GroundTextureSystem.js`, `js/systems/PropSpawnSystem.js`
 
 ## 🔥 What's New in V0.8.0 ALPHA
 

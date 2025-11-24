@@ -40,7 +40,7 @@ export function spawnParticle(x, y, color, props = {}) {
     const limit = getParticleLimit();
     if (gameState.particles.length >= limit) {
         // Don't spawn more particles - we're at the limit
-        console.log('spawnParticle: At limit, returning null. Limit:', limit, 'Current:', gameState.particles.length);
+
         return null;
     }
 
@@ -51,7 +51,7 @@ export function spawnParticle(x, y, color, props = {}) {
     }
 
     gameState.particles.push(p);
-    console.log('spawnParticle: Created particle at', x, y, 'color:', color, 'radius:', p.radius, 'life:', p.life, 'total particles:', gameState.particles.length);
+
 
     // Double-check limit (in case multiple particles spawned in same frame)
     if (gameState.particles.length > limit) {
@@ -248,7 +248,7 @@ export function createExplosion(x, y, size = 1.0) {
 
     // Force create flash particles - they're critical for visibility
     // Always create these, even if we have to bypass the limit
-    console.log('Creating flash particles, current particle count:', gameState.particles.length, 'limit:', limit);
+
     let flash1 = spawnParticle(x, y, '#ffffff', {
         radius: baseFlashSize,
         life: 30, // Longer life so it's very visible
@@ -256,7 +256,7 @@ export function createExplosion(x, y, size = 1.0) {
         vx: 0,
         vy: 0
     });
-    console.log('Flash1 (white) created:', flash1 ? 'YES' : 'NO', 'at', x, y, 'radius:', baseFlashSize);
+
 
     // If we couldn't create it, force create by directly adding to array
     if (!flash1) {
@@ -269,11 +269,11 @@ export function createExplosion(x, y, size = 1.0) {
         });
         if (p) {
             gameState.particles.push(p);
-            console.log('Flash1 force-added to array');
+
         }
     }
 
-    console.log('Explosion creation completed. Particles added:', gameState.particles.length - originalLength);
+
 
     // Add yellow flash - also massive
     let flash2 = spawnParticle(x, y, '#ffff00', {
@@ -455,7 +455,7 @@ export function updateParticles() {
     }
 
     if (removedCount > 0) {
-        console.log('updateParticles: Removed', removedCount, 'dead particles. Remaining:', aliveParticles.length);
+
     }
 
     // Replace array instead of splicing
@@ -486,7 +486,7 @@ export function drawParticles() {
         return; // No particles to draw
     }
 
-    console.log('[ParticleSystem] drawParticles: Drawing', gameState.particles.length, 'particles (Canvas 2D fallback)');
+
 
     const particleDetail = graphicsSettings.particleDetail || 'standard';
 
@@ -500,21 +500,7 @@ export function drawParticles() {
             continue;
         }
 
-        // Debug first few particles
-        if (i < 3) {
-            const maxLife = particle.maxLife || 30;
-            const alpha = Math.max(0, particle.life / maxLife);
-            console.log('[ParticleSystem] Drawing particle', i, ':', {
-                x: particle.x,
-                y: particle.y,
-                radius: particle.radius,
-                color: particle.color,
-                life: particle.life,
-                maxLife: maxLife,
-                calculatedAlpha: alpha,
-                willDraw: alpha > 0 && particle.radius > 0
-            });
-        }
+
 
         if (particle.draw) {
             // If it has a custom draw method, use it
@@ -532,9 +518,7 @@ export function drawParticles() {
             }
 
             if (alpha <= 0 || particle.radius <= 0) {
-                if (i < 3) {
-                    console.warn('[ParticleSystem] Skipping particle', i, '- alpha:', alpha, 'radius:', particle.radius);
-                }
+
                 continue; // Skip invisible or zero-size particles
             }
 
@@ -562,10 +546,7 @@ export function drawParticles() {
                 }
             }
 
-            // Debug: Log actual drawing parameters for first few particles
-            if (i < 3) {
-                console.log('[ParticleSystem] Actually drawing particle', i, '- originalColor:', particle.color, 'convertedFillColor:', fillColor, 'arc at:', particle.x, particle.y, 'radius:', particle.radius);
-            }
+
 
             if (particleDetail === 'minimal') {
                 // Minimal: Simple solid circles
@@ -663,6 +644,6 @@ export function drawParticles() {
     ctx.globalAlpha = 1;
 
     if (drawnCount > 0 && drawnCount !== gameState.particles.length) {
-        console.warn('[ParticleSystem] drawParticles: Only drew', drawnCount, 'out of', gameState.particles.length, 'particles');
+
     }
 }

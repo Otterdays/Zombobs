@@ -88,7 +88,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - main.js reduced from ~2,536 to ~1,241 lines (51% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
-✅ **Enemy Variety** - 7 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying)
+✅ **Enemy Variety** - 8 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Crawler)
 ✅ **Day/Night Cycle** - Dynamic time-based atmosphere with difficulty scaling
 ✅ **Flamethrower Weapon** - Short-range weapon with burning damage over time
 ✅ **Environmental Hazards** - Acid pools from Spitter Zombie attacks
@@ -332,6 +332,55 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
 
+## Recent Updates (V0.8.1.7 ALPHA)
+- **Off-Screen Indicator Color Fix (V0.8.1.7)**: Fixed zombie spawn arrow color variation
+  - Fixed arrows always appearing red after camera system changes
+  - Color calculation now uses world-space distance instead of screen-space distance
+  - Added separate `colorDistance` threshold (1500 units arcade, 400 units other modes) for more sensitive color variation
+  - Arrows now properly transition from red (close) to yellow/green (far) based on actual world-space distance
+  - Location: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
+- **WebGPU Explosions & Particle Overhaul**: Enabled large-scale explosions for grenades and rockets
+  - Removed early return in `ParticleSystem.js` that was disabling explosions
+  - Updated `WebGPURenderer.js` to support larger particles (8x radius) and more particles (2000 limit)
+  - Fixed WebGPU detection in `ParticleSystem.js` to correctly sync particles
+  - Optimized particle rendering with increased particle size multiplier in shader for more impactful visuals
+  - Location: `js/systems/ParticleSystem.js`, `js/core/WebGPURenderer.js`
+- **WebGPU Particle Parallax (V0.8.1.5)**: Particles now move relative to the camera in single player arcade mode
+  - Added `cameraX` and `cameraY` uniforms to WebGPU shaders
+  - Particles wrap around the screen but move opposite to camera movement, creating a world-space feel
+  - Background shader now has subtle parallax movement (20% of camera speed)
+  - Location: `js/core/WebGPURenderer.js`, `js/main.js`
+- **Explosion Particle Rendering Fix (V0.8.1.4)**: Fixed invisible explosion particles for grenades and rockets
+  - Root Cause: The `Particle` class had an empty `draw()` method that was overriding the rendering logic
+  - Solution: Removed the empty `draw()` method from `Particle` class, allowing `ParticleSystem.js` to use its fallback rendering logic
+  - Converted hex colors to `rgba()` format for proper alpha blending
+  - Ensured large explosion particles (radius > 50) have minimum alpha of 0.3 for visibility
+  - Fixed render order: Moved `webgpuRenderer.render()` to after `drawGame()` so particles sync before rendering
+  - Location: `js/entities/Particle.js`, `js/systems/ParticleSystem.js`, `js/main.js`
+- **Car Fire & Skull Enhancement (V0.8.1.7)**: Added fire effects to burnt cars and enhanced skull design
+  - Fire Effects for Burnt Cars: Flickering fire particles (4-7 per car) spawning from windows and engine area
+  - Fire particles use orange/yellow/red color variations with sine wave flickering for realistic animation
+  - Fire rendered with `screen` composite mode for additive glow effect, shorter lifetime (1-2 seconds) than smoke
+  - Enhanced Skull Design: Added 6 teeth along jaw line, 5 crack lines with varying thickness, bone texture marks
+  - Skull glow effects: Outer glow with green/yellow tint, inner eye socket glow, subtle shadow for depth
+  - Enhanced anatomical details: Cheekbone definition, enhanced eye sockets with depth gradients, enhanced nasal cavity
+  - Location: `js/entities/Prop.js` - `initFireParticles()`, `drawBurntCar()`, `drawSkull()`, `update()` methods
+- **Prop Enhancement Update (V0.8.1.3)**: Enhanced burnt car props and added new zombie-themed props
+  - Enhanced Burnt Cars: Increased car size (60-90px width, 80-120px height), added detailed features (hood lines, door lines, window frames, wheel rims)
+  - Animated smoke particles: 3-5 particles per car rising upward with fade-out, drift horizontally and respawn after 2-4 seconds
+  - New Zombie Props: Skull props (25-35px), Zombie Arms props (20-30px × 40-60px), Zombie Legs props (25-35px × 50-70px)
+  - Adjusted prop spawn distribution: Rock 35%, Debris 25%, Burnt Car 10%, Skull 15%, Zombie Arms 10%, Zombie Legs 5%
+  - Prop update system added for animated effects (smoke particles update each frame)
+  - Location: `js/entities/Prop.js`, `js/systems/PropSpawnSystem.js`, `js/main.js`
+- **The Living World Update (V0.8.1.2)**: World-space gameplay system with camera and procedural props
+  - Camera System: World-space camera following player, keeping them centered on screen while world moves around them
+  - Moving Ground Texture: Animated ground pattern scrolling with parallax (30% of camera speed) for single player arcade mode
+  - Procedural Prop Spawning: Chunk-based prop spawning system (500x500px chunks) with three prop types (Rocks 50%, Debris 35%, Burnt Cars 15%)
+  - Coordinate System: Full world-to-screen and screen-to-world coordinate conversion utilities
+  - Only active in single player arcade mode for performance
+  - Location: `js/systems/CameraSystem.js`, `js/systems/GroundTextureSystem.js`, `js/systems/PropSpawnSystem.js`, `js/entities/Prop.js`
+- **Version**: Current version is V0.8.1.7 ALPHA
+
 ## Recent Updates (V0.8.0 ALPHA)
 - **Major Code Refactoring**: GameHUD.js modularization with 9 screen classes
   - Reduced GameHUD.js from ~4,715 lines to ~1,757 lines (63% reduction)
@@ -373,6 +422,8 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **Balance Overhaul**: Major combat balance adjustments
   - Crit rate reduced from 10% to ~3.33% (2/3 reduction) for more balanced combat
   - All zombie HP doubled (except Boss) - makes zombies more durable and combat more challenging
+  - **Zombie HP 1.25x Increase (v0.8.1.9)**: All zombie HP further increased by 25% (base formula now `(2 + floor(wave/3)) * 2.5`)
+  - **Boss HP 1.25x Increase (v0.8.1.9)**: Boss HP increased by 25% with minimum 1000 HP for wave 5+ (formula: `max(1000, floor((500 + wave*50) * 1.25))`)
   - All weapon damage doubled - maintains relative weapon balance while increasing overall damage output
   - Pistol: 1→2, Shotgun: 3→6 per pellet, Rifle: 2→4, Flamethrower: 0.5→1.0, SMG: 0.8→1.6, Sniper: 15→30, RPG: 60→120 explosion damage
 - **Bug Fix**: Hoarder skill ammo multiplier now persists correctly across weapon switches

@@ -9,7 +9,7 @@ import {
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
-import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
+import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
@@ -565,7 +565,7 @@ export function handleBulletZombieCollisions() {
             const zombieIndex = gameState.zombies.indexOf(zombie);
             if (zombieIndex === -1) return; // Already removed
 
-            if (checkCollision(bullet, zombie)) {
+            if (checkZombieCollision(bullet, zombie)) {
                 // Handle Rocket collisions FIRST (before marking as hit)
                 if (bullet.type === 'rocket') {
                     console.log('Rocket collision detected!', bullet.x, bullet.y, bullet.explosionRadius);

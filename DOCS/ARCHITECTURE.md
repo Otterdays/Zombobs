@@ -237,7 +237,7 @@ This modular structure improves maintainability, testability, and scalability.
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `CrawlerZombie`
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type
@@ -247,6 +247,7 @@ This modular structure improves maintainability, testability, and scalability.
 - **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
 - **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, Wave 6+
 - **FlyingZombie**: Flies with wings, 1.2x speed, 70% health, smaller hitbox, subtle floating animation, Wave 5+
+- **CrawlerZombie**: Low-profile crawler, 1.3x speed, 60% health, 0.7x radius (smaller hitbox), dark brown/gray appearance, crawling pose, Wave 4+
 
 **Methods**:
 - `update(player)` - AI pathfinding (kiting for SpitterZombie)
@@ -333,7 +334,7 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `utils/gameUtils.js` (via global reference)
 
-#### Prop.js (v0.8.1.3)
+#### Prop.js (v0.8.1.7)
 **Purpose**: World prop entity class (rocks, debris, burnt cars, skulls, zombie parts) for single player arcade mode
 
 **Exports**: `Prop` class
@@ -346,29 +347,32 @@ This modular structure improves maintainability, testability, and scalability.
 - `radius` - Collision radius (circular bounds)
 - `color, outlineColor` - Visual properties
 - `smokeParticles[]` - Smoke particle array (burntCar only)
-- `lastUpdateTime` - Timestamp for smoke particle updates (burntCar only)
+- `fireParticles[]` - Fire particle array (burntCar only)
+- `lastUpdateTime` - Timestamp for particle updates (burntCar only)
 - `armCount` - Number of arms (zombieArms only, 2-3)
 - `armRotations[]` - Stored rotation angles for each arm (zombieArms only)
 - `armDecayMarks[]` - Stored decay mark positions for each arm (zombieArms only)
 - `legRotations[]` - Stored rotation angles for each leg (zombieLegs only)
 - `legDecayMarks[]` - Stored decay mark positions for each leg (zombieLegs only)
+- `textureMarks[]` - Stored bone texture mark positions (skull only, 4 marks)
 
 **Methods**:
 - `draw()` - Render the prop on canvas
-- `update()` - Update smoke particles for burntCar props
+- `update()` - Update smoke and fire particles for burntCar props
 - `initSmokeParticles()` - Initialize smoke particles for burnt car
+- `initFireParticles()` - Initialize fire particles for burnt car
 - `drawRock()` - Render rock prop (irregular ellipse shape)
 - `drawDebris()` - Render debris prop (rectangular with detail lines)
-- `drawBurntCar()` - Render burnt car prop with enhanced details and animated smoke
-- `drawSkull()` - Render zombie skull prop (oval with eye sockets and cracks)
+- `drawBurntCar()` - Render burnt car prop with enhanced details, animated smoke, and fire effects
+- `drawSkull()` - Render zombie skull prop with enhanced anatomical detail and glow effects
 - `drawZombieArms()` - Render severed zombie arms prop (2-3 arms with bone ends)
 - `drawZombieLegs()` - Render severed zombie legs prop (2 legs with bone ends)
 
 **Prop Types**:
 - **Rock**: 20-35px, gray colors, irregular ellipse shape
 - **Debris**: 15-35px, darker gray, rectangular with detail lines
-- **Burnt Car**: 60-90px width, 80-120px height, black colors, enhanced car shape with hood details, door lines, window frames, wheel rims, charred texture, and animated smoke particles (3-5 per car)
-- **Skull**: 25-35px, bone white (#e8e8e8) with dark cracks (#4a4a4a), oval shape with eye sockets, nasal cavity, jaw line, and cracks
+- **Burnt Car**: 60-90px width, 80-120px height, black colors, enhanced car shape with hood details, door lines, window frames, wheel rims, charred texture, animated smoke particles (3-5 per car), and flickering fire particles (4-7 per car)
+- **Skull**: 25-35px, bone white (#e8e8e8) with dark cracks (#4a4a4a), enhanced oval shape with detailed eye sockets, nasal cavity, jaw line with 6 teeth, 5 crack lines, cheekbone definition, bone texture marks, and glow effects (outer glow, inner eye socket glow, shadow)
 - **Zombie Arms**: 20-30px width, 40-60px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2-3 arms with visible bone ends and decay marks
 - **Zombie Legs**: 25-35px width, 50-70px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2 legs with visible bone ends and decay marks
 
@@ -378,6 +382,17 @@ This modular structure improves maintainability, testability, and scalability.
 - Particles fade from 0.6 to 0 opacity over 2-4 second lifetime
 - Particles respawn at car position when expired
 - White/gray gradient with radial fade-out effect
+
+**Fire Particle System** (burntCar only):
+- Each burnt car has 4-7 fire particles
+- Particles spawn from windows (40% left, 40% right) and engine/hood area (20%)
+- Fire colors: orange/yellow/red variations (#ff6600, #ff8800, #ffaa00, #ffff00, #ff4400, #ff0000)
+- Particles rise upward (0.8-1.4px per frame) with horizontal drift (-0.15 to 0.15px)
+- Flickering effect using sine wave for opacity and size variation
+- Particles fade over 1-2 second lifetime (shorter than smoke)
+- Particles respawn at original spawn locations when expired
+- Rendered with `screen` composite mode for additive glow effect
+- Radial gradient from bright center to transparent edges
 
 **Dependencies**: `core/canvas.js`
 
@@ -722,7 +737,7 @@ This modular structure improves maintainability, testability, and scalability.
 - `spawnZombies(count, multiplayerSocket)` - Spawn zombies for a wave
 
 **Features**:
-- Wave-based zombie type selection (Fast, Exploding, Ghost, Spitter, Flying, Armored)
+- Wave-based zombie type selection (Fast, Exploding, Ghost, Spitter, Flying, Crawler, Armored)
 - Boss wave spawning (every 5 waves)
 - Staggered spawn timing with visual indicators
 - Multiplayer synchronization (leader-only spawning)
@@ -1067,6 +1082,30 @@ This hybrid approach provides:
 - **Bottom Center**: Keybind instructions (3 lines showing movement, weapons, sprint, grenade, melee)
 - All bottom UI elements positioned above instruction text with proper spacing
 - Layout adapts for both single-player and co-op modes
+
+**Off-Screen Zombie Indicator System**:
+- **Purpose**: Visual arrows at screen edges pointing to off-screen zombies within detection range
+- **Method**: `drawOffScreenIndicators()` - Renders directional arrows for zombies outside viewport
+- **Features**:
+  - **Distance-Based Color Variation**: Arrows change color based on zombie distance (closer = red/yellow, farther = yellow/green)
+    - Close zombies (< ~1500 units in arcade, < ~400 in other modes): Red/yellow arrows
+    - Medium distance (~1500-3000 units): Yellow/green arrows
+    - Far zombies (3000-5000 units): Green arrows
+  - **World-Space Distance Calculation**: Uses world-space coordinates for accurate color calculation in arcade mode
+  - **Screen-Space Positioning**: Arrows positioned at screen edge intersections using screen-space coordinates
+  - **Distance Thresholds**:
+    - `indicatorDistance`: Maximum distance to show indicator (5000 units arcade, 800 units other modes)
+    - `colorDistance`: Distance threshold for color sensitivity (1500 units arcade, 400 units other modes)
+  - **Coordinate Conversion**: In single-player arcade mode, converts world coordinates to screen coordinates for accurate arrow positioning
+  - **Closest Player Detection**: Finds closest living player for distance calculations
+  - **Edge Intersection**: Calculates intersection point with screen edges for arrow placement
+  - **Performance**: Only processes zombies within indicator distance threshold
+- **Visual Design**:
+  - Arrow triangle pointing toward zombie direction
+  - White stroke outline for visibility
+  - Color gradient from red (close) to green (far) based on world-space distance
+  - 12px arrow size with 20px edge padding
+- **Location**: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
 
 **UI Scaling System**:
 - All UI elements scale dynamically based on `uiScale` setting (50%-150%)

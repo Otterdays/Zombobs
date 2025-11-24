@@ -4,6 +4,65 @@
 
 ## 2025 - Active Development Notes
 
+### Car Fire & Skull Enhancement [2025-01-XX]
+- ✅ **Fixed Zombie Spawn Arrow Color Variation** - Restored distance-based color variation for off-screen zombie indicators
+  - **Problem**: After camera system changes, arrows always appeared red regardless of zombie distance
+  - **Root Cause**: Color calculation used screen-space distance but compared to world-space threshold (5000 units)
+    - Screen-space distances are much smaller (800-1600px) compared to world-space (5000 units)
+    - This made `distanceRatio` always very small, keeping arrows red
+  - **Solution**: 
+    - Changed color calculation to use world-space distance (`worldDistSquared`) instead of screen-space
+    - Added separate `colorDistance` threshold (1500 units arcade, 400 units other modes) for more sensitive color variation
+    - Color ratio clamped to 1.0 for safety
+  - **Color Behavior**:
+    - Close zombies (< ~1500 units): Red/yellow arrows (high red, low green)
+    - Medium distance (~1500-3000 units): Yellow/green arrows
+    - Far zombies (3000-5000 units): Green arrows (lower red, higher green)
+  - **Technical Details**:
+    - World-space distance used for color calculation (accurate in arcade mode)
+    - Screen-space distance still used for arrow direction and positioning (correct)
+    - Separate thresholds: `indicatorDistance` (5000/800) for visibility, `colorDistance` (1500/400) for color sensitivity
+  - Location: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
+  - Status: ✅ WORKING - Arrows now show proper color variation based on world-space distance
+
+### Car Fire & Skull Enhancement [2025-01-XX]
+- ✅ **Off-Screen Indicator Color Fix** - Fixed zombie spawn arrow color variation
+  - **Problem**: After camera system changes, arrows always appeared red regardless of zombie distance
+  - **Root Cause**: Color calculation used screen-space distance but compared to world-space threshold (5000 units)
+  - **Solution**: 
+    - Changed color calculation to use world-space distance (`worldDistSquared`) instead of screen-space
+    - Added separate `colorDistance` threshold (1500 units arcade, 400 units other modes) for more sensitive color variation
+  - **Color Behavior**: Close zombies (< ~1500 units) = Red/yellow, Medium (~1500-3000) = Yellow/green, Far (3000-5000) = Green
+  - Location: `js/ui/GameHUD.js` - `drawOffScreenIndicators()` method
+  - Status: ✅ WORKING - Arrows now show proper color variation based on world-space distance
+
+- ✅ **Fire Effects for Burnt Cars** - Added flickering fire particles to burnt car props
+  - Fire particles spawn from windows (40% left, 40% right) and engine/hood area (20%)
+  - 4-7 fire particles per car with realistic flickering animation using sine wave
+  - Fire colors: orange, yellow, red variations (#ff6600, #ff8800, #ffaa00, #ffff00, #ff4400, #ff0000)
+  - Particles use sine wave flickering for opacity and size variation (flickerPhase)
+  - Shorter lifetime than smoke (1-2 seconds) for dynamic effect
+  - Rendered with `screen` composite mode for additive glow effect
+  - Fire particles update alongside smoke in `update()` method
+  - Location: `js/entities/Prop.js` - `initFireParticles()`, `drawBurntCar()`, `update()` methods
+  - Status: ✅ WORKING - Fire particles flicker realistically from car windows and engine
+
+- ✅ **Enhanced Skull Design** - Improved zombie skull props with more anatomical detail and glow effects
+  - **Anatomical Details**:
+    - Added 6 teeth along jaw line with proper positioning and subtle color variation
+    - Enhanced crack system with 5 crack lines of varying thickness (1.2px and 0.8px)
+    - Bone texture with 4 fixed detail marks per skull instance (stored in constructor to prevent flickering)
+    - Enhanced eye sockets with depth gradients and inner glow (radial gradient from black to dark gray)
+    - Cheekbone definition lines for more realistic structure
+    - Enhanced nasal cavity with radial gradient for depth
+    - Bone color variation with subtle gradient (white to yellow/brown tint at edges)
+  - **Glow Effects**:
+    - Outer glow using shadow blur with green/yellow tint (rgba(200, 255, 150, 0.3))
+    - Inner eye socket glow with dark radial gradients for ominous effect
+    - Subtle shadow beneath skull for depth perception
+  - Location: `js/entities/Prop.js` - `drawSkull()` method, constructor
+  - Status: ✅ WORKING - Skulls now have enhanced detail and eerie glow effects
+
 ### Explosion Particle Rendering Fix [2025-11-24]
 - ✅ **Critical Fix: Invisible Explosion Particles** - Fixed grenade and rocket explosions not appearing
   - **Problem**: Particles were being created and logged, but completely invisible on screen
@@ -43,6 +102,21 @@
   - Smoke particles for burnt cars now update each frame
   - Only updates props in single player arcade mode for performance
   - Location: `js/main.js` - `updateGame()` function
+
+### Crawler Zombie Implementation [2025-01-XX]
+- ✅ **Crawler Zombie** - New low-profile zombie variant that crawls on the ground
+  - Created `CrawlerZombie` class extending base `Zombie` class
+  - Stats: 1.3x speed, 60% health, 0.7x radius (smaller hitbox, harder to hit)
+  - Low-profile appearance (drawn at y + 8px offset, crawling pose)
+  - Dark brown/gray color scheme (#3a2a2a to #0a0000 gradient)
+  - Horizontally elongated body with crawling limbs (arms/legs closer to ground)
+  - Flatter, wider shadow for crawling position
+  - Darker aura (brown/black tones instead of green)
+  - Spawns from Wave 4+ with ~8% chance (range 0.58-0.66, after Flying, before Armored)
+  - XP value: 16 (balanced between Fast 14 and Armored 16)
+  - Location: `js/entities/Zombie.js` - `CrawlerZombie` class
+  - Integration: `js/systems/ZombieSpawnSystem.js`, `js/systems/SkillSystem.js`
+  - Multiplayer compatible (inherits base class sync features)
 
 ### Flying Zombie Implementation [2025-01-XX]
 - ✅ **Flying Zombie** - New zombie variant with floating animation and simple wings
@@ -298,14 +372,28 @@
   - Updated `SUMMARY.md` with new features
   - Updated `SCRATCHPAD.md` with implementation notes
 
+### Zombie Health Increase [2025-01-XX]
+- ✅ **Zombie HP 1.25x Increase** - All zombie HP increased by 25% (1.25x multiplier)
+  - Base zombie health formula: `Math.floor((2 + Math.floor(wave / 3)) * 2.5)` (was `(2 + Math.floor(wave / 3)) * 2`)
+  - Examples: Waves 1-2: 5 HP (was 4), Waves 3-5: 7 HP (was 6), Waves 6-8: 10 HP (was 8)
+  - All zombie variants (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Crawler) inherit increased base health
+  - Location: `js/entities/Zombie.js:22`
+  - Makes zombies more durable and combat more challenging
+
+- ✅ **Boss HP 1.25x Increase with Minimum** - Boss HP increased by 25% with minimum 1000 HP for wave 5+
+  - Boss health formula: `Math.max(1000, Math.floor((500 + (wave * 50)) * 1.25))`
+  - Wave 5: 1000 HP (minimum enforced, was 750), Wave 10: 1250 HP (was 1000), Wave 20: 1875 HP (was 1500)
+  - Ensures wave 5 boss has at least 1000 HP as requested
+  - Location: `js/entities/BossZombie.js:17`
+
 ### Balance Changes [2025-01-XX]
 - ✅ **Crit Rate Reduction** - Reduced base critical hit chance by 2/3
   - Base crit chance: 10% → ~3.33% (reduced by 2/3)
   - Location: `js/utils/combatUtils.js` line 601
   - Crits now occur 1/3 as often for more balanced combat
   - Eagle Eye skill bonuses still apply additively
-- ✅ **Zombie HP Doubling** - All zombie HP doubled (except Boss)
-  - Base zombie health formula: `(2 + Math.floor(wave / 3)) * 2`
+- ✅ **Zombie HP Doubling** - All zombie HP doubled (except Boss) - **NOTE: Further increased by 1.25x in v0.8.1.9**
+  - Base zombie health formula: `(2 + Math.floor(wave / 3)) * 2` (now `(2 + Math.floor(wave / 3)) * 2.5`)
   - Location: `js/entities/Zombie.js` line 22
   - All zombie variants (Normal, Fast, Exploding, Armored, Ghost, Spitter) now have double HP
   - Boss zombie HP intentionally unchanged

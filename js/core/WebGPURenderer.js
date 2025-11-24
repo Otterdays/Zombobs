@@ -554,7 +554,7 @@ export class WebGPURenderer {
             });
 
             this.isInitialized = true;
-            console.log('WebGPU renderer initialized successfully.');
+
             return true;
         } catch (error) {
             console.error('Error initializing WebGPU:', error);
@@ -652,10 +652,10 @@ export class WebGPURenderer {
                 // Draw 4 vertices per particle (quad), so total vertices = particleCount * 4
                 const vertexCount = this.gameParticleCount * 4;
                 pass.draw(vertexCount, 1, 0, 0);
-                // console.log('[WebGPU] render: Drawing', this.gameParticleCount, 'particles (', vertexCount, 'vertices)');
+
             } else {
                 if (this.gameParticleCount > 0) {
-                    console.warn('[WebGPU] render: Particles exist but not rendering - count:', this.gameParticleCount, 'buffer:', !!this.gameParticleBuffer, 'bindGroup:', !!this.gameParticleRenderBindGroup);
+
                 }
             }
             pass.end();
@@ -805,7 +805,7 @@ export class WebGPURenderer {
      */
     syncGameParticles(particles) {
         if (!this.device || !this.isInitialized || this.fallbackMode) {
-            console.log('[WebGPU] syncGameParticles: Skipping - device:', !!this.device, 'initialized:', this.isInitialized, 'fallback:', this.fallbackMode);
+
             return;
         }
 
@@ -815,7 +815,7 @@ export class WebGPURenderer {
             return;
         }
 
-        // console.log('[WebGPU] syncGameParticles: Syncing', particles.length, 'particles');
+
 
         const count = Math.min(particles.length, 2000); // Limit to 2000 particles for performance
         const stride = 32; // 8 floats * 4 bytes: pos(2) + color(4) + radius(1) + life(1) + maxLife(1) = 9, but we'll use 8 for alignment
@@ -878,7 +878,7 @@ export class WebGPURenderer {
 
         // Write to buffer
         this.device.queue.writeBuffer(this.gameParticleBuffer, 0, particleData.buffer);
-        // console.log('[WebGPU] syncGameParticles: Wrote', count, 'particles to buffer, buffer size:', requiredSize, 'bytes');
+
 
         // Update count and create bind group if needed
         this.gameParticleCount = count;
@@ -891,9 +891,9 @@ export class WebGPURenderer {
                     { binding: 1, resource: { buffer: this.gameParticleBuffer } },
                 ],
             });
-            // console.log('[WebGPU] syncGameParticles: Created bind group, particle count:', this.gameParticleCount);
+
         } else {
-            console.warn('[WebGPU] syncGameParticles: Failed to create bind group - layout:', !!this.gameParticleBindGroupLayout, 'buffer:', !!this.gameParticleBuffer);
+
         }
     }
 }

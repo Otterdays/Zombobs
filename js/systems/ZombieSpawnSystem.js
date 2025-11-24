@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie } from '../entities/Zombie.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, CrawlerZombie } from '../entities/Zombie.js';
 import { BossZombie } from '../entities/BossZombie.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 
@@ -21,6 +21,7 @@ export class ZombieSpawnSystem {
             'ghost': GhostZombie,
             'spitter': SpitterZombie,
             'flying': FlyingZombie,
+            'crawler': CrawlerZombie,
             'boss': BossZombie
         };
         return typeMap[type] || NormalZombie;
@@ -94,6 +95,9 @@ export class ZombieSpawnSystem {
             this.spawnBoss(multiplayerSocket);
             return;
         }
+
+        // Increase spawn count by 1.5x for regular zombies (not bosses)
+        count = Math.floor(count * 1.5);
 
         // Mark that we're spawning a wave
         gameState.isSpawningWave = true;
@@ -177,12 +181,16 @@ export class ZombieSpawnSystem {
                 else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
                     ZombieClass = SpitterZombie;
                 }
-                // Wave 5+: Introduce Flying zombies (~15% chance, increased from 9%)
+                // Wave 5+: Introduce Flying zombies (~15% chance)
                 else if (gameState.wave >= 5 && rand >= 0.43 && rand < 0.58) {
                     ZombieClass = FlyingZombie;
                 }
-                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying)
-                else if (gameState.wave >= 3 && rand >= 0.58) {
+                // Wave 4+: Introduce Crawler zombies (~8% chance)
+                else if (gameState.wave >= 4 && rand >= 0.58 && rand < 0.66) {
+                    ZombieClass = CrawlerZombie;
+                }
+                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying/crawler)
+                else if (gameState.wave >= 3 && rand >= 0.66) {
                     const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
                     if (Math.random() < armoredChance) {
                         ZombieClass = ArmoredZombie;
@@ -195,6 +203,7 @@ export class ZombieSpawnSystem {
                 // Override with our predetermined spawn position
                 zombie.x = spawnX;
                 zombie.y = spawnY;
+                
                 gameState.zombies.push(zombie);
 
                 // Broadcast zombie spawn to other clients (leader only)

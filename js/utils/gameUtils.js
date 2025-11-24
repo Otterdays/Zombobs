@@ -11,6 +11,32 @@ export function checkCollision(obj1, obj2) {
 }
 
 /**
+ * Check collision between a bullet and a zombie, including secondary lower body hitbox
+ * @param {Object} bullet - Bullet object with x, y, radius properties
+ * @param {Object} zombie - Zombie object with x, y, radius, and lowerBodyHitbox properties
+ * @returns {boolean} True if bullet collides with either hitbox
+ */
+export function checkZombieCollision(bullet, zombie) {
+    // Check main hitbox (head/center)
+    if (checkCollision(bullet, zombie)) {
+        return true;
+    }
+    
+    // Check secondary lower body hitbox if it exists
+    if (zombie.lowerBodyHitbox) {
+        const dx = bullet.x - zombie.lowerBodyHitbox.x;
+        const dy = bullet.y - zombie.lowerBodyHitbox.y;
+        const radiusSum = bullet.radius + zombie.lowerBodyHitbox.radius;
+        const distSquared = dx * dx + dy * dy;
+        if (distSquared < radiusSum * radiusSum) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
  * Check if an entity is within the viewport (with margin for culling)
  * @param {Object} entity - Entity with x, y, radius properties
  * @param {number} viewportLeft - Left edge of viewport

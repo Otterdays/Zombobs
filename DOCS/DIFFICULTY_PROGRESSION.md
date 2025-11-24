@@ -34,18 +34,18 @@ speed = 1 + (wave * 0.1)
 
 ### Zombie Health (Base)
 ```javascript
-health = (2 + Math.floor(wave / 3)) * 2
+health = Math.floor((2 + Math.floor(wave / 3)) * 2.5) // 1.25x increase from doubled HP
 ```
-- **Waves 1-2**: 4 HP (doubled from 2)
-- **Waves 3-5**: 6 HP (doubled from 3)
-- **Waves 6-8**: 8 HP (doubled from 4)
-- **Waves 9-11**: 10 HP (doubled from 5)
-- **Waves 12-14**: 12 HP (doubled from 6)
-- **Waves 15-17**: 14 HP (doubled from 7)
-- **Waves 18-20**: 16 HP (doubled from 8)
-- **Waves 21-23**: 18 HP (doubled from 9)
-- **Waves 24-26**: 20 HP (doubled from 10)
-- **Pattern**: +2 HP every 3 waves (doubled from +1 HP)
+- **Waves 1-2**: 5 HP (1.25x from 4)
+- **Waves 3-5**: 7 HP (1.25x from 6)
+- **Waves 6-8**: 10 HP (1.25x from 8)
+- **Waves 9-11**: 12 HP (1.25x from 10)
+- **Waves 12-14**: 15 HP (1.25x from 12)
+- **Waves 15-17**: 17 HP (1.25x from 14)
+- **Waves 18-20**: 20 HP (1.25x from 16)
+- **Waves 21-23**: 22 HP (1.25x from 18)
+- **Waves 24-26**: 25 HP (1.25x from 20)
+- **Pattern**: ~+2.5 HP every 3 waves (1.25x increase from previous doubled HP)
 
 **Note**: This is the base health for Normal zombies. Special zombie variants apply multipliers to this base value.
 
@@ -53,23 +53,23 @@ health = (2 + Math.floor(wave / 3)) * 2
 
 | Wave | Zombies | Speed | Health | Total HP | Shots to Kill* | Notes |
 |------|---------|-------|--------|----------|----------------|-------|
-| 1 | 5 | 1.1 | 2 | 10 | 2 (Pistol) | Tutorial wave |
-| 2 | 7 | 1.2 | 2 | 14 | 2 (Pistol) | Still easy |
-| 3 | 9 | 1.3 | 3 | 27 | 3 (Pistol) | **First health increase** |
-| 4 | 11 | 1.4 | 3 | 33 | 3 (Pistol) | Speed ramping up |
-| 5 | 13 | 1.5 | 3 | 39 | 3 (Pistol) | Getting crowded |
-| 6 | 15 | 1.6 | 4 | 60 | 4 (Pistol) | **Health increase** |
-| 7 | 17 | 1.7 | 4 | 68 | 4 (Pistol) | Noticeably faster |
-| 8 | 19 | 1.8 | 4 | 76 | 4 (Pistol) | Pressure building |
-| 9 | 21 | 1.9 | 5 | 105 | 5 (Pistol) | **Health increase** |
-| 10 | 23 | 2.0 | 5 | 115 | 5 (Pistol) | **2x speed milestone** |
-| 15 | 33 | 2.5 | 6 | 198 | 6 (Pistol) | Very challenging |
-| 20 | 43 | 3.0 | 7 | 301 | 7 (Pistol) | **3x speed milestone** |
-| 25 | 53 | 3.5 | 9 | 477 | 9 (Pistol) | Extreme difficulty |
-| 30 | 63 | 4.0 | 12 | 756 | 12 (Pistol) | **4x speed milestone** |
-| 35 | 73 | 4.5 | 13 | 949 | 13 (Pistol) | Extreme late game |
-| 40 | 83 | 5.0 | 15 | 1245 | 15 (Pistol) | **5x speed milestone** |
-| 50 | 103 | 6.0 | 18 | 1854 | 18 (Pistol) | **6x speed milestone** |
+| 1 | 5 | 1.1 | 5 | 25 | 3 (Pistol) | Tutorial wave |
+| 2 | 7 | 1.2 | 5 | 35 | 3 (Pistol) | Still easy |
+| 3 | 9 | 1.3 | 7 | 63 | 4 (Pistol) | **First health increase** |
+| 4 | 11 | 1.4 | 7 | 77 | 4 (Pistol) | Speed ramping up |
+| 5 | 13 | 1.5 | 7 | 91 | 4 (Pistol) | Getting crowded |
+| 6 | 15 | 1.6 | 10 | 150 | 5 (Pistol) | **Health increase** |
+| 7 | 17 | 1.7 | 10 | 170 | 5 (Pistol) | Noticeably faster |
+| 8 | 19 | 1.8 | 10 | 190 | 5 (Pistol) | Pressure building |
+| 9 | 21 | 1.9 | 12 | 252 | 6 (Pistol) | **Health increase** |
+| 10 | 23 | 2.0 | 12 | 276 | 6 (Pistol) | **2x speed milestone** |
+| 15 | 33 | 2.5 | 17 | 561 | 9 (Pistol) | Very challenging |
+| 20 | 43 | 3.0 | 20 | 860 | 10 (Pistol) | **3x speed milestone** |
+| 25 | 53 | 3.5 | 25 | 1325 | 13 (Pistol) | Extreme difficulty |
+| 30 | 63 | 4.0 | 30 | 1890 | 15 (Pistol) | **4x speed milestone** |
+| 35 | 73 | 4.5 | 35 | 2555 | 18 (Pistol) | Extreme late game |
+| 40 | 83 | 5.0 | 40 | 3320 | 20 (Pistol) | **5x speed milestone** |
+| 50 | 103 | 6.0 | 50 | 5150 | 25 (Pistol) | **6x speed milestone** |
 
 *Shots to kill assumes Pistol (1 damage per shot). Shotgun and Rifle have different damage values.
 
@@ -80,31 +80,31 @@ health = (2 + Math.floor(wave / 3)) * 2
 ### Early Game (Waves 1-5)
 - **Zombies**: 5-13
 - **Speed**: 1.1-1.5 (manageable)
-- **Health**: 2-3 HP
+- **Health**: 5-7 HP (1.25x increase)
 - **Challenge**: Learning mechanics, weapon switching
 - **Strategy**: Focus on accuracy, learn reload timing
 
 ### Mid Game (Waves 6-15)
 - **Zombies**: 15-33
 - **Speed**: 1.6-2.5 (noticeably faster)
-- **Health**: 4-6 HP
+- **Health**: 10-17 HP (1.25x increase)
 - **Challenge**: Crowd control, ammo management
 - **Strategy**: Use Shotgun for groups, Rifle for sustained fire
 
 ### Late Game (Waves 16-25)
 - **Zombies**: 35-53
 - **Speed**: 2.6-3.5 (very fast)
-- **Health**: 7-9 HP
+- **Health**: 17-25 HP (1.25x increase)
 - **Challenge**: Overwhelming numbers, tanky enemies
 - **Strategy**: Perfect movement, weapon efficiency, health pickup timing
 
 ### End Game (Waves 26+)
 - **Zombies**: 55+
 - **Speed**: 3.6+ (extremely fast)
-- **Health**: 10+ HP
+- **Health**: 25+ HP (1.25x increase)
 - **Challenge**: Survival becomes extremely difficult
 - **Strategy**: Maximum efficiency, perfect execution required
-- **Special Notes**: Boss waves every 5 waves add massive HP pools (1500+ HP at Wave 20+)
+- **Special Notes**: Boss waves every 5 waves add massive HP pools (1000+ HP at Wave 5+, 1875+ HP at Wave 20+)
 
 ## Special Zombie Types
 
@@ -189,7 +189,7 @@ The game features **7 special zombie variants** that spawn at specific wave thre
 - Example (Wave 6, 4 HP base, 19 armor): 4 + (19/0.65) = ~33.2 effective HP
 
 ### Boss Zombie
-- **Health**: 500 + (wave * 50) - **massive scaling**
+- **Health**: `Math.max(1000, Math.floor((500 + wave * 50) * 1.25))` - **1.25x increase with minimum 1000 HP for wave 5+**
 - **Speed**: 0.6 (fixed, slower than normal zombies)
 - **Size**: 35 radius (nearly 3x normal size)
 - **Special**: Area attack every 3 seconds (120 radius, 20 damage), charges for 1 second before attacking
@@ -198,11 +198,11 @@ The game features **7 special zombie variants** that spawn at specific wave thre
 - **Code**: `js/entities/BossZombie.js`
 
 **Boss Health Examples:**
-- Wave 5: 750 HP (500 + 5*50)
-- Wave 10: 1000 HP (500 + 10*50)
-- Wave 15: 1250 HP (500 + 15*50)
-- Wave 20: 1500 HP (500 + 20*50)
-- Wave 25: 1750 HP (500 + 25*50)
+- Wave 5: 1000 HP (minimum enforced, 1.25x from 750)
+- Wave 10: 1250 HP (1.25x from 1000)
+- Wave 15: 1562 HP (1.25x from 1250)
+- Wave 20: 1875 HP (1.25x from 1500)
+- Wave 25: 2187 HP (1.25x from 1750)
 
 ## Special Zombie Spawn Rates
 

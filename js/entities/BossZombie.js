@@ -14,7 +14,8 @@ export class BossZombie extends Zombie {
         this.type = 'boss';
         this.radius = 35; // Larger size
         this.speed = 0.6; // Slower than normal zombies initially
-        this.maxHealth = 500 + (gameState.wave * 50); // Scales with wave
+        // 1.25x increase, with minimum 1000 HP for wave 5+
+        this.maxHealth = Math.max(1000, Math.floor((500 + (gameState.wave * 50)) * 1.25));
         this.health = this.maxHealth;
         this.scoreValue = 500;
         this.color = {

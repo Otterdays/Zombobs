@@ -1144,6 +1144,8 @@ export class GameHUD {
         // v0.8.1.2: In single player arcade mode, use much larger distance threshold for moving world
         // In other modes, use smaller threshold for performance
         const indicatorDistance = isSinglePlayerArcade ? 5000 : 800; // Distance threshold (world space)
+        // Use a smaller distance threshold for color sensitivity (arrows turn green/yellow at closer distances)
+        const colorDistance = isSinglePlayerArcade ? 1500 : 400; // Color transition distance (world space)
         const indicatorSize = 12;
         const edgePadding = 20;
 
@@ -1197,7 +1199,7 @@ export class GameHUD {
 
             if (isOnScreen) return; // Don't show indicator if zombie is on screen
 
-            // Calculate screen-space distance for arrow direction and color
+            // Calculate screen-space distance for arrow direction (color uses world-space distance)
             const dx = zombieScreenX - playerScreenX;
             const dy = zombieScreenY - playerScreenY;
             const distSquared = dx * dx + dy * dy;
@@ -1280,9 +1282,9 @@ export class GameHUD {
             this.ctx.rotate(angle);
 
             // Arrow color based on distance (closer = more red)
-            // Calculate actual distance from squared distance
-            const distance = Math.sqrt(distSquared);
-            const distanceRatio = distance / indicatorDistance;
+            // Use world-space distance with smaller colorDistance threshold for more sensitive color variation
+            const worldDistance = Math.sqrt(worldDistSquared);
+            const distanceRatio = Math.min(1, worldDistance / colorDistance); // Clamp to 1 for safety
             const red = Math.floor(255 * (1 - distanceRatio));
             const green = Math.floor(100 * distanceRatio);
             const color = `rgb(${red}, ${green}, 0)`;

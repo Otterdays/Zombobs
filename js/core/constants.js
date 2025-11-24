@@ -106,7 +106,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.0 ALPHA: Major Refactor! 🚀 | GameHUD Modularization | Screen Class Extraction | 63% Code Reduction | Improved Maintainability | All Features Preserved | V0.7.2 ALPHA: Major Update! 🚀 | Game Over Screen Improvements 🎮 | MongoDB Migration for Persistent Highscores 🗄️ | Main Menu Layout Redesign 🎨 | Multiplayer Lobby Chat System 💬 | XP System Balance Adjustments ⚖️ | V0.7.1: Polish Update! ✨ | Enhanced Kill Feedback 🎯 | Multi-Kill Indicators 💥 | Quick Stats on Game Over 📊 | V0.7.0: Rank & Progression System 🏅 | Achievement System 🏆 | Battlepass System 🎁 | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.1.6 ALPHA: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | 2000 Particle Limit | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | Background Shader Effects | V0.8.1.4: Explosion Fixes 🔧 | Critical Rendering Fix | Enhanced Alpha Blending | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | Zombie-Themed Props | V0.8.1.2: Living World 🌍 | Camera System | Moving Ground | Procedural Props | V0.8.0: Major Refactor! 🚀 | GameHUD Modularization | 63% Code Reduction | And More...";
 
 // Weapon definitions
 export const WEAPONS = {
