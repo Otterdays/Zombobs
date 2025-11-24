@@ -2,6 +2,27 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.9] - Cookie Persistence Fix
+
+### Fixed
+- **MongoDB Duplicate User Entries** - Fixed bug where each game run created new user ID entries in MongoDB
+  - **Root Cause**: Cookie (`zombobs_user_id`) wasn't being set before Socket.io connection, causing server to generate new temporary IDs each time
+  - **Solution**: Modified `initializeNetwork()` to fetch `/health` endpoint first (which sets the cookie via `getOrCreateUserId()`), then connect with Socket.io
+  - Cookie is now guaranteed to be set before Socket.io handshake, ensuring user ID persists across game sessions
+  - Prevents duplicate MongoDB entries for the same user
+  - Location: `js/systems/MultiplayerSystem.js` - `initializeNetwork()`, new `connectSocketIO()` method
+  - Date: 2025-11-24
+
+### Changed
+- **Socket.io Connection Flow** - Split network initialization into two phases
+  - Phase 1: Fetch `/health` endpoint to set user ID cookie
+  - Phase 2: Connect Socket.io with cookie already in handshake headers
+  - Ensures consistent user tracking across all game sessions
+  - Location: `js/systems/MultiplayerSystem.js`
+
+### Files Modified
+- `js/systems/MultiplayerSystem.js` - Cookie initialization before Socket.io connection
+
 ## [v0.8.1.7] - Console Error Fixes & Deployment Improvements
 
 ### Fixed

@@ -4,6 +4,17 @@
 
 ## 2025 - Active Development Notes
 
+### Cookie Persistence Fix [2025-11-24]
+- ✅ **MongoDB Duplicate User Entries Fixed** - Fixed bug where each game run created new user ID entries
+  - **Problem**: Cookie (`zombobs_user_id`) wasn't being set before Socket.io connection, causing server to generate new temporary IDs each time
+  - **Root Cause**: Socket.io connected immediately without ensuring cookie was set first via HTTP request
+  - **Solution**: Modified `initializeNetwork()` to fetch `/health` endpoint first (which calls `getOrCreateUserId()` and sets cookie), then connect Socket.io
+  - Split connection into two phases: cookie initialization → Socket.io connection
+  - Cookie now guaranteed to be in Socket.io handshake headers, ensuring user ID persists across sessions
+  - Prevents duplicate MongoDB entries for same user
+  - Location: `js/systems/MultiplayerSystem.js` - `initializeNetwork()`, new `connectSocketIO()` method
+  - Status: ✅ WORKING - User ID now persists across game sessions, no more duplicate entries
+
 ### Console Error Fixes & Deployment Improvements [2025-01-XX]
 - ✅ **Hugging Face Server Console Errors Fixed** - Suppressed Permissions Policy warnings
   - Added Permissions Policy meta tag with only recognized features

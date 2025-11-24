@@ -217,8 +217,8 @@ export class MainMenuScreen {
 
         // Draw mute button in bottom right
         const muteButtonSize = 40;
-        const muteButtonX = this.canvas.width - 60;
-        const muteButtonY = this.canvas.height - 60;
+        const muteButtonX = this.canvas.width - 120;
+        const muteButtonY = this.canvas.height - 100;
         const muteButtonHovered = this.hoveredButton === 'mute_music';
 
         // Draw button background
@@ -789,8 +789,8 @@ export class MainMenuScreen {
 
         // Check mute button (bottom right)
         const muteButtonSize = 40;
-        const muteButtonX = this.canvas.width - 60;
-        const muteButtonY = this.canvas.height - 60;
+        const muteButtonX = this.canvas.width - 120;
+        const muteButtonY = this.canvas.height - 100;
         if (x >= muteButtonX && x <= muteButtonX + muteButtonSize &&
             y >= muteButtonY && y <= muteButtonY + muteButtonSize) {
             return 'mute_music';

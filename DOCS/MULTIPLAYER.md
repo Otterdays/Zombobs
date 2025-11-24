@@ -339,6 +339,7 @@ The server maintains a global leaderboard of top 10 player scores. Scores are su
 - Submits score on game over
 - Payload: `{ username, score, wave, zombiesKilled, isMultiplayer }`
 - Server extracts `userId` from socket handshake cookies
+- **Note**: Client ensures cookie is set before Socket.io connection by fetching `/health` endpoint first (prevents duplicate user entries)
 - Server saves score and checks if it qualifies for top 10
 
 **Server → Client: `game:score:result`**

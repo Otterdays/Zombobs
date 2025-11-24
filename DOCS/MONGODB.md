@@ -232,6 +232,7 @@ npm start
 - Submits score on game over
 - Payload: `{ username, score, wave, zombiesKilled, isMultiplayer }`
 - Server extracts `userId` from socket handshake cookies
+- **Note**: Client ensures cookie is set before Socket.io connection by fetching `/health` endpoint first
 - Calls `addHighscore()` to save to MongoDB
 
 **Server → Client: `game:score:result`**
