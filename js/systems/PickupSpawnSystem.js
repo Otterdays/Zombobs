@@ -15,6 +15,8 @@ import {
     ShieldPickup,
     AdrenalinePickup
 } from '../entities/Pickup.js';
+import { gameState } from '../core/gameState.js';
+import { canvas } from '../core/canvas.js';
 
 /**
  * PickupSpawnSystem handles spawning of health, ammo, and powerup pickups
@@ -48,7 +50,22 @@ export class PickupSpawnSystem {
             gameState.healthPickups.length < MAX_HEALTH_PICKUPS) {
             // Only spawn if some player is hurt
             if (gameState.players.some(p => p.health < PLAYER_MAX_HEALTH && p.health > 0)) {
-                gameState.healthPickups.push(new HealthPickup(canvas.width, canvas.height));
+                // v0.8.1.2: In single player arcade mode, spawn relative to player position in world space
+                const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+                const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+                
+                if (isSinglePlayerArcade && localPlayer) {
+                    // Spawn in world space relative to player (within viewport area)
+                    const margin = 40;
+                    const spawnX = localPlayer.x + (Math.random() - 0.5) * (canvas.width - margin * 2);
+                    const spawnY = localPlayer.y + (Math.random() - 0.5) * (canvas.height - margin * 2);
+                    const pickup = new HealthPickup(canvas.width, canvas.height);
+                    pickup.x = spawnX;
+                    pickup.y = spawnY;
+                    gameState.healthPickups.push(pickup);
+                } else {
+                    gameState.healthPickups.push(new HealthPickup(canvas.width, canvas.height));
+                }
                 gameState.lastHealthPickupSpawnTime = now;
             }
         }
@@ -68,7 +85,22 @@ export class PickupSpawnSystem {
         if (now - gameState.lastAmmoPickupSpawnTime >= adjustedInterval &&
             gameState.ammoPickups.length < MAX_AMMO_PICKUPS) {
             if (gameState.players.some(p => p.currentAmmo < p.maxAmmo * 0.5 && p.health > 0)) {
-                gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
+                // v0.8.1.2: In single player arcade mode, spawn relative to player position in world space
+                const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+                const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+                
+                if (isSinglePlayerArcade && localPlayer) {
+                    // Spawn in world space relative to player (within viewport area)
+                    const margin = 40;
+                    const spawnX = localPlayer.x + (Math.random() - 0.5) * (canvas.width - margin * 2);
+                    const spawnY = localPlayer.y + (Math.random() - 0.5) * (canvas.height - margin * 2);
+                    const pickup = new AmmoPickup(canvas.width, canvas.height);
+                    pickup.x = spawnX;
+                    pickup.y = spawnY;
+                    gameState.ammoPickups.push(pickup);
+                } else {
+                    gameState.ammoPickups.push(new AmmoPickup(canvas.width, canvas.height));
+                }
                 gameState.lastAmmoPickupSpawnTime = now;
             }
         }
@@ -91,30 +123,49 @@ export class PickupSpawnSystem {
             if (Math.random() < adjustedChance) { // Adjusted chance
                 const rand = Math.random();
 
+                // v0.8.1.2: In single player arcade mode, spawn relative to player position in world space
+                const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+                const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+                
+                // Helper function to spawn pickup in world space if needed
+                const spawnPickupInWorldSpace = (PickupClass, array) => {
+                    if (isSinglePlayerArcade && localPlayer) {
+                        const margin = 40;
+                        const spawnX = localPlayer.x + (Math.random() - 0.5) * (canvas.width - margin * 2);
+                        const spawnY = localPlayer.y + (Math.random() - 0.5) * (canvas.height - margin * 2);
+                        const pickup = new PickupClass(canvas.width, canvas.height);
+                        pickup.x = spawnX;
+                        pickup.y = spawnY;
+                        array.push(pickup);
+                    } else {
+                        array.push(new PickupClass(canvas.width, canvas.height));
+                    }
+                };
+                
                 // Distribution: Damage (20%), Nuke (8%), Speed (18%), RapidFire (18%), Shield (24%), Adrenaline (12%)
                 if (rand < 0.20) { // Damage
                     if (gameState.damagePickups.length < 1) {
-                        gameState.damagePickups.push(new DamagePickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(DamagePickup, gameState.damagePickups);
                     }
                 } else if (rand < 0.28) { // Nuke
                     if (gameState.nukePickups.length < 1) {
-                        gameState.nukePickups.push(new NukePickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(NukePickup, gameState.nukePickups);
                     }
                 } else if (rand < 0.46) { // Speed
                     if (gameState.speedPickups.length < 1) {
-                        gameState.speedPickups.push(new SpeedPickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(SpeedPickup, gameState.speedPickups);
                     }
                 } else if (rand < 0.64) { // RapidFire
                     if (gameState.rapidFirePickups.length < 1) {
-                        gameState.rapidFirePickups.push(new RapidFirePickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(RapidFirePickup, gameState.rapidFirePickups);
                     }
                 } else if (rand < 0.88) { // Shield
                     if (gameState.shieldPickups.length < 1) {
-                        gameState.shieldPickups.push(new ShieldPickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(ShieldPickup, gameState.shieldPickups);
                     }
                 } else { // Adrenaline
                     if (gameState.adrenalinePickups.length < 1) {
-                        gameState.adrenalinePickups.push(new AdrenalinePickup(canvas.width, canvas.height));
+                        spawnPickupInWorldSpace(AdrenalinePickup, gameState.adrenalinePickups);
                     }
                 }
             }

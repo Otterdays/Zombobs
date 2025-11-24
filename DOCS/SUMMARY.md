@@ -6,6 +6,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ## Current Status
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
+✅ **Explosion Effects** - Grenade and rocket explosions with particle trails (Fixed 2025-11-24)
 ✅ **Audio System** - Gunshots, damage sounds, footsteps, restart sounds, menu music (Web Audio API + HTMLAudioElement)
 ✅ **Weapon System** - 4 weapons (Pistol, Shotgun, Rifle, Flamethrower) with unique stats
 ✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts, persistent ammo tracking

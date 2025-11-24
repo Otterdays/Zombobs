@@ -5,6 +5,9 @@ import { playRestartSound, playMenuMusic, stopMenuMusic } from '../systems/Audio
 import { saveHighScore, saveMultiplierStats, saveScoreboardEntry } from '../utils/gameUtils.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
+import { propSpawnSystem } from './PropSpawnSystem.js';
+import { groundTextureSystem } from './GroundTextureSystem.js';
+import { cameraSystem } from './CameraSystem.js';
 
 /**
  * GameStateManager - Handles game lifecycle (start, restart, game over)
@@ -134,6 +137,10 @@ export class GameStateManager {
         // Do NOT reset players here for coop, we want to keep the lobby configuration
         if (!gameState.isCoop) {
             resetGameState(canvas.width, canvas.height);
+            // v0.8.1.2: Reset living world systems for single player arcade
+            propSpawnSystem.reset();
+            groundTextureSystem.reset();
+            cameraSystem.reset();
         } else {
             // Just reset game objects, keep players
             gameState.score = 0;
@@ -149,6 +156,7 @@ export class GameStateManager {
             gameState.grenades = [];
             gameState.acidProjectiles = [];
             gameState.acidPools = [];
+            gameState.props = []; // v0.8.1.2: Reset props for coop mode
 
             // Reset all players (including AI)
             gameState.players.forEach((p, index) => {

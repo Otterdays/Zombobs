@@ -46,6 +46,18 @@ export class WebGPURenderer {
         // Particle buffer management
         this.particleBufferSize = 0;
         this.particleStagingBuffer = null;
+        
+        // Game particle sync (for explosions, etc.)
+        this.gameParticleCount = 0;
+        this.gameParticleBuffer = null;
+        this.gameParticleRenderBindGroup = null;
+        this.gameParticleRenderPipeline = null;
+        this.gameParticleBindGroupLayout = null;
+        
+        // Game particle sync (for explosions, etc.)
+        this.gameParticleCount = 0;
+        this.gameParticleBuffer = null;
+        this.gameParticleRenderBindGroup = null;
     }
 
     async init() {
@@ -359,6 +371,127 @@ export class WebGPURenderer {
                 primitive: { topology: 'point-list' },
             });
 
+            // Create game particle shader (for explosions with color and radius)
+            // Data format: [x, y, r, g, b, a, radius, life] = 8 floats
+            // Render as billboarded quads (4 vertices per particle)
+            const gameParticleModule = this.device.createShaderModule({
+                code: `
+                    struct Uniforms {
+                        time: f32,
+                        resolutionX: f32,
+                        resolutionY: f32,
+                        bloomIntensity: f32,
+                        distortionEnabled: f32,
+                        lightingQuality: f32,
+                    }
+                    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+                    @group(0) @binding(1) var<storage> particleData: array<f32>;
+                    
+                    struct VSOut {
+                        @builtin(position) position: vec4<f32>,
+                        @location(0) color: vec4<f32>,
+                        @location(1) uv: vec2<f32>,
+                    }
+                    
+                    @vertex
+                    fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
+                        // Each particle is rendered as a quad (4 vertices)
+                        // vertexId: 0,1,2,3 = one quad
+                        let particleIndex = vertexId / 4u;
+                        let quadVertex = vertexId % 4u;
+                        
+                        let idx = particleIndex * 8u;
+                        let x = particleData[idx + 0u];
+                        let y = particleData[idx + 1u];
+                        let r = particleData[idx + 2u];
+                        let g = particleData[idx + 3u];
+                        let b = particleData[idx + 4u];
+                        let a = particleData[idx + 5u];
+                        let radius = particleData[idx + 6u];
+                        
+                        // Make particles MUCH bigger - multiply radius by 5 and ensure minimum size
+                        // Use select() instead of max() for WGSL compatibility
+                        let baseSize = radius * 5.0;
+                        let size = select(10.0, baseSize, baseSize > 10.0); // At least 10 pixels, or 5x radius
+                        
+                        // Quad corners for triangle-strip: order must be top-left, bottom-left, top-right, bottom-right
+                        // This creates triangles: (0,1,2) and (1,2,3)
+                        var quadPos = vec2<f32>(0.0, 0.0);
+                        var uv = vec2<f32>(0.0, 0.0);
+                        
+                        if (quadVertex == 0u) { // Top-left (first triangle start)
+                            quadPos = vec2<f32>(-1.0, 1.0);
+                            uv = vec2<f32>(0.0, 0.0);
+                        } else if (quadVertex == 1u) { // Bottom-left (first triangle, second triangle start)
+                            quadPos = vec2<f32>(-1.0, -1.0);
+                            uv = vec2<f32>(0.0, 1.0);
+                        } else if (quadVertex == 2u) { // Top-right (first triangle end, second triangle)
+                            quadPos = vec2<f32>(1.0, 1.0);
+                            uv = vec2<f32>(1.0, 0.0);
+                        } else { // Bottom-right (second triangle end)
+                            quadPos = vec2<f32>(1.0, -1.0);
+                            uv = vec2<f32>(1.0, 1.0);
+                        }
+                        
+                        // Convert particle position to NDC
+                        let ndcX = (x / uniforms.resolutionX) * 2.0 - 1.0;
+                        let ndcY = (y / uniforms.resolutionY) * -2.0 + 1.0;
+                        
+                        // Scale quad by particle size (in NDC space)
+                        let scaleX = (size / uniforms.resolutionX) * 2.0;
+                        let scaleY = (size / uniforms.resolutionY) * 2.0;
+                        
+                        var out: VSOut;
+                        out.position = vec4<f32>(
+                            ndcX + quadPos.x * scaleX,
+                            ndcY + quadPos.y * scaleY,
+                            0.0,
+                            1.0
+                        );
+                        out.color = vec4<f32>(r, g, b, a);
+                        out.uv = uv;
+                        return out;
+                    }
+                    
+                    @fragment
+                    fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
+                        // Create circular particle with smooth edges
+                        let center = vec2<f32>(0.5, 0.5);
+                        let dist = distance(input.uv, center);
+                        let alpha = input.color.a * (1.0 - smoothstep(0.3, 0.5, dist));
+                        return vec4<f32>(input.color.rgb, alpha);
+                    }
+                `,
+            });
+
+            // Create bind group layout for game particles
+            this.gameParticleBindGroupLayout = this.device.createBindGroupLayout({
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+                    { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+                ],
+            });
+
+            const gameParticlePipelineLayout = this.device.createPipelineLayout({
+                bindGroupLayouts: [this.gameParticleBindGroupLayout],
+            });
+
+            this.gameParticleRenderPipeline = this.device.createRenderPipeline({
+                layout: gameParticlePipelineLayout,
+                vertex: { module: gameParticleModule, entryPoint: 'vs_main' },
+                fragment: { module: gameParticleModule, entryPoint: 'fs_main', targets: [{ format: this.format, blend: {
+                    color: {
+                        srcFactor: 'src-alpha',
+                        dstFactor: 'one-minus-src-alpha',
+                    },
+                    alpha: {
+                        srcFactor: 'one',
+                        dstFactor: 'one-minus-src-alpha',
+                    },
+                } }] },
+                primitive: { topology: 'triangle-strip' },
+            });
+
             this.isInitialized = true;
             console.log('WebGPU renderer initialized successfully.');
             return true;
@@ -426,7 +559,7 @@ export class WebGPURenderer {
                 colorAttachments: [
                     {
                         view: this.context.getCurrentTexture().createView(),
-                        clearValue: { r: 0.02, g: 0.01, b: 0.03, a: 1.0 },
+                        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Transparent clear for particle layer
                         loadOp: 'clear',
                         storeOp: 'store',
                     },
@@ -438,11 +571,26 @@ export class WebGPURenderer {
             pass.setBindGroup(0, this.bindGroup); // Background uses separate bind group
             pass.draw(3, 1, 0, 0);
 
-            // Render particles with separate bind group (read-only storage)
+            // Render background particles with separate bind group (read-only storage)
             if (this.particleCount > 0 && this.particleBuffer && this.particleRenderBindGroup) {
                 pass.setPipeline(this.particleRenderPipeline);
                 pass.setBindGroup(0, this.particleRenderBindGroup);
                 pass.draw(this.particleCount, 1, 0, 0);
+            }
+
+            // Render game particles (explosions, etc.) if synced
+            // Each particle is rendered as a quad (4 vertices = triangle-strip with 2 triangles)
+            if (this.gameParticleCount > 0 && this.gameParticleBuffer && this.gameParticleRenderBindGroup) {
+                pass.setPipeline(this.gameParticleRenderPipeline);
+                pass.setBindGroup(0, this.gameParticleRenderBindGroup);
+                // Draw 4 vertices per particle (quad), so total vertices = particleCount * 4
+                const vertexCount = this.gameParticleCount * 4;
+                pass.draw(vertexCount, 1, 0, 0);
+                console.log('[WebGPU] render: Drawing', this.gameParticleCount, 'particles (', vertexCount, 'vertices)');
+            } else {
+                if (this.gameParticleCount > 0) {
+                    console.warn('[WebGPU] render: Particles exist but not rendering - count:', this.gameParticleCount, 'buffer:', !!this.gameParticleBuffer, 'bindGroup:', !!this.gameParticleRenderBindGroup);
+                }
             }
             pass.end();
 
@@ -583,6 +731,104 @@ export class WebGPURenderer {
                 { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-only for vertex shader
             ],
         });
+    }
+
+    /**
+     * Sync game particles from gameState.particles to WebGPU buffer
+     * @param {Array} particles - Array of particle objects from gameState.particles
+     */
+    syncGameParticles(particles) {
+        if (!this.device || !this.isInitialized || this.fallbackMode) {
+            console.log('[WebGPU] syncGameParticles: Skipping - device:', !!this.device, 'initialized:', this.isInitialized, 'fallback:', this.fallbackMode);
+            return;
+        }
+
+        if (!particles || particles.length === 0) {
+            this.gameParticleCount = 0;
+            this.gameParticleRenderBindGroup = null;
+            return;
+        }
+
+        console.log('[WebGPU] syncGameParticles: Syncing', particles.length, 'particles');
+
+        const count = Math.min(particles.length, 500); // Limit to 500 particles for performance
+        const stride = 32; // 8 floats * 4 bytes: pos(2) + color(4) + radius(1) + life(1) + maxLife(1) = 9, but we'll use 8 for alignment
+        const requiredSize = count * stride;
+
+        // Recreate buffer if needed
+        if (!this.gameParticleBuffer || this.gameParticleBufferSize < requiredSize) {
+            if (this.gameParticleBuffer) {
+                this.gameParticleBuffer.destroy?.();
+            }
+
+            this.gameParticleBuffer = this.device.createBuffer({
+                size: requiredSize,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this.gameParticleBufferSize = requiredSize;
+        }
+
+        // Convert particles to WebGPU format
+        // Format: [x, y, r, g, b, a, radius, life, maxLife]
+        const particleData = new Float32Array(count * 8);
+        
+        for (let i = 0; i < count; i++) {
+            const p = particles[i];
+            if (!p) continue;
+
+            // Parse color
+            let r = 1.0, g = 1.0, b = 1.0, a = 1.0;
+            if (p.color) {
+                if (p.color.startsWith('rgba')) {
+                    const match = p.color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+                    if (match) {
+                        r = parseFloat(match[1]) / 255;
+                        g = parseFloat(match[2]) / 255;
+                        b = parseFloat(match[3]) / 255;
+                        a = match[4] ? parseFloat(match[4]) : 1.0;
+                    }
+                } else if (p.color.startsWith('#')) {
+                    const hex = p.color.replace('#', '');
+                    r = parseInt(hex.substr(0, 2), 16) / 255;
+                    g = parseInt(hex.substr(2, 2), 16) / 255;
+                    b = parseInt(hex.substr(4, 2), 16) / 255;
+                }
+            }
+
+            const maxLife = p.maxLife || p.life || 30;
+            const lifeRatio = p.life / maxLife;
+            a *= Math.max(0, Math.min(1, lifeRatio)); // Apply life-based alpha
+
+            const idx = i * 8;
+            particleData[idx + 0] = p.x || 0;
+            particleData[idx + 1] = p.y || 0;
+            particleData[idx + 2] = r;
+            particleData[idx + 3] = g;
+            particleData[idx + 4] = b;
+            particleData[idx + 5] = a;
+            particleData[idx + 6] = p.radius || 2;
+            particleData[idx + 7] = p.life || 0;
+        }
+
+        // Write to buffer
+        this.device.queue.writeBuffer(this.gameParticleBuffer, 0, particleData.buffer);
+        console.log('[WebGPU] syncGameParticles: Wrote', count, 'particles to buffer, buffer size:', requiredSize, 'bytes');
+
+        // Update count and create bind group if needed
+        this.gameParticleCount = count;
+        
+        if (this.gameParticleBindGroupLayout && this.gameParticleBuffer) {
+            this.gameParticleRenderBindGroup = this.device.createBindGroup({
+                layout: this.gameParticleBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.uniformBuffer } },
+                    { binding: 1, resource: { buffer: this.gameParticleBuffer } },
+                ],
+            });
+            console.log('[WebGPU] syncGameParticles: Created bind group, particle count:', this.gameParticleCount);
+        } else {
+            console.warn('[WebGPU] syncGameParticles: Failed to create bind group - layout:', !!this.gameParticleBindGroupLayout, 'buffer:', !!this.gameParticleBuffer);
+        }
     }
 }
 

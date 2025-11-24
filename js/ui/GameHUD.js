@@ -1,5 +1,6 @@
 import { ctx } from '../core/canvas.js';
 import { gameState } from '../core/gameState.js';
+import { cameraSystem } from '../systems/CameraSystem.js';
 import { BossHealthBar } from './BossHealthBar.js';
 import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
@@ -1137,7 +1138,12 @@ export class GameHUD {
         if (!gameState.gameRunning || gameState.gamePaused) return;
         if (gameState.zombies.length === 0) return;
 
-        const indicatorDistance = 800; // Distance threshold
+        // v0.8.1.2: Check if single player arcade mode for coordinate conversion
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
+        // v0.8.1.2: In single player arcade mode, use much larger distance threshold for moving world
+        // In other modes, use smaller threshold for performance
+        const indicatorDistance = isSinglePlayerArcade ? 5000 : 800; // Distance threshold (world space)
         const indicatorSize = 12;
         const edgePadding = 20;
 
@@ -1161,29 +1167,51 @@ export class GameHUD {
 
             if (!closestPlayer) return;
 
-            const dx = zombie.x - closestPlayer.x;
-            const dy = zombie.y - closestPlayer.y;
-            const distSquared = dx * dx + dy * dy;
+            // Calculate world-space distance for threshold check
+            const worldDx = zombie.x - closestPlayer.x;
+            const worldDy = zombie.y - closestPlayer.y;
+            const worldDistSquared = worldDx * worldDx + worldDy * worldDy;
             const indicatorDistSquared = indicatorDistance * indicatorDistance;
 
-            // Only show indicator if zombie is off-screen but within threshold distance
-            if (distSquared > indicatorDistSquared) return;
+            // Only show indicator if zombie is off-screen but within threshold distance (world space)
+            if (worldDistSquared > indicatorDistSquared) return;
 
-            const isOnScreen = zombie.x >= 0 && zombie.x <= this.canvas.width &&
-                zombie.y >= 0 && zombie.y <= this.canvas.height;
+            // v0.8.1.2: Convert world coordinates to screen coordinates in single player arcade mode for display
+            let zombieScreenX = zombie.x;
+            let zombieScreenY = zombie.y;
+            let playerScreenX = closestPlayer.x;
+            let playerScreenY = closestPlayer.y;
+            
+            if (isSinglePlayerArcade) {
+                const zombieScreen = cameraSystem.worldToScreen(zombie.x, zombie.y);
+                const playerScreen = cameraSystem.worldToScreen(closestPlayer.x, closestPlayer.y);
+                zombieScreenX = zombieScreen.x;
+                zombieScreenY = zombieScreen.y;
+                playerScreenX = playerScreen.x;
+                playerScreenY = playerScreen.y;
+            }
+
+            // Check if zombie is on screen (using screen coordinates)
+            const isOnScreen = zombieScreenX >= 0 && zombieScreenX <= this.canvas.width &&
+                zombieScreenY >= 0 && zombieScreenY <= this.canvas.height;
 
             if (isOnScreen) return; // Don't show indicator if zombie is on screen
 
-            // Calculate angle to zombie
+            // Calculate screen-space distance for arrow direction and color
+            const dx = zombieScreenX - playerScreenX;
+            const dy = zombieScreenY - playerScreenY;
+            const distSquared = dx * dx + dy * dy;
+
+            // Calculate angle to zombie (using screen coordinates)
             const angle = Math.atan2(dy, dx);
 
             // Find intersection point with screen edge
             let indicatorX, indicatorY;
 
-            // Check which edge the line intersects
+            // Check which edge the line intersects (using screen coordinates)
             const slope = dy / dx;
-            const playerX = closestPlayer.x;
-            const playerY = closestPlayer.y;
+            const playerX = playerScreenX;
+            const playerY = playerScreenY;
 
             // Calculate intersections with all four edges
             let intersections = [];
@@ -1212,16 +1240,16 @@ export class GameHUD {
                 intersections.push({ x: this.canvas.width, y: rightY });
             }
 
-            // Use the closest intersection to the zombie
+            // Use the closest intersection to the zombie (using screen coordinates)
             if (intersections.length > 0) {
                 let closestIntersection = intersections[0];
-                const dx0 = intersections[0].x - zombie.x;
-                const dy0 = intersections[0].y - zombie.y;
+                const dx0 = intersections[0].x - zombieScreenX;
+                const dy0 = intersections[0].y - zombieScreenY;
                 let closestDistSquared = dx0 * dx0 + dy0 * dy0;
 
                 intersections.forEach(int => {
-                    const dx = int.x - zombie.x;
-                    const dy = int.y - zombie.y;
+                    const dx = int.x - zombieScreenX;
+                    const dy = int.y - zombieScreenY;
                     const distSquared = dx * dx + dy * dy;
                     if (distSquared < closestDistSquared) {
                         closestDistSquared = distSquared;

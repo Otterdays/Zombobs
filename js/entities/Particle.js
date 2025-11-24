@@ -33,49 +33,8 @@ export class Particle {
         this.life--;
     }
 
-    draw(ctx) { // ctx passed in main.js loop? No, main.js uses global ctx usually or imports it. 
-               // Particle.js method signature in main.js: particle.draw() (no args usually, uses imported ctx)
-               // But DamageNumber.draw(ctx) takes ctx.
-               // Let's check main.js: 
-               // gameState.particles.forEach(particle => { if (particle.draw) particle.draw() ... })
-        
-        if (this.customDraw) {
-            this.customDraw();
-            return;
-        }
-        
-        // We need to import ctx if we want to draw here, 
-        // but this file already imports ctx at the top.
-        
-        const alpha = Math.max(0, this.life / this.maxLife);
-        // We can't easily change globalAlpha here without affecting others if not saved/restored 
-        // or if we rely on main.js setting it.
-        // main.js implementation:
-        /*
-            gameState.particles.forEach(particle => {
-                if (particle.draw) {
-                    particle.draw();
-                } else {
-                    const maxLife = particle.maxLife || 30;
-                    ctx.fillStyle = particle.color;
-                    ctx.globalAlpha = Math.max(0, particle.life / maxLife);
-                    ctx.beginPath();
-                    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                }
-            });
-        */
-       // So standard particles don't even use this draw method in main.js!
-       // But I should enable it to encapsulate logic.
-       
-        // Re-importing ctx here to be safe, though it is already imported in the file.
-        // The class currently has a draw() method but main.js ignores it if it's a simple object? 
-        // No, main.js checks `if (particle.draw)`.
-        
-        // Let's make sure we use the imported ctx
-        // import { ctx } from '../core/canvas.js'; // Already at top of file
-    }
+    // Removed draw() method to allow ParticleSystem to handle rendering
+    // This ensures fallback logic (with proper color/alpha handling) is used
 }
 
 export class DamageNumber {

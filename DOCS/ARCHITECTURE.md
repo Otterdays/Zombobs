@@ -333,6 +333,54 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `utils/gameUtils.js` (via global reference)
 
+#### Prop.js (v0.8.1.3)
+**Purpose**: World prop entity class (rocks, debris, burnt cars, skulls, zombie parts) for single player arcade mode
+
+**Exports**: `Prop` class
+
+**Properties**:
+- `x, y` - Position
+- `type` - Prop type ('rock', 'debris', 'burntCar', 'skull', 'zombieArms', 'zombieLegs')
+- `width, height` - Dimensions (varies by type)
+- `rotation` - Random rotation angle
+- `radius` - Collision radius (circular bounds)
+- `color, outlineColor` - Visual properties
+- `smokeParticles[]` - Smoke particle array (burntCar only)
+- `lastUpdateTime` - Timestamp for smoke particle updates (burntCar only)
+- `armCount` - Number of arms (zombieArms only, 2-3)
+- `armRotations[]` - Stored rotation angles for each arm (zombieArms only)
+- `armDecayMarks[]` - Stored decay mark positions for each arm (zombieArms only)
+- `legRotations[]` - Stored rotation angles for each leg (zombieLegs only)
+- `legDecayMarks[]` - Stored decay mark positions for each leg (zombieLegs only)
+
+**Methods**:
+- `draw()` - Render the prop on canvas
+- `update()` - Update smoke particles for burntCar props
+- `initSmokeParticles()` - Initialize smoke particles for burnt car
+- `drawRock()` - Render rock prop (irregular ellipse shape)
+- `drawDebris()` - Render debris prop (rectangular with detail lines)
+- `drawBurntCar()` - Render burnt car prop with enhanced details and animated smoke
+- `drawSkull()` - Render zombie skull prop (oval with eye sockets and cracks)
+- `drawZombieArms()` - Render severed zombie arms prop (2-3 arms with bone ends)
+- `drawZombieLegs()` - Render severed zombie legs prop (2 legs with bone ends)
+
+**Prop Types**:
+- **Rock**: 20-35px, gray colors, irregular ellipse shape
+- **Debris**: 15-35px, darker gray, rectangular with detail lines
+- **Burnt Car**: 60-90px width, 80-120px height, black colors, enhanced car shape with hood details, door lines, window frames, wheel rims, charred texture, and animated smoke particles (3-5 per car)
+- **Skull**: 25-35px, bone white (#e8e8e8) with dark cracks (#4a4a4a), oval shape with eye sockets, nasal cavity, jaw line, and cracks
+- **Zombie Arms**: 20-30px width, 40-60px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2-3 arms with visible bone ends and decay marks
+- **Zombie Legs**: 25-35px width, 50-70px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2 legs with visible bone ends and decay marks
+
+**Smoke Particle System** (burntCar only):
+- Each burnt car has 3-5 smoke particles
+- Particles rise upward (0.5-1px per frame) with horizontal drift (-0.2 to 0.2px)
+- Particles fade from 0.6 to 0 opacity over 2-4 second lifetime
+- Particles respawn at car position when expired
+- White/gray gradient with radial fade-out effect
+
+**Dependencies**: `core/canvas.js`
+
 ### System Modules (`js/systems/`)
 
 #### AudioSystem.js
@@ -811,6 +859,91 @@ This modular structure improves maintainability, testability, and scalability.
 
 **Dependencies**: `core/constants.js` (spawn intervals, max counts), `entities/Pickup.js` (all pickup classes)
 
+#### PropSpawnSystem.js (v0.8.1.3)
+**Purpose**: Handles chunk-based spawning of world props (rocks, debris, burnt cars, skulls, zombie parts) for single player arcade mode
+
+**Exports**: `PropSpawnSystem` class, `propSpawnSystem` singleton
+
+**Methods**:
+- `update(gameState, player)` - Update prop spawning based on player position
+- `spawnPropsInChunk(gameState, chunkX, chunkY)` - Spawn props in a specific chunk
+- `reset()` - Reset the spawn system (for new game)
+
+**Features**:
+- Chunk-based spawning system (500x500px chunks)
+- Tracks active chunks to prevent re-spawning
+- Spawns props when player enters new chunks (3x3 grid around player)
+- Configurable prop density per chunk
+- Minimum distance enforcement between props and from player spawn
+- Prop type distribution: Rock (35%), Debris (25%), Burnt Car (10%), Skull (15%), Zombie Arms (10%), Zombie Legs (5%)
+- Only active in single player arcade mode (`!gameState.isCoop && !gameState.multiplayer.active`)
+
+**Dependencies**: `core/constants.js` (CHUNK_SIZE, PROP_SPAWN_DENSITY, etc.), `utils/ChunkManager.js`, `entities/Prop.js`
+
+#### PropRenderSystem.js (v0.8.1.2)
+**Purpose**: Handles rendering of world props with viewport culling
+
+**Exports**: `PropRenderSystem` class, `propRenderSystem` singleton
+
+**Methods**:
+- `render(gameState, viewport)` - Render all props in viewport
+
+**Features**:
+- Viewport culling (only renders visible props)
+- Uses existing `isInViewport` utility with cull margin
+- Only active in single player arcade mode
+
+**Dependencies**: `core/canvas.js`, `utils/gameUtils.js`, `core/constants.js`
+
+#### CameraSystem.js (v0.8.1.2)
+**Purpose**: Manages camera position and world-to-screen coordinate transformations for single player arcade mode
+
+**Exports**: `CameraSystem` class, `cameraSystem` singleton
+
+**Methods**:
+- `update(player)` - Update camera to follow player (keeps player centered on screen)
+- `getPosition()` - Get current camera position in world space
+- `worldToScreen(worldX, worldY)` - Convert world coordinates to screen coordinates
+- `screenToWorld(screenX, screenY)` - Convert screen coordinates to world coordinates
+- `applyTransform(ctx)` - Apply camera transform to canvas context (translates world to screen)
+- `init(player)` - Initialize camera to player's starting position
+- `reset()` - Reset camera position (for new game)
+
+**Features**:
+- Smooth camera following with configurable follow speed
+- Camera keeps player centered on screen in single player arcade mode
+- World-to-screen coordinate conversion for UI elements (damage numbers, indicators)
+- Screen-to-world coordinate conversion for input (mouse position for shooting/aiming)
+- Only active in single player arcade mode (`!gameState.isCoop && !gameState.multiplayer.active`)
+
+**Dependencies**: `core/canvas.js`
+
+**Coordinate Space Management**:
+- In single player arcade mode, entities exist in world space (unlimited coordinates)
+- Camera transform (`ctx.translate(-cameraX, -cameraY)`) converts world space to screen space for rendering
+- UI elements (damage numbers, indicators, overlays) must be drawn in screen space (after `ctx.restore()`)
+- Input coordinates (mouse) must be converted from screen space to world space for gameplay
+
+#### GroundTextureSystem.js (v0.8.1.2)
+**Purpose**: Handles animated ground texture scrolling for single player arcade mode
+
+**Exports**: `GroundTextureSystem` class, `groundTextureSystem` singleton
+
+**Methods**:
+- `init()` - Initialize the ground pattern and load ground image
+- `updateFromCamera(camera)` - Update ground texture offset based on camera movement (parallax effect)
+- `getImage()` - Get the ground texture image
+- `getOffset()` - Get current offset for rendering
+- `reset()` - Reset the system (for new game)
+
+**Features**:
+- Parallax scrolling based on camera movement (GROUND_TEXTURE_PARALLAX_FACTOR)
+- Direct image drawing with tiling for animated scrolling
+- Only active in single player arcade mode
+- Ground texture moves at 30% of camera movement speed for depth effect
+
+**Dependencies**: `systems/GraphicsSystem.js`, `systems/CameraSystem.js`, `core/constants.js`
+
 **Settings Structure**:
 - `audio.masterVolume` - Master volume (0.0 to 1.0)
 - `video.vignette` - Enable/disable vignette overlay
@@ -1225,6 +1358,26 @@ This hybrid approach provides:
 - `handlePickupCollisions()` - Process pickup collection
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`, `systems/*`, `entities/*`
+
+#### ChunkManager.js (v0.8.1.2)
+**Purpose**: Chunk-based coordinate system for world division
+
+**Exports**: `ChunkManager` class, `chunkManager` singleton
+
+**Methods**:
+- `getChunkCoords(x, y)` - Convert world coordinates to chunk coordinates
+- `getChunkKey(chunkX, chunkY)` - Get chunk key string for Set storage
+- `isChunkActive(chunkX, chunkY)` - Check if a chunk has been activated
+- `activateChunk(chunkX, chunkY)` - Mark a chunk as active
+- `getChunksInRadius(x, y, radius)` - Get all chunks within a radius
+- `reset()` - Reset all active chunks (for new game)
+
+**Features**:
+- Simple chunk coordinate system (500x500px chunks)
+- Tracks active chunks using Set for O(1) lookup
+- Used by PropSpawnSystem to manage prop spawning
+
+**Dependencies**: `core/constants.js` (CHUNK_SIZE)
 
 #### gameUtils.js
 **Purpose**: General game utilities

@@ -2,6 +2,191 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.1.4] - Explosion Particle Rendering Fix
+
+### Fixed
+- **Critical: Explosion Particles Not Rendering** - Fixed invisible explosion particles for grenades and rockets
+  - **Root Cause**: The `Particle` class had an empty `draw()` method that was overriding the rendering logic in `ParticleSystem.js`
+  - **Solution**: Removed the empty `draw()` method from `Particle` class, allowing `ParticleSystem.js` to use its fallback rendering logic
+  - **Additional Fixes Applied**:
+    - Converted hex colors (e.g., `#ffffff`, `#ffff00`) to `rgba()` format for proper alpha blending
+    - Ensured large explosion particles (radius > 50) have minimum alpha of 0.3 for visibility
+    - Fixed render order: Moved `webgpuRenderer.render()` to after `drawGame()` so particles sync before rendering
+    - Reverted to Canvas 2D rendering for particles (gameCanvas is on top with z-index 1)
+  - **Files Modified**:
+    - `js/entities/Particle.js` - Removed empty `draw()` method
+    - `js/systems/ParticleSystem.js` - Enhanced color conversion and alpha handling
+    - `js/main.js` - Fixed render order and particle drawing position
+  - **Result**: Explosions and grenade trails now render correctly at detonation locations
+  - **Date**: 2025-11-24
+
+## [v0.8.1.3] - Prop Enhancement Update
+
+### Added
+- **Enhanced Burnt Car Props** - Improved car design with animated smoke effects
+  - Increased car size: 60-90px width (from 40-60px), 80-120px height (from 60-80px)
+  - Added detailed car features: hood lines, door lines, window frames, wheel rims
+  - Added charred texture gradient overlays for burnt effect
+  - Animated smoke particles: 3-5 particles per car rising upward with fade-out
+  - Smoke particles drift horizontally and respawn after 2-4 seconds
+  - Location: `js/entities/Prop.js` - `drawBurntCar()` method
+
+- **New Zombie-Themed Props** - Three new prop types for atmospheric world decoration
+  - **Skull Props**: Bone-white skulls with eye sockets, nasal cavity, jaw line, and cracks (25-35px)
+  - **Zombie Arms Props**: 2-3 severed arms with visible bone ends and decay marks (20-30px × 40-60px)
+  - **Zombie Legs Props**: 2 severed legs with visible bone ends and decay marks (25-35px × 50-70px)
+  - Location: `js/entities/Prop.js` - `drawSkull()`, `drawZombieArms()`, `drawZombieLegs()` methods
+
+### Changed
+- **Prop Spawn Distribution** - Adjusted prop type percentages for better variety
+  - Rock: 35% (down from 50%)
+  - Debris: 25% (down from 35%)
+  - Burnt Car: 10% (down from 15%)
+  - Skull: 15% (new)
+  - Zombie Arms: 10% (new)
+  - Zombie Legs: 5% (new)
+  - Location: `js/systems/PropSpawnSystem.js`
+
+- **Prop Update System** - Added prop update loop for animated effects
+  - Smoke particles for burnt cars now update each frame
+  - Only updates props in single player arcade mode for performance
+  - Location: `js/main.js` - `updateGame()` function
+
+### Technical Details
+- Smoke particles stored per prop instance (not global particle system)
+- Random rotations and decay marks stored in constructor to prevent flickering
+- Prop update method only runs for burntCar type (performance optimization)
+- All props maintain collision radius for gameplay consistency
+- Smoke animation uses time-based movement with deltaTime normalization
+
+## [v0.8.1.2] - The Living World Update
+
+### Added
+- **Camera System** - World-space camera following player in single player arcade mode
+  - Camera keeps player centered on screen while world moves around them
+  - World-to-screen and screen-to-world coordinate conversion utilities
+  - Smooth camera following with configurable follow speed
+  - Only active in single player arcade mode
+  - Location: `js/systems/CameraSystem.js`
+
+- **Moving Ground Texture** - Animated ground pattern scrolling for single player arcade mode
+  - Parallax scrolling based on camera movement (30% of camera speed)
+  - Direct image drawing with tiling for smooth scrolling
+  - Only active in single player arcade mode
+  - Location: `js/systems/GroundTextureSystem.js`
+
+- **Procedural Prop Spawning System** - Chunk-based prop spawning for world decoration
+  - Three prop types: Rocks (50%), Debris (35%), Burnt Cars (15%)
+  - Chunk-based spawning system (500x500px chunks)
+  - Props spawn when player enters new chunks
+  - Minimum distance enforcement between props
+  - Only active in single player arcade mode
+  - Location: `js/systems/PropSpawnSystem.js`, `js/entities/Prop.js`
+
+- **Prop Rendering System** - Viewport-culled prop rendering
+  - Efficient viewport culling for performance
+  - Renders props after ground but before entities
+  - Only active in single player arcade mode
+  - Location: `js/systems/PropRenderSystem.js`
+
+- **Chunk Manager Utility** - Chunk coordinate system for world division
+  - Converts world coordinates to chunk coordinates
+  - Tracks active chunks to prevent re-spawning
+  - Location: `js/utils/ChunkManager.js`
+
+### Changed
+- **Ground Pattern Rendering** - Enhanced to support animated offsets
+  - Modified `RenderingCache.js` to support animated ground patterns
+  - Ground texture now scrolls smoothly in single player arcade mode
+  - Location: `js/systems/RenderingCache.js`, `js/main.js`
+
+- **Game State** - Added props array for world props
+  - `gameState.props` array added for prop storage
+  - Props reset on game start/restart
+  - Location: `js/core/gameState.js`
+
+- **Coordinate Space Management** - World-space coordinates for single player arcade mode
+  - Player, zombies, bullets, and props now exist in unlimited world space
+  - Camera transform converts world space to screen space for rendering
+  - All UI overlays (lighting, vignette, background, damage indicator, day/night) drawn in screen space
+  - Input coordinates (mouse) converted from screen space to world space for shooting/aiming
+  - Damage numbers and indicators converted to screen space for display
+  - Location: `js/main.js`, `js/systems/PlayerSystem.js`, `js/ui/GameHUD.js`
+
+- **Bullet System** - Removed canvas bounds checking in single player arcade mode
+  - Bullets can now travel freely in world space
+  - Only max distance check applies (no canvas boundary limits)
+  - Location: `js/entities/Bullet.js`
+
+- **Zombie Update System** - Always update zombies in single player arcade mode
+  - Zombies always follow player regardless of distance
+  - Removed viewport culling for zombie updates in arcade mode
+  - Location: `js/systems/ZombieUpdateSystem.js`
+
+- **Collision Detection** - World-space Quadtree for single player arcade mode
+  - Quadtree uses large world-space boundary (100000x100000) instead of canvas bounds
+  - Allows collision detection to work anywhere in the world
+  - Location: `js/utils/combatUtils.js`
+
+- **Spawn Systems** - World-space spawning relative to player position
+  - Zombies spawn at viewport edges relative to player position in world space
+  - Powerups spawn within viewport area relative to player position
+  - Boss zombies spawn above player in world space
+  - Location: `js/systems/ZombieSpawnSystem.js`, `js/systems/PickupSpawnSystem.js`
+
+- **Zombie Location Indicators** - Enhanced for moving world
+  - Increased distance threshold to 5000 pixels in single player arcade mode (from 800)
+  - Convert world coordinates to screen coordinates for accurate arrow positioning
+  - Arrows now show correctly even when zombies are far away
+  - Location: `js/ui/GameHUD.js`
+
+### Fixed
+- **Lighting System** - Fixed lighting to follow player correctly
+  - Lighting gradient now uses screen-space coordinates
+  - Lighting drawn in screen space after camera transform
+  - No more persistent bright spot at spawn area
+  - Location: `js/main.js`
+
+- **Damage Indicators** - Fixed damage numbers to display correctly
+  - Damage numbers converted from world space to screen space for rendering
+  - Numbers now appear correctly when hitting zombies anywhere in the world
+  - Location: `js/main.js`
+
+- **Damage Indicator Overlay** - Fixed red screen flash
+  - Moved damage indicator overlay to screen space
+  - Now covers entire screen correctly when taking damage
+  - Location: `js/main.js`
+
+- **Background & Vignette** - Fixed to cover entire screen uniformly
+  - Background gradient and vignette drawn in screen space
+  - No more light difference at spawn area edges
+  - Location: `js/main.js`
+
+- **Day/Night Overlay** - Fixed to cover entire screen uniformly
+  - Day/night overlay drawn in screen space after camera transform
+  - Consistent lighting across entire screen
+  - Location: `js/main.js`
+
+- **Shooting & Aiming** - Fixed to work correctly in world space
+  - Mouse coordinates converted from screen space to world space for shooting
+  - Player angle calculation uses world-space coordinates
+  - Shooting and aiming work correctly anywhere in the world
+  - Location: `js/main.js`, `js/systems/PlayerSystem.js`
+
+- **Player Bounds** - Removed canvas boundary constraints
+  - Player can move freely in world space in single player arcade mode
+  - Camera system handles keeping player in view
+  - Location: `js/systems/PlayerSystem.js`, `js/core/canvas.js`
+
+### Technical Details
+- All new systems check for single player arcade mode: `!gameState.isCoop && !gameState.multiplayer.active`
+- Chunk system prevents re-spawning props in already-visited areas
+- Viewport culling ensures only visible props are rendered
+- Ground texture animation uses camera movement for parallax scrolling
+- Constants added: `GROUND_TEXTURE_PARALLAX_FACTOR`, `CHUNK_SIZE`, `PROP_SPAWN_DENSITY`, `PROP_MIN_DISTANCE`, `PROP_SPAWN_MARGIN`
+- Coordinate space conversions: World space for gameplay, screen space for UI/rendering
+- Camera transform applied before world rendering, restored before UI rendering
+
 ## [Unreleased]
 
 ### 🔧 Code Refactoring - Leaderboard System Extraction

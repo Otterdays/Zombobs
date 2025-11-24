@@ -1,5 +1,6 @@
 import { RENDER_SCALE } from './constants.js';
 import { settingsManager } from '../systems/SettingsManager.js';
+import { gameState } from './gameState.js';
 
 export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -88,12 +89,17 @@ export function resizeCanvas(player) {
     
     // Update player position to center if player exists
     if (player) {
-        player.x = canvas.width / 2;
-        player.y = canvas.height / 2;
-        
-        // Keep player within bounds
-        player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-        player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+        // v0.8.1.2: In single player arcade mode, preserve world position (camera handles centering)
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        if (!isSinglePlayerArcade) {
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            
+            // Keep player within bounds (only for non-arcade modes)
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+        }
+        // In arcade mode, player position is in world space - don't constrain to canvas
     }
 }
 

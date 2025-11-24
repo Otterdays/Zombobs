@@ -435,14 +435,15 @@ export function playFootstepSound(isSprinting = false) {
 }
 
 // Play explosion sound
-export function playExplosionSound() {
+export function playExplosionSound(size = 1.0) {
     if (!audioContext) {
         initAudio();
         if (!audioContext) return;
     }
 
     try {
-        const duration = 0.4; // 400ms
+        // Longer duration for larger explosions
+        const duration = 0.4 + (size - 1.0) * 0.2; // 0.4s base, up to 0.6s for large
         const sampleRate = audioContext.sampleRate;
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
@@ -451,20 +452,72 @@ export function playExplosionSound() {
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
             let sample = 0;
-            // Low frequency rumble
-            sample += Math.sin(t * 60 * 2 * Math.PI) * 0.4;
-            sample += Math.sin(t * 120 * 2 * Math.PI) * 0.3;
+            // Low frequency rumble (deeper for larger explosions)
+            const baseFreq = 60 / size; // Lower frequency for larger explosions
+            sample += Math.sin(t * baseFreq * 2 * Math.PI) * 0.4 * size;
+            sample += Math.sin(t * baseFreq * 2 * 2 * Math.PI) * 0.3 * size;
             // High frequency crack
             sample += Math.sin(t * 800 * 2 * Math.PI) * 0.2 * Math.exp(-t * 5);
-            // Envelope: quick attack, slow decay
-            const envelope = Math.exp(-t * 2);
-            data[i] = sample * envelope * 0.3;
+            // Envelope: quick attack, slow decay (longer for larger)
+            const decayRate = 2 / size; // Slower decay for larger explosions
+            const envelope = Math.exp(-t * decayRate);
+            data[i] = sample * envelope * (0.3 * size); // Louder for larger explosions
         }
 
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.4;
+        gainNode.gain.value = 0.4 * Math.min(size, 1.5); // Cap volume increase
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
+// Play rocket launcher fire sound
+export function playRocketFireSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return;
+    }
+
+    try {
+        const duration = 0.35; // 350ms - longer than regular gunshot
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Generate rocket launcher firing waveform (deep rumble with sharp crack)
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+            
+            // Low frequency rumble (80-120Hz) - deeper than gunshot
+            sample += Math.sin(t * 100 * 2 * Math.PI) * 0.5;
+            sample += Math.sin(t * 80 * 2 * Math.PI) * 0.3;
+            
+            // Sharp crack/click (800-1000Hz) - distinctive launch sound
+            sample += Math.sin(t * 900 * 2 * Math.PI) * 0.3 * Math.exp(-t * 8);
+            
+            // Whoosh/thump component (200-300Hz)
+            sample += Math.sin(t * 250 * 2 * Math.PI) * 0.2 * Math.exp(-t * 3);
+            
+            // Add slight noise for texture
+            sample += (Math.random() * 2 - 1) * 0.1;
+            
+            // Envelope: quick attack, medium decay
+            const attack = Math.min(1, t / 0.02); // 20ms attack
+            const decay = Math.max(0, 1 - (t - 0.02) / (duration - 0.02));
+            const envelope = attack * decay;
+            data[i] = sample * envelope * 0.4; // Slightly louder than gunshot
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.5; // Louder than regular gunshot
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);

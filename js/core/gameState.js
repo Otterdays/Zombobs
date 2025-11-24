@@ -169,6 +169,7 @@ export const gameState = {
     acidProjectiles: [],
     acidPools: [],
     spawnIndicators: [],
+    props: [], // v0.8.1.2: World props (rocks, debris, burnt cars) - single player arcade only
 
     // Visual effects
     shakeAmount: 0,
@@ -348,6 +349,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
     gameState.spawnIndicators = [];
+    gameState.props = []; // v0.8.1.2: Reset props for new game
 
     // Clear timeouts
     gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));

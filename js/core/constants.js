@@ -45,6 +45,15 @@ export const GRENADE_FUSE_TIME = 1500; // 1.5 seconds before explosion
 // Particle limit
 export const MAX_PARTICLES = 500;
 
+// Ground texture animation (v0.8.1.2: The Living World)
+export const GROUND_TEXTURE_SCROLL_SPEED = 0.3; // Parallax factor (0.0-1.0, how much ground moves relative to player)
+
+// Prop spawning system (v0.8.1.2: The Living World)
+export const CHUNK_SIZE = 500; // Chunk dimensions in pixels
+export const PROP_SPAWN_DENSITY = 0.3; // Props per chunk (0-1 scale)
+export const PROP_MIN_DISTANCE = 100; // Minimum distance between props in pixels
+export const PROP_SPAWN_MARGIN = 50; // Margin from canvas edges for spawning in pixels
+
 // Rendering constants
 export const RENDERING = {
     // Alpha values

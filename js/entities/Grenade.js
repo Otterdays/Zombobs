@@ -49,6 +49,9 @@ export class Grenade {
         // Don't update if already exploded
         if (this.exploded) return;
         
+        // v0.8.1.2: In single player arcade mode, grenades exist in world space
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        
         // Update fuse timer first
         const elapsed = Date.now() - this.createdAt;
         if (elapsed >= this.fuseTime) {
@@ -65,20 +68,23 @@ export class Grenade {
             this.x += this.vx;
             this.y += this.vy;
             
-            // Keep within canvas bounds (horizontal)
-            if (this.x < this.radius) {
-                this.x = this.radius;
-                this.vx *= -0.6; // Bounce off left wall
-            }
-            if (this.x > canvasWidth - this.radius) {
-                this.x = canvasWidth - this.radius;
-                this.vx *= -0.6; // Bounce off right wall
-            }
-            
-            // Keep within canvas bounds (vertical - top only, allow going down)
-            if (this.y < this.radius) {
-                this.y = this.radius;
-                this.vy *= -0.4; // Bounce off top
+            // v0.8.1.2: Only check canvas bounds in non-arcade modes
+            if (!isSinglePlayerArcade) {
+                // Keep within canvas bounds (horizontal)
+                if (this.x < this.radius) {
+                    this.x = this.radius;
+                    this.vx *= -0.6; // Bounce off left wall
+                }
+                if (this.x > canvasWidth - this.radius) {
+                    this.x = canvasWidth - this.radius;
+                    this.vx *= -0.6; // Bounce off right wall
+                }
+                
+                // Keep within canvas bounds (vertical - top only, allow going down)
+                if (this.y < this.radius) {
+                    this.y = this.radius;
+                    this.vy *= -0.4; // Bounce off top
+                }
             }
             
             // Check distance to target after moving
@@ -106,20 +112,23 @@ export class Grenade {
                 this.onGround = true;
             }
             // Safety ground collision (only if target is at bottom)
-            else if (this.y >= canvasHeight - this.radius) {
-                // Only stop at ground if target is also near ground
-                if (this.targetY >= canvasHeight - 30) {
-                    this.y = canvasHeight - this.radius;
-                    if (!this.onGround) {
-                        this.vy *= -this.bounce;
-                        this.vx *= 0.7;
-                        this.onGround = true;
-                    } else {
-                        this.vy = 0;
-                        this.vx *= 0.9;
+            // v0.8.1.2: Only check canvas ground in non-arcade modes
+            if (!isSinglePlayerArcade) {
+                if (this.y >= canvasHeight - this.radius) {
+                    // Only stop at ground if target is also near ground
+                    if (this.targetY >= canvasHeight - 30) {
+                        this.y = canvasHeight - this.radius;
+                        if (!this.onGround) {
+                            this.vy *= -this.bounce;
+                            this.vx *= 0.7;
+                            this.onGround = true;
+                        } else {
+                            this.vy = 0;
+                            this.vx *= 0.9;
+                        }
                     }
+                    // If target is above ground, let it continue (will be caught by target check)
                 }
-                // If target is above ground, let it continue (will be caught by target check)
             }
         } else {
             // On ground - still apply horizontal friction
@@ -132,6 +141,7 @@ export class Grenade {
 
     explode() {
         if (this.exploded) return;
+        console.log('Grenade exploding!', this.x, this.y);
         this.exploded = true;
         
         // Use reusable explosion function (player source = true)

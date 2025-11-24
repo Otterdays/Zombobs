@@ -18,6 +18,14 @@
 
 **Goal:** Fix and polish pass following the v0.8.0 release. Addressing immediate feedback.
 
+- [x] **v0.8.1.2: The Living World** (Environment & Visuals) - ✅ COMPLETE
+    - [x] **Core**: Procedural Prop Spawning (Rocks, Debris, Burnt Cars) to break up the void.
+    - [x] **Visuals**: "Moving Ground" Shader (Subtle texture animation or parallax for depth).
+    - [x] **Tech**: Simple chunk system to manage spawned props.
+    - [x] **Camera System**: World-space camera that follows player, keeping them centered.
+    - [x] **Coordinate Space**: Full world-space coordinate system with screen-space UI rendering.
+    - [x] **Fixes**: Lighting, damage indicators, shooting, zombie following, spawn systems all working in moving world.
+
 - [ ] **Audio Balance Tweak**:
     - Shotgun sound is slightly too loud compared to BGM. Lower by 10%.
     - Fix rare audio popping when too many zombies die at once (limit max concurrent death sounds?).
@@ -36,7 +44,7 @@
 
 ## 🔮 FUTURE PLANS (Backlog)
 
-- **v0.8.1.2: The Living World** (Environment & Visuals)
+- **v0.8.1.2: The Living World** (Environment & Visuals) - ✅ COMPLETE
     - **Core**: Procedural Prop Spawning (Rocks, Debris, Burnt Cars) to break up the void.
     - **Visuals**: "Moving Ground" Shader (Subtle texture animation or parallax for depth).
     - **Tech**: Simple chunk system to manage spawned props.

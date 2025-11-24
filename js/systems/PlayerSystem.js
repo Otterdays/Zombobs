@@ -12,6 +12,7 @@ import { playFootstepSound } from '../systems/AudioSystem.js';
 import { shootBullet, reloadWeapon, throwGrenade } from '../utils/combatUtils.js';
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
+import { cameraSystem } from './CameraSystem.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -82,8 +83,18 @@ export class PlayerSystem {
                 const sprintKey = controls.sprint || 'shift';
                 if (keys[sprintKey] || keys['shift']) isSprintingInput = true;
 
-                target = mouse;
-                player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+                // v0.8.1.2: Convert mouse screen coordinates to world coordinates in single player arcade mode
+                const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+                let mouseWorldX = mouse.x;
+                let mouseWorldY = mouse.y;
+                if (isSinglePlayerArcade) {
+                    const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+                    mouseWorldX = worldPos.x;
+                    mouseWorldY = worldPos.y;
+                }
+
+                target = { x: mouseWorldX, y: mouseWorldY };
+                player.angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
             }
             // Keyboard Arrow Controls (P2 only, for backward compatibility)
             else if (index === 1 && player.inputSource === 'keyboard_arrow') {
@@ -156,9 +167,12 @@ export class PlayerSystem {
             player.x += moveX * player.speed;
             player.y += moveY * player.speed;
 
-            // Bounds
-            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            // Bounds (skip in single player arcade mode - camera system allows free movement)
+            const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+            if (!isSinglePlayerArcade) {
+                player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+                player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            }
 
             // Footstep sounds (more frequent and louder when sprinting)
             if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && gameState.gameRunning && !gameState.gamePaused) {

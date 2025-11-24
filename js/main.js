@@ -9,7 +9,7 @@ import {
     MAX_GRENADES,
     TWO_PI
 } from './core/constants.js';
-import { canvas, ctx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
+import { canvas, ctx, gpuCanvas, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
@@ -49,6 +49,10 @@ import { skillSystem } from './systems/SkillSystem.js';
 import { zombieUpdateSystem } from './systems/ZombieUpdateSystem.js';
 import { entityRenderSystem } from './systems/EntityRenderSystem.js';
 import { pickupSpawnSystem } from './systems/PickupSpawnSystem.js';
+import { propSpawnSystem } from './systems/PropSpawnSystem.js';
+import { propRenderSystem } from './systems/PropRenderSystem.js';
+import { groundTextureSystem } from './systems/GroundTextureSystem.js';
+import { cameraSystem } from './systems/CameraSystem.js';
 import { SERVER_URL } from './core/constants.js';
 import { MultiplayerSystem } from './systems/MultiplayerSystem.js';
 import { ZombieSpawnSystem } from './systems/ZombieSpawnSystem.js';
@@ -120,6 +124,9 @@ window.settingsPanel = settingsPanel; // Make globally accessible for text rende
 // Apply initial text rendering quality
 applyTextRenderingQualityToAll();
 
+// v0.8.1.2: Initialize ground texture system
+groundTextureSystem.init();
+
 // Input state
 const keys = {};
 const mouse = { x: 0, y: 0, isDown: false };
@@ -136,6 +143,10 @@ window.addEventListener('resize', () => {
 const webgpuRenderer = new WebGPURenderer();
 // Make renderer globally accessible for GameHUD
 window.webgpuRenderer = webgpuRenderer;
+
+// Set initial gpuCanvas visibility (hidden until WebGPU is confirmed active)
+updateGpuCanvasVisibility();
+
 webgpuRenderer.init().then(initialized => {
     if (initialized) {
         console.log('WebGPU renderer ready');
@@ -144,6 +155,8 @@ webgpuRenderer.init().then(initialized => {
     } else {
         console.log('WebGPU renderer unavailable, using Canvas 2D fallback');
     }
+    // Update gpuCanvas visibility based on WebGPU availability
+    updateGpuCanvasVisibility();
 });
 
 /**
@@ -153,6 +166,40 @@ webgpuRenderer.init().then(initialized => {
 function isWebGPUActive() {
     const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
     return webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+}
+
+/**
+ * Update gpuCanvas visibility based on WebGPU availability
+ * Hides gpuCanvas when WebGPU is disabled to prevent grey overlay
+ */
+function updateGpuCanvasVisibility() {
+    if (!gpuCanvas) {
+        console.warn('[gpuCanvas] Element not found');
+        return;
+    }
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    const webgpuAvailable = webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+    const webgpuActive = webgpuEnabled && webgpuAvailable;
+
+    console.log('[gpuCanvas] Updating visibility:', {
+        webgpuEnabled,
+        webgpuAvailable,
+        webgpuActive,
+        isAvailable: webgpuRenderer?.isAvailable(),
+        hasNavigatorGpu: !!navigator.gpu
+    });
+
+    if (webgpuActive) {
+        gpuCanvas.style.display = 'block';
+        gpuCanvas.style.visibility = 'visible';
+        gpuCanvas.style.opacity = '1';
+        console.log('[gpuCanvas] Showing canvas');
+    } else {
+        gpuCanvas.style.display = 'none';
+        gpuCanvas.style.visibility = 'hidden';
+        gpuCanvas.style.opacity = '0';
+        console.log('[gpuCanvas] Hiding canvas');
+    }
 }
 
 // Function to apply WebGPU settings from SettingsManager
@@ -187,18 +234,18 @@ settingsManager.addChangeListener((category, key, value) => {
             const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
             resizeCanvas(localPlayer);
         }
-        
+
         // Handle UI Scale (affects all UI elements)
         if (key === 'uiScale') {
             // UI scaling applies immediately on next render, no action needed
             // GameHUD and SettingsPanel will recalculate scaled values on next draw
         }
-        
+
         // Handle Text Rendering Quality (affects all canvas contexts)
         if (key === 'textRenderingQuality') {
             applyTextRenderingQualityToAll();
         }
-        
+
         // Handle VSync and FPS limit (affects all rendering)
         if (key === 'vsync') {
             gameEngine.setVSync(value);
@@ -210,7 +257,13 @@ settingsManager.addChangeListener((category, key, value) => {
                 gameEngine.setFPSLimit(value);
             }
         }
-        
+
+        // Handle WebGPU enabled/disabled toggle
+        if (key === 'webgpuEnabled') {
+            // Update gpuCanvas visibility when WebGPU setting changes
+            updateGpuCanvasVisibility();
+        }
+
         // WebGPU-specific settings (only apply if WebGPU is active)
         if (isWebGPUActive()) {
             if (key === 'bloomIntensity') {
@@ -226,7 +279,7 @@ settingsManager.addChangeListener((category, key, value) => {
                 webgpuRenderer.setParticleCount(value);
             }
         }
-        
+
         // Handle vignette, shadows, and lighting changes - invalidate cache for immediate visual update
         if (key === 'vignette' || key === 'lighting') {
             // Invalidate rendering cache when vignette/lighting toggles change
@@ -236,7 +289,7 @@ settingsManager.addChangeListener((category, key, value) => {
             }
             // Cache will be updated on next drawGame() call with new settings
         }
-        
+
         // Shadows are read directly in rendering code, no cache invalidation needed
         // But we can still add a listener for consistency
         if (key === 'shadows') {
@@ -282,7 +335,7 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
-    
+
     // Track pause for badge
     playerProfileSystem.trackGamePause();
 
@@ -349,6 +402,31 @@ function updateGame() {
     // Night is from 0.5 to 1.0 (second half of cycle)
     gameState.isNight = gameState.gameTime >= 0.5;
 
+    // v0.8.1.2: Update camera and world systems (single player arcade only)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+    if (isSinglePlayerArcade) {
+        const localPlayer = gameState.players[0];
+        if (localPlayer) {
+            // Update camera to follow player
+            cameraSystem.update(localPlayer);
+
+            // Update ground texture based on camera position (world moves with camera)
+            groundTextureSystem.updateFromCamera(cameraSystem);
+
+            // Update prop spawning
+            propSpawnSystem.update(gameState, localPlayer);
+
+            // Update props (smoke particles for burnt cars)
+            if (gameState.props && gameState.props.length > 0) {
+                for (const prop of gameState.props) {
+                    if (prop.update) {
+                        prop.update();
+                    }
+                }
+            }
+        }
+    }
+
     // Spawn pickups (health, ammo, powerups)
     pickupSpawnSystem.updateSpawns(gameState, canvas, now);
 
@@ -361,7 +439,18 @@ function updateGame() {
 
     // Get viewport bounds for update culling (calculate once per frame)
     // Cache viewport bounds for reuse in drawGame
-    const viewport = getViewportBounds(canvas);
+    // v0.8.1.2: Adjust viewport for camera in single player arcade mode
+    let viewport = getViewportBounds(canvas);
+    if (isSinglePlayerArcade && gameState.players[0]) {
+        const cameraPos = cameraSystem.getPosition();
+        // Viewport in world space (accounting for camera)
+        viewport = {
+            left: cameraPos.x,
+            top: cameraPos.y,
+            right: cameraPos.x + canvas.width,
+            bottom: cameraPos.y + canvas.height
+        };
+    }
     gameState.cachedViewport = viewport;
 
     // Update players
@@ -410,9 +499,9 @@ function updateGame() {
     gameState.bullets = gameState.bullets.filter(bullet => {
         // Early exit for bullets marked for removal
         if (bullet.markedForRemoval) return false;
-        bullet.update();
-        // Check again after update (update might mark it for removal)
-        return !bullet.markedForRemoval;
+        const exploded = bullet.update();
+        // Check again after update (update might mark it for removal or explode)
+        return !bullet.markedForRemoval && !exploded;
     });
 
     // Update grenades (only update those near viewport)
@@ -422,7 +511,9 @@ function updateGame() {
         if (grenade.exploded) return false;
         // Update if near viewport
         if (shouldUpdateEntity(grenade, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
-            grenade.update(canvas.width, canvas.height);
+            const exploded = grenade.update(canvas.width, canvas.height);
+            // If grenade exploded during update, remove it
+            if (exploded) return false;
         }
         return !grenade.exploded;
     });
@@ -543,7 +634,14 @@ function updateGame() {
     if (mouse.isDown && gameState.gameRunning && !gameState.gamePaused) {
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
         if (localPlayer && localPlayer.health > 0) {
-            shootBullet(mouse, canvas, localPlayer);
+            // v0.8.1.2: Convert mouse screen coordinates to world coordinates in single player arcade mode
+            const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+            let target = mouse;
+            if (isSinglePlayerArcade) {
+                const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+                target = { x: worldPos.x, y: worldPos.y };
+            }
+            shootBullet(target, canvas, localPlayer);
         }
     }
 
@@ -568,6 +666,9 @@ function updateGame() {
 }
 
 function drawGame() {
+    // v0.8.1.2: Check if single player arcade mode (used for camera and world systems)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
     if (gameState.showSettingsPanel) {
         canvas.style.cursor = 'default';
         settingsPanel.draw(mouse);
@@ -680,37 +781,55 @@ function drawGame() {
     const webgpuActive = isWebGPUActive();
     const qualityPreset = settingsManager.getSetting('video', 'qualityPreset') || 'high';
     const postProcessingQuality = cachedGraphicsSettings.postProcessingQuality || 'medium';
-    
+
     // When quality preset is 'custom', individual toggles work independently
     // Otherwise, post-processing quality acts as a global override
     const isCustomPreset = qualityPreset === 'custom';
-    
+
     // Vignette: Works independently if custom preset, otherwise respects postProcessingQuality
-    const vignetteEnabled = isCustomPreset 
+    const vignetteEnabled = isCustomPreset
         ? cachedGraphicsSettings.vignette !== false  // Independent toggle when custom
-        : (cachedGraphicsSettings.vignette !== false && 
-           (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
-    
+        : (cachedGraphicsSettings.vignette !== false &&
+            (postProcessingQuality === 'low' || postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+
     // Lighting: Works independently if custom preset, otherwise respects postProcessingQuality  
     const lightingEnabled = isCustomPreset
         ? cachedGraphicsSettings.lighting !== false  // Independent toggle when custom
-        : (cachedGraphicsSettings.lighting !== false && 
-           (postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
-    
+        : (cachedGraphicsSettings.lighting !== false &&
+            (postProcessingQuality === 'medium' || postProcessingQuality === 'high'));
+
     const enhancedPostProcessing = postProcessingQuality === 'high';
-    
+
     const shakeIntensity = settingsManager.getSetting('video', 'screenShakeMultiplier') ?? 1.0;
-    
+
     // Update rendering cache settings
     renderingCache.updateSettings(vignetteEnabled, lightingEnabled);
-    
+
     // Invalidate cache if needed
     if (renderingCache.needsInvalidation(localPlayer)) {
         renderingCache.invalidate(localPlayer);
     }
 
+    // Background gradient (drawn FIRST in screen space, before camera transform)
+    // This ensures it's behind everything
+    if (!webgpuActive) {
+        const bgGradient = renderingCache.getBackgroundGradient();
+        if (bgGradient) {
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
+
     ctx.save();
-    // Apply screen shake
+
+    // v0.8.1.2: Apply camera transform (single player arcade only)
+    // This makes the world move while player stays centered
+    if (isSinglePlayerArcade) {
+        cameraSystem.applyTransform(ctx);
+    }
+
+    // Apply screen shake (after camera transform)
     if (gameState.shakeAmount > 0.1) {
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
@@ -720,79 +839,117 @@ function drawGame() {
         gameState.shakeAmount = 0;
     }
 
-    // Background - transparent if WebGPU is handling it, otherwise use Canvas 2D fallback
-    if (!webgpuActive) {
-        const bgGradient = renderingCache.getBackgroundGradient();
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // If WebGPU is active, background is handled by GPU layer - keep Canvas 2D transparent
-
     // Ground pattern (cached)
-    const groundPattern = renderingCache.getGroundPattern();
-    if (groundPattern) {
-        ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
-        ctx.fillStyle = groundPattern;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
-    }
+    // v0.8.1.2: Animated ground texture for single player arcade mode
+    if (isSinglePlayerArcade) {
+        // Use direct image drawing for animated scrolling
+        const groundImage = groundTextureSystem.getImage();
+        if (groundImage && groundImage.complete) {
+            ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
 
-    // Vignette overlay (if enabled) - cached gradient
-    if (vignetteEnabled) {
-        const vignette = renderingCache.getVignetteGradient();
-        ctx.fillStyle = vignette;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+            const offset = groundTextureSystem.getOffset();
+            const tileSize = groundTextureSystem.tileSize;
+            const cameraPos = cameraSystem.getPosition();
 
-    // Lighting overlay (if enabled) - follows player position, cached gradient
-    if (lightingEnabled && localPlayer && localPlayer.health > 0) {
-        const lightingGradient = renderingCache.getLightingGradient(localPlayer);
-        if (lightingGradient) {
-            ctx.fillStyle = lightingGradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Enhanced post-processing: Additional bloom-like glow effect
-            if (enhancedPostProcessing) {
-                ctx.globalCompositeOperation = 'screen';
-                ctx.globalAlpha = 0.15;
-                ctx.fillStyle = lightingGradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0;
-                ctx.globalCompositeOperation = 'source-over';
+            // Calculate world bounds for ground tiling (accounting for camera)
+            const worldStartX = cameraPos.x - (cameraPos.x % tileSize) - tileSize;
+            const worldStartY = cameraPos.y - (cameraPos.y % tileSize) - tileSize;
+            const worldEndX = cameraPos.x + canvas.width + tileSize * 2;
+            const worldEndY = cameraPos.y + canvas.height + tileSize * 2;
+
+            // Draw tiled pattern in world space (camera transform already applied)
+            for (let worldX = worldStartX; worldX < worldEndX; worldX += tileSize) {
+                for (let worldY = worldStartY; worldY < worldEndY; worldY += tileSize) {
+                    ctx.drawImage(groundImage, worldX, worldY, tileSize, tileSize);
+                }
             }
+
+            ctx.globalAlpha = 1.0;
+        } else {
+            // Fallback to pattern if image not loaded yet
+            const groundPattern = renderingCache.getGroundPattern();
+            if (groundPattern) {
+                ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
+                ctx.fillStyle = groundPattern;
+                // Draw in world space covering visible area
+                const cameraPos = cameraSystem.getPosition();
+                ctx.fillRect(cameraPos.x, cameraPos.y, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+    } else {
+        // Non-animated mode: use pattern
+        const groundPattern = renderingCache.getGroundPattern();
+        if (groundPattern) {
+            ctx.globalAlpha = RENDERING.GROUND_PATTERN_ALPHA;
+            ctx.fillStyle = groundPattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
         }
     }
 
-    // Day/Night Cycle Overlay
+    // Vignette overlay will be drawn in screen space after ctx.restore()
+    // Store vignette for later use
+    let vignetteGradient = null;
+    if (vignetteEnabled) {
+        vignetteGradient = renderingCache.getVignetteGradient();
+    }
+
+    // Lighting overlay will be drawn in screen space after ctx.restore()
+    // Store lighting data for later use
+    let lightingGradient = null;
+    if (lightingEnabled && localPlayer && localPlayer.health > 0) {
+        // v0.8.1.2: Convert player world position to screen position for lighting
+        let playerScreenX = localPlayer.x;
+        let playerScreenY = localPlayer.y;
+        if (isSinglePlayerArcade) {
+            const screenPos = cameraSystem.worldToScreen(localPlayer.x, localPlayer.y);
+            playerScreenX = screenPos.x;
+            playerScreenY = screenPos.y;
+        }
+
+        // Create lighting gradient in screen space (will be used after ctx.restore())
+        const lightingRadius = Math.max(canvas.width, canvas.height) * 0.8;
+        lightingGradient = ctx.createRadialGradient(
+            playerScreenX, playerScreenY, 0,
+            playerScreenX, playerScreenY, lightingRadius
+        );
+        lightingGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+        lightingGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
+        lightingGradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.02)');
+        lightingGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    }
+
+    // Day/Night Cycle Overlay - will be drawn in screen space after ctx.restore()
     // Calculate ambient light level based on gameTime
     // Day (0.0-0.5): Transparent to slightly dark
     // Night (0.5-1.0): Dark blue/black overlay
-    let nightAlpha = 0;
-    if (gameState.isNight) {
-        // Smooth transition: 0.5 -> 0.0 alpha, 0.75 -> 0.6 alpha, 1.0 -> 0.7 alpha
-        const nightProgress = (gameState.gameTime - 0.5) * 2; // 0 to 1 during night
-        nightAlpha = 0.5 + (nightProgress * 0.2); // 0.5 to 0.7
-    } else {
-        // Dawn transition: 0.0 -> 0.0 alpha, 0.25 -> 0.3 alpha, 0.5 -> 0.0 alpha
-        const dawnProgress = gameState.gameTime * 2; // 0 to 1 during day
-        if (dawnProgress < 0.5) {
-            nightAlpha = dawnProgress * 0.6; // 0 to 0.3
+    function calculateNightAlpha() {
+        let nightAlpha = 0;
+        if (gameState.isNight) {
+            // Smooth transition: 0.5 -> 0.0 alpha, 0.75 -> 0.6 alpha, 1.0 -> 0.7 alpha
+            const nightProgress = (gameState.gameTime - 0.5) * 2; // 0 to 1 during night
+            nightAlpha = 0.5 + (nightProgress * 0.2); // 0.5 to 0.7
         } else {
-            nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
+            // Dawn transition: 0.0 -> 0.0 alpha, 0.25 -> 0.3 alpha, 0.5 -> 0.0 alpha
+            const dawnProgress = gameState.gameTime * 2; // 0 to 1 during day
+            if (dawnProgress < 0.5) {
+                nightAlpha = dawnProgress * 0.6; // 0 to 0.3
+            } else {
+                nightAlpha = (1 - dawnProgress) * 0.6; // 0.3 to 0
+            }
         }
+        return nightAlpha;
     }
 
-    if (nightAlpha > 0) {
-        ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    const nightAlpha = calculateNightAlpha();
 
-    if (gameState.damageIndicator.active) {
-        ctx.fillStyle = `rgba(255, 0, 0, ${gameState.damageIndicator.intensity * RENDERING.DAMAGE_INDICATOR_ALPHA})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    // Damage indicator will be drawn in screen space after ctx.restore()
+    // Store damage indicator state for later use
+    const damageIndicatorActive = gameState.damageIndicator.active;
+    const damageIndicatorIntensity = gameState.damageIndicator.intensity;
 
-    drawParticles();
+    // NOTE: drawParticles() moved to AFTER overlays so particles render on top
 
     // Draw spawn indicators
     gameState.spawnIndicators.forEach(indicator => {
@@ -826,7 +983,12 @@ function drawGame() {
 
     // Reuse viewport bounds from updateGame (cached per frame)
     const viewport = gameState.cachedViewport || getViewportBounds(canvas);
-    
+
+    // v0.8.1.2: Render props (after ground, before entities) - single player arcade only
+    if (isSinglePlayerArcade) {
+        propRenderSystem.render(gameState, viewport);
+    }
+
     // Draw entities with viewport culling and small feature culling
     entityRenderSystem.drawEntities(gameState, ctx, viewport);
 
@@ -834,7 +996,73 @@ function drawGame() {
 
     ctx.restore();
 
-    gameState.damageNumbers.forEach(num => num.draw(ctx));
+    // Vignette overlay (drawn in screen space after camera transform is restored)
+    if (vignetteGradient) {
+        ctx.fillStyle = vignetteGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Lighting overlay (drawn in screen space after camera transform is restored)
+    if (lightingGradient) {
+        ctx.fillStyle = lightingGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Enhanced post-processing: Additional bloom-like glow effect
+        if (enhancedPostProcessing) {
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = lightingGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    // Damage Indicator (drawn in screen space after camera transform is restored)
+    if (damageIndicatorActive) {
+        ctx.fillStyle = `rgba(255, 0, 0, ${damageIndicatorIntensity * RENDERING.DAMAGE_INDICATOR_ALPHA})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Day/Night Cycle Overlay (drawn in screen space after camera transform is restored)
+    if (nightAlpha > 0) {
+        ctx.fillStyle = `rgba(10, 10, 30, ${nightAlpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Draw particles AFTER all overlays so they're visible on top
+    // Particles need to be drawn in world space, so we restore the camera transform
+    ctx.save();
+    if (isSinglePlayerArcade) {
+        cameraSystem.applyTransform(ctx);
+    }
+    // Apply screen shake for particles too
+    if (gameState.shakeAmount > 0.1) {
+        const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        ctx.translate(shakeX, shakeY);
+    }
+    drawParticles();
+    ctx.restore();
+
+    // v0.8.1.2: Draw damage numbers (convert world coordinates to screen space in single player arcade)
+    gameState.damageNumbers.forEach(num => {
+        if (isSinglePlayerArcade) {
+            // Convert world coordinates to screen coordinates
+            const screenPos = cameraSystem.worldToScreen(num.x, num.y);
+            // Temporarily override position for drawing
+            const originalX = num.x;
+            const originalY = num.y;
+            num.x = screenPos.x;
+            num.y = screenPos.y;
+            num.draw(ctx);
+            // Restore original position (for update calculations)
+            num.x = originalX;
+            num.y = originalY;
+        } else {
+            num.draw(ctx);
+        }
+    });
     drawCrosshairUtil(mouse);
 
     // Draw low health vignette before HUD
@@ -1008,11 +1236,8 @@ gameEngine.draw = () => {
         gameState.lastFpsUpdateTime = now;
     }
 
-    // Render WebGPU layer (background/compute) if enabled
-    if (isWebGPUActive()) {
-        const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
-        webgpuRenderer.render(dt);
-    }
+    // Note: WebGPU render is called AFTER drawGame() so particles are synced before rendering
+    // This ensures particles synced in drawParticles() are included in the WebGPU frame
 
     if (gameState.showCoopLobby) {
         gameHUD.draw(); // Draw lobby
@@ -1028,6 +1253,12 @@ gameEngine.draw = () => {
     // If paused
     else if (gameState.gamePaused) {
         drawGame();
+    }
+
+    // Render WebGPU layer (background/compute) AFTER drawGame() so particles are synced first
+    if (isWebGPUActive()) {
+        const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
+        webgpuRenderer.render(dt);
     }
 };
 
@@ -1122,7 +1353,16 @@ document.addEventListener('keydown', (e) => {
     if (keys[controls.weapon7] && localPlayer) switchWeapon(WEAPONS.rocketLauncher, localPlayer);
 
     // Actions
-    if (key === controls.grenade && localPlayer) throwGrenade(mouse, canvas, localPlayer);
+    if (key === controls.grenade && localPlayer) {
+        // v0.8.1.2: In single player arcade mode, convert mouse coordinates to world space
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        let target = mouse;
+        if (isSinglePlayerArcade) {
+            const worldPos = cameraSystem.screenToWorld(mouse.x, mouse.y);
+            target = { x: worldPos.x, y: worldPos.y };
+        }
+        throwGrenade(target, canvas, localPlayer);
+    }
     if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
     if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
 
@@ -1327,7 +1567,7 @@ canvas.addEventListener('mousedown', (e) => {
     // Multiplayer Lobby
     if (gameState.showLobby) {
         const clickedButton = gameHUD.checkMenuButtonClick(clickX, clickY);
-        
+
         // Handle chat input click
         if (clickedButton === 'chat_input') {
             gameState.multiplayer.chatFocused = true;
@@ -1339,7 +1579,7 @@ canvas.addEventListener('mousedown', (e) => {
             // Clicked elsewhere - unfocus chat
             gameState.multiplayer.chatFocused = false;
         }
-        
+
         if (clickedButton === 'lobby_back') {
             gameState.showLobby = false;
             gameState.showMainMenu = true;
@@ -1430,11 +1670,11 @@ canvas.addEventListener('mousedown', (e) => {
             if (!gameState.menuMusicMuted) {
                 playMenuMusic();
             }
-            
+
             // Reset multiplayer game starting state to prevent stuck "GO!" screen
             gameState.multiplayer.isGameStarting = false;
             gameState.multiplayer.gameStartTime = 0;
-            
+
             // Ensure multiplayer connection is active
             if (!gameState.multiplayer.socket || !gameState.multiplayer.connected) {
                 connectToMultiplayer();
@@ -1447,7 +1687,7 @@ canvas.addEventListener('mousedown', (e) => {
                     multiplayerSystem.updateUsernameOnServer();
                 }
             }
-            
+
             resetGameState(canvas.width, canvas.height);
         } else if (clickedButton === 'gameover_menu') {
             // Return to main menu

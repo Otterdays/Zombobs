@@ -7,7 +7,7 @@ import {
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
     ZOMBIE_BASE_SCORES
 } from '../core/constants.js';
-import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
+import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, triggerWaveNotification } from './gameUtils.js';
 import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
@@ -113,11 +113,14 @@ export function shootBullet(target, canvas, player) {
         gameState.bullets.push(bullet);
     } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
         // Rocket Launcher fires rocket
+        console.log('Firing rocket!', gunX, gunY, angle);
         const rocket = new Rocket(gunX, gunY, angle, player.currentWeapon);
+        console.log('Rocket created:', rocket.type, rocket.explosionRadius, rocket.explosionDamage, rocket.maxDistance);
         rocket.damage *= damageMult; // Direct hit damage (if any)
         rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
+        console.log('Rocket added to bullets array, total bullets:', gameState.bullets.length);
     } else {
         // Pistol and rifle fire single bullet
         const bullet = new Bullet(gunX, gunY, angle, player.currentWeapon);
@@ -153,11 +156,17 @@ export function shootBullet(target, canvas, player) {
     player.muzzleFlash.life = player.muzzleFlash.maxLife;
     player.muzzleFlash.intensity = 1;
 
-    // Create shell casing
-    gameState.shells.push(new Shell(gunX, gunY, angle));
+    // Create shell casing (not for rockets)
+    if (player.currentWeapon !== WEAPONS.rocketLauncher) {
+        gameState.shells.push(new Shell(gunX, gunY, angle));
+    }
 
-    // Play gunshot sound
-    playGunshotSound();
+    // Play weapon-specific sound
+    if (player.currentWeapon === WEAPONS.rocketLauncher) {
+        playRocketFireSound();
+    } else {
+        playGunshotSound();
+    }
 
     // Send action to server for multiplayer synchronization
     if (gameState.isCoop && gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
@@ -278,14 +287,25 @@ export function throwGrenade(target, canvas, player) {
         return;
     }
 
+    // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+    
     // Calculate throw position (from player)
     const angle = Math.atan2(target.y - player.y, target.x - player.x);
     const throwX = player.x + Math.cos(angle) * player.radius * 1.5;
     const throwY = player.y + Math.sin(angle) * player.radius * 1.5;
 
     // Target is where the cursor/aim is
-    const targetX = Math.max(20, Math.min(canvas.width - 20, target.x));
-    const targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
+    // In single player arcade mode, use world space coordinates directly
+    // In other modes, clamp to canvas bounds
+    let targetX, targetY;
+    if (isSinglePlayerArcade) {
+        targetX = target.x;
+        targetY = target.y;
+    } else {
+        targetX = Math.max(20, Math.min(canvas.width - 20, target.x));
+        targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
+    }
 
     gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
     player.grenadeCount--;
@@ -309,16 +329,39 @@ export function throwGrenade(target, canvas, player) {
 }
 
 export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
-    // Create explosion visual effect
-    createExplosion(x, y);
+    console.log('triggerExplosion called!', x, y, radius, damage);
+    
+    // Safety check - ensure valid coordinates
+    if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
+        console.warn('triggerExplosion called with invalid coordinates:', x, y);
+        return;
+    }
+    
+    // Calculate explosion size based on radius
+    // Grenade radius is 80, rocket is 150
+    // Normalize: grenade = 1.0, rocket = 1.875 (150/80)
+    const explosionSize = radius / 80; // Normalize to grenade size (80px)
+    
+    console.log('Calling createExplosion with size:', explosionSize);
+    
+    // Create explosion visual effect with size parameter
+    try {
+        createExplosion(x, y, explosionSize);
+        console.log('createExplosion completed');
+    } catch (e) {
+        console.error('Error creating explosion:', e);
+    }
 
     // Default to player 1 if no source player specified
     if (!sourcePlayer) {
         sourcePlayer = gameState.players[0];
     }
 
-    // Screen shake
-    gameState.shakeAmount = 15;
+    // Screen shake (more intense for larger explosions)
+    gameState.shakeAmount = 15 * Math.min(explosionSize, 1.5);
+    
+    // Play explosion sound with size parameter
+    playExplosionSound(explosionSize);
 
     // AOE damage to zombies
     const radiusSquared = radius * radius;
@@ -358,7 +401,18 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
 
                     updateScoreMultiplier(sourcePlayer);
                     const baseScore = getZombieBaseScore(zombie);
-                    awardScore(sourcePlayer, baseScore, zombie.type);
+                    const finalScore = awardScore(sourcePlayer, baseScore, zombie.type);
+                    
+                    // Create floating damage number for explosion kill
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        // Show score with multiplier if active
+                        if (sourcePlayer.scoreMultiplier > 1.0) {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, `+${finalScore} (${sourcePlayer.scoreMultiplier}x)`));
+                        } else {
+                            gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, `+${finalScore}`));
+                        }
+                    }
                 }
 
                 gameState.zombiesKilled++;
@@ -373,6 +427,11 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 playKillSound();
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), true);
             } else {
+                // Zombie survived - show damage number
+                const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                if (damageNumberStyle !== 'off') {
+                    gameState.damageNumbers.push(new DamageNumber(zombie.x, zombie.y, finalDamage));
+                }
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), false);
             }
         }
@@ -411,20 +470,59 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         }
         if (gameState.shakeAmount < 12) gameState.shakeAmount = 12;
     }
-
-    // Play explosion sound
-    playExplosionSound();
 }
 
 // Collision handlers
 export function handleBulletZombieCollisions() {
+    // v0.8.1.2: In single player arcade mode, use world space bounds for Quadtree
+    // In other modes, use canvas bounds (screen space)
+    const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+    
+    // Debug: Count rockets
+    const rocketCount = gameState.bullets.filter(b => b.type === 'rocket').length;
+    if (rocketCount > 0) {
+        console.log('Rockets in bullets array:', rocketCount, 'Total bullets:', gameState.bullets.length);
+    }
+    
     // Reuse Quadtree instance instead of recreating every frame
     if (!collisionQuadtree) {
-        collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+        if (isSinglePlayerArcade) {
+            // Use a very large boundary for world space (covers entire possible world)
+            // This allows collision detection to work anywhere in the world
+            const worldSize = 100000; // Large enough to cover the entire explorable world
+            collisionQuadtree = new Quadtree({ 
+                x: -worldSize / 2, 
+                y: -worldSize / 2, 
+                width: worldSize, 
+                height: worldSize 
+            }, 4);
+        } else {
+            collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
+        }
     } else {
-        // Clear and update boundary if canvas size changed
-        collisionQuadtree.clear();
-        collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+        // Only clear and update boundary if mode changed or canvas size changed (non-arcade)
+        const currentIsArcade = isSinglePlayerArcade;
+        const needsUpdate = 
+            (currentIsArcade && collisionQuadtree.boundary.width !== 100000) ||
+            (!currentIsArcade && (collisionQuadtree.boundary.width !== canvas.width || collisionQuadtree.boundary.height !== canvas.height));
+        
+        if (needsUpdate) {
+            collisionQuadtree.clear();
+            if (isSinglePlayerArcade) {
+                const worldSize = 100000;
+                collisionQuadtree.boundary = { 
+                    x: -worldSize / 2, 
+                    y: -worldSize / 2, 
+                    width: worldSize, 
+                    height: worldSize 
+                };
+            } else {
+                collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+            }
+        } else {
+            // Just clear the quadtree contents (zombies) but keep the structure
+            collisionQuadtree.clear();
+        }
     }
 
     // Insert all zombies into Quadtree
@@ -468,6 +566,15 @@ export function handleBulletZombieCollisions() {
             if (zombieIndex === -1) return; // Already removed
 
             if (checkCollision(bullet, zombie)) {
+                // Handle Rocket collisions FIRST (before marking as hit)
+                if (bullet.type === 'rocket') {
+                    console.log('Rocket collision detected!', bullet.x, bullet.y, bullet.explosionRadius);
+                    const rocketPlayer = bullet.player || gameState.players[0];
+                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer);
+                    bullet.markedForRemoval = true;
+                    return; // Stop processing this bullet
+                }
+
                 // Mark bullet as hit to prevent multiple collisions if it's not piercing
                 // (Flamethrower is piercing-ish, handled separately)
                 if (bullet.type !== 'flame' && bullet.type !== 'piercing') bullet.hit = true;
@@ -479,13 +586,6 @@ export function handleBulletZombieCollisions() {
                 const zombieX = zombie.x;
                 const zombieY = zombie.y;
                 const isExploding = zombie.type === 'exploding';
-
-                // Handle Rocket collisions
-                if (bullet.type === 'rocket') {
-                    triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage);
-                    bullet.markedForRemoval = true;
-                    return; // Stop processing this bullet
-                }
 
                 // Handle flame bullets (apply burn effect)
                 if (bullet.type === 'flame') {
@@ -1144,8 +1244,8 @@ function triggerNuke(x, y) {
             gameState.boss = null;
         }
 
-        // Visuals
-        createExplosion(zombie.x, zombie.y);
+        // Visuals (larger explosion for nuke)
+        createExplosion(zombie.x, zombie.y, 1.5);
 
         // Award score with multiplier (to player 1 for nuke pickups)
         const player = gameState.players[0];
@@ -1177,7 +1277,7 @@ function triggerNuke(x, y) {
         gameState.zombies.splice(i, 1);
     }
 
-    playExplosionSound();
+    playExplosionSound(2.0); // Larger explosion sound for nuke
 }
 
 // Score Multiplier System

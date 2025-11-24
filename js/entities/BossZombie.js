@@ -6,7 +6,11 @@ import { triggerExplosion } from '../utils/combatUtils.js';
 
 export class BossZombie extends Zombie {
     constructor(x, y) {
-        super(x, y);
+        // v0.8.1.2: Call super with canvas dimensions (Zombie constructor expects canvasWidth, canvasHeight)
+        // Then override position with the provided x, y coordinates
+        super(1, 1); // Pass dummy values since we'll override position anyway
+        this.x = x;
+        this.y = y;
         this.type = 'boss';
         this.radius = 35; // Larger size
         this.speed = 0.6; // Slower than normal zombies initially

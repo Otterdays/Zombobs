@@ -38,8 +38,22 @@ export class ZombieSpawnSystem {
         gameState.isSpawningWave = true;
         gameState.bossActive = true;
 
-        // Spawn boss at top center
-        const boss = new BossZombie(canvas.width / 2, -50);
+        // v0.8.1.2: In single player arcade mode, spawn boss relative to player position in world space
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        
+        let bossX, bossY;
+        if (isSinglePlayerArcade && localPlayer) {
+            // Spawn boss above player in world space
+            bossX = localPlayer.x;
+            bossY = localPlayer.y - Math.max(canvas.width, canvas.height) * 0.6;
+        } else {
+            // Original spawn logic (screen space)
+            bossX = canvas.width / 2;
+            bossY = -50;
+        }
+        
+        const boss = new BossZombie(bossX, bossY);
         gameState.boss = boss;
         gameState.zombies.push(boss);
 
@@ -84,16 +98,46 @@ export class ZombieSpawnSystem {
         // Mark that we're spawning a wave
         gameState.isSpawningWave = true;
 
+        // v0.8.1.2: In single player arcade mode, spawn zombies relative to player position in world space
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        
         // Spawn zombies with staggered timing
         for (let i = 0; i < count; i++) {
-            // Calculate spawn position (same logic as Zombie constructor)
-            const side = Math.floor(Math.random() * 4);
+            // Calculate spawn position
             let spawnX, spawnY;
-            switch (side) {
-                case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
-                case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
-                case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
-                case 3: spawnX = -20; spawnY = Math.random() * canvas.height; break;
+            
+            if (isSinglePlayerArcade && localPlayer) {
+                // Spawn at edges of viewport in world space (relative to player)
+                const side = Math.floor(Math.random() * 4);
+                const spawnDistance = Math.max(canvas.width, canvas.height) * 0.6; // Spawn at viewport edges
+                switch (side) {
+                    case 0: // Top
+                        spawnX = localPlayer.x + (Math.random() - 0.5) * canvas.width;
+                        spawnY = localPlayer.y - spawnDistance;
+                        break;
+                    case 1: // Right
+                        spawnX = localPlayer.x + spawnDistance;
+                        spawnY = localPlayer.y + (Math.random() - 0.5) * canvas.height;
+                        break;
+                    case 2: // Bottom
+                        spawnX = localPlayer.x + (Math.random() - 0.5) * canvas.width;
+                        spawnY = localPlayer.y + spawnDistance;
+                        break;
+                    case 3: // Left
+                        spawnX = localPlayer.x - spawnDistance;
+                        spawnY = localPlayer.y + (Math.random() - 0.5) * canvas.height;
+                        break;
+                }
+            } else {
+                // Original spawn logic (screen space)
+                const side = Math.floor(Math.random() * 4);
+                switch (side) {
+                    case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
+                    case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
+                    case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
+                    case 3: spawnX = -20; spawnY = Math.random() * canvas.height; break;
+                }
             }
 
             // Create spawn indicator 1 second before zombie spawns
@@ -133,12 +177,12 @@ export class ZombieSpawnSystem {
                 else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
                     ZombieClass = SpitterZombie;
                 }
-                // Wave 5+: Introduce Flying zombies (~9% chance)
-                else if (gameState.wave >= 5 && rand >= 0.43 && rand < 0.52) {
+                // Wave 5+: Introduce Flying zombies (~15% chance, increased from 9%)
+                else if (gameState.wave >= 5 && rand >= 0.43 && rand < 0.58) {
                     ZombieClass = FlyingZombie;
                 }
                 // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying)
-                else if (gameState.wave >= 3 && rand >= 0.52) {
+                else if (gameState.wave >= 3 && rand >= 0.58) {
                     const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
                     if (Math.random() < armoredChance) {
                         ZombieClass = ArmoredZombie;

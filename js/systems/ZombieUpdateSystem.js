@@ -16,6 +16,9 @@ export class ZombieUpdateSystem {
         // Apply night difficulty modifier (20% speed increase)
         const nightSpeedMultiplier = gameState.isNight ? 1.2 : 1.0;
 
+        // v0.8.1.2: In single player arcade mode, always update zombies (they need to follow player in world space)
+        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
+
         // Optimized loop: use for loop instead of forEach for better performance
         const zombiesLength = gameState.zombies.length;
         const viewportLeft = viewport.left;
@@ -27,7 +30,8 @@ export class ZombieUpdateSystem {
             const zombie = gameState.zombies[i];
             
             // Update culling: Skip updating zombies far off-screen (major FPS boost)
-            if (!shouldUpdateEntity(zombie, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
+            // v0.8.1.2: In single player arcade mode, always update zombies so they can follow player anywhere
+            if (!isSinglePlayerArcade && !shouldUpdateEntity(zombie, viewportLeft, viewportTop, viewportRight, viewportBottom)) {
                 continue; // Skip this zombie's update - too far away
             }
             

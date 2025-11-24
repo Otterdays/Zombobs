@@ -17,7 +17,7 @@ export class Zombie {
             case 2: this.x = Math.random() * canvasWidth; this.y = canvasHeight + 20; break;
             case 3: this.x = -20; this.y = Math.random() * canvasHeight; break;
         }
-        this.radius = 12;
+        this.radius = 15; // v0.8.1.2: Increased hitbox size for easier hits (was 12)
         this.speed = 1 + (gameState.wave * 0.1);
         this.health = (2 + Math.floor(gameState.wave / 3)) * 2; // Doubled HP
         this.maxHealth = this.health;

@@ -4,6 +4,46 @@
 
 ## 2025 - Active Development Notes
 
+### Explosion Particle Rendering Fix [2025-11-24]
+- ✅ **Critical Fix: Invisible Explosion Particles** - Fixed grenade and rocket explosions not appearing
+  - **Problem**: Particles were being created and logged, but completely invisible on screen
+  - **Root Cause**: `Particle` class had empty `draw()` method that overrode `ParticleSystem.js` rendering
+  - **Solution**: Removed `draw()` from `Particle` class, forcing use of `ParticleSystem.js` fallback logic
+  - **Additional Improvements**:
+    - Hex color conversion to rgba for proper alpha blending
+    - Minimum alpha (0.3) for large explosion particles (radius > 50)
+    - Fixed render order (particles now draw after overlays)
+    - Canvas 2D rendering (gameCanvas z-index 1, on top of WebGPU background)
+  - **Files**: `js/entities/Particle.js`, `js/systems/ParticleSystem.js`, `js/main.js`
+  - **Status**: ✅ WORKING - Explosions and grenade trails now visible at correct locations
+
+### Prop Enhancement Update [2025-01-XX]
+- ✅ **Enhanced Burnt Car Props** - Improved car design with animated smoke effects
+  - Increased car size: 60-90px width (from 40-60px), 80-120px height (from 60-80px)
+  - Added detailed car features: hood lines, door lines, window frames, wheel rims
+  - Added charred texture gradient overlays for burnt effect
+  - Animated smoke particles: 3-5 particles per car rising upward with fade-out
+  - Smoke particles drift horizontally and respawn after 2-4 seconds
+  - Fixed random value storage to prevent flickering (rotations and decay marks stored in constructor)
+  - Location: `js/entities/Prop.js` - `drawBurntCar()`, `initSmokeParticles()`, `update()` methods
+
+- ✅ **New Zombie-Themed Props** - Three new prop types for atmospheric world decoration
+  - **Skull Props**: Bone-white skulls with eye sockets, nasal cavity, jaw line, and cracks (25-35px)
+  - **Zombie Arms Props**: 2-3 severed arms with visible bone ends and decay marks (20-30px × 40-60px)
+  - **Zombie Legs Props**: 2 severed legs with visible bone ends and decay marks (25-35px × 50-70px)
+  - Random rotations and decay marks stored in constructor to prevent flickering
+  - Location: `js/entities/Prop.js` - `drawSkull()`, `drawZombieArms()`, `drawZombieLegs()` methods
+
+- ✅ **Prop Spawn Distribution Update** - Adjusted prop type percentages for better variety
+  - Rock: 35% (down from 50%), Debris: 25% (down from 35%), Burnt Car: 10% (down from 15%)
+  - Skull: 15% (new), Zombie Arms: 10% (new), Zombie Legs: 5% (new)
+  - Location: `js/systems/PropSpawnSystem.js` - `spawnPropsInChunk()` method
+
+- ✅ **Prop Update System** - Added prop update loop for animated effects
+  - Smoke particles for burnt cars now update each frame
+  - Only updates props in single player arcade mode for performance
+  - Location: `js/main.js` - `updateGame()` function
+
 ### Flying Zombie Implementation [2025-01-XX]
 - ✅ **Flying Zombie** - New zombie variant with floating animation and simple wings
   - Created `FlyingZombie` class extending base `Zombie` class
