@@ -22,6 +22,14 @@
   - **Performance**: Shared device/context eliminates duplicate WebGPU initialization overhead
   - **Location**: `js/core/ZombobsFX.js`, integrated in `js/core/WebGPURenderer.js`, settings in `js/ui/SettingsPanel.js`, `js/main.js`
   - **Status**: ✅ WORKING - 100k particle spore cloud renders correctly with mouse interaction
+  - **Intensity Adjustment**: All key parameters documented with `// ADJUSTMENT:` comments in code
+    - Particle count: `this.numParticles` (default: 100000, range: 10k-200k)
+    - Particle size: vertex shader `0.008` (range: 0.005-0.015)
+    - Repel strength: `updateCompute()` `2.0` (range: 1.0-5.0)
+    - Alpha multiplier: vertex shader `0.8` (range: 0.5-1.0)
+    - Flow speed: compute shader `0.002` (range: 0.001-0.005)
+    - Repel distance: compute shader `0.3` (range: 0.2-0.5)
+    - Repel force: compute shader `0.05` (range: 0.02-0.1)
 
 ### Car Fire & Skull Enhancement [2025-01-XX]
 - ✅ **Fixed Zombie Spawn Arrow Color Variation** - Restored distance-based color variation for off-screen zombie indicators

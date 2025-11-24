@@ -155,6 +155,7 @@ export class ZombobsFX {
                 );
                 
                 let particle = renderParticles[iIndex];
+                // ADJUSTMENT: Change 0.008 to adjust particle size (0.005 = smaller, 0.015 = larger)
                 let vertex_pos = pos_vertex[vIndex] * 0.008; // Particle Size
 
                 var output : VertexOutput;
@@ -166,6 +167,7 @@ export class ZombobsFX {
                 let toxicGreen = vec3<f32>(0.2, 1.0, 0.1);
                 let zombiePurple = vec3<f32>(0.6, 0.0, 0.8);
                 
+                // ADJUSTMENT: Change 0.8 to adjust overall particle opacity (0.5 = more transparent, 1.0 = fully opaque)
                 output.color = vec4<f32>(mix(zombiePurple, toxicGreen, lifeFactor), lifeFactor * 0.8);
                 return output;
             }
@@ -317,6 +319,7 @@ export class ZombobsFX {
         }
 
         // Update Uniforms
+        // ADJUSTMENT: Change 2.0 (repelStrength) to adjust mouse repulsion intensity (1.0 = weak, 5.0 = strong)
         const paramsData = new Float32Array([dt, this.mouseX, this.mouseY, 2.0]);
         this.device.queue.writeBuffer(this.paramsBuffer, 0, paramsData);
 

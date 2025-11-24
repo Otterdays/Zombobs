@@ -128,6 +128,17 @@ This modular structure improves maintainability, testability, and scalability.
 - **Integration**: Uses shared WebGPU device/context from WebGPURenderer (no duplicate initialization)
 - **Location**: `js/core/ZombobsFX.js` - Integrated into `WebGPURenderer.render()`
 
+**Intensity Adjustment Parameters** (in `js/core/ZombobsFX.js`):
+- **Particle Count** (`this.numParticles`): Default 100,000. Range: 10,000-200,000. More = denser cloud (higher performance cost)
+- **Particle Size** (vertex shader line ~132): Default 0.008. Range: 0.005-0.015. Larger = more visible particles
+- **Repel Strength** (`updateCompute()` line ~294): Default 2.0. Range: 1.0-5.0. Higher = stronger mouse repulsion
+- **Alpha Multiplier** (vertex shader line ~143): Default 0.8. Range: 0.5-1.0. Higher = more opaque particles
+- **Flow Speed** (compute shader line ~78): Default 0.002. Range: 0.001-0.005. Higher = faster particle movement
+- **Repel Distance** (compute shader line ~86): Default 0.3. Range: 0.2-0.5. Larger = bigger mouse interaction area
+- **Repel Force Multiplier** (compute shader line ~89): Default 0.05. Range: 0.02-0.1. Higher = stronger repulsion force
+
+All adjustment points are marked with `// ADJUSTMENT:` comments in the code for easy finding.
+
 **Performance Features**:
 - **Dirty Flag System**: Only writes to uniform buffer when values actually change
 - **Buffer Reuse**: Particle buffers reused when count doesn't change, only recreated when size increases
