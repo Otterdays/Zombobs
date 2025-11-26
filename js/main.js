@@ -1666,21 +1666,8 @@ canvas.addEventListener('mousedown', (e) => {
             }
         } else if (clickedButton === 'lobby_ready') {
             // Toggle ready state
-            console.log('[Ready Button] Click detected', {
-                hasSocket: !!gameState.multiplayer.socket,
-                socketConnected: gameState.multiplayer.socket?.connected,
-                isLeader: gameState.multiplayer.isLeader,
-                currentReady: gameState.multiplayer.isReady
-            });
-
             if (gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
-                console.log('[Ready Button] Emitting player:ready to server');
                 gameState.multiplayer.socket.emit('player:ready');
-            } else {
-                console.warn('[Ready Button] Cannot emit - socket missing or not connected', {
-                    socket: gameState.multiplayer.socket,
-                    connected: gameState.multiplayer.socket?.connected
-                });
             }
         }
         return;

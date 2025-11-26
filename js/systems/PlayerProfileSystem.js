@@ -96,7 +96,7 @@ export class PlayerProfileSystem {
                 return profile;
             }
         } catch (error) {
-            console.log('Failed to load player profile:', error);
+            // Failed to load player profile
         }
         
         // Create new profile if none exists

@@ -334,7 +334,6 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
 
     // Safety check - ensure valid coordinates
     if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-        console.warn('triggerExplosion called with invalid coordinates:', x, y);
         return;
     }
 

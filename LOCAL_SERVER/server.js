@@ -333,20 +333,6 @@ io.on('connection', (socket) => {
     ? userInfo.pages[userInfo.pages.length - 1] 
     : null;
 
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`✅ CLIENT CONNECTED!`);
-  console.log(`   Player: ${defaultName}`);
-  console.log(`   Socket ID: ${socket.id}`);
-  console.log(`   User ID: ${userId ? userId.substring(0, 8) + '...' : 'New User'}`);
-  if (latestPage) {
-    console.log(`   Page: ${latestPage.path}`);
-    console.log(`   Referer: ${latestPage.referer.substring(0, 50)}...`);
-  }
-  console.log(`   Total Page Views: ${userPages}`);
-  console.log(`   Is Leader: ${isFirstPlayer}`);
-  console.log(`   Total Players Online: ${players.size}`);
-  console.log(`   Active Players: ${formatPlayerList()}`);
-  console.log(`${'='.repeat(60)}\n`);
   broadcastLobby();
 
   // Handle player registration
@@ -380,7 +366,6 @@ io.on('connection', (socket) => {
     
     // Check if requester is leader
     if (!player.isLeader) {
-      console.log(`[!] Non-leader ${player.name} attempted to start game`);
       socket.emit('game:start:error', { message: 'Only the lobby leader can start the game' });
       return;
     }
@@ -388,13 +373,11 @@ io.on('connection', (socket) => {
     // Check if all players are ready
     const allReady = Array.from(players.values()).every(p => p.isReady);
     if (!allReady) {
-      console.log(`[!] Leader ${player.name} attempted to start game but not all players ready`);
       socket.emit('game:start:error', { message: 'All players must be ready to start' });
       return;
     }
     
     // All checks passed - broadcast game start to all clients
-    console.log(`[+] Game starting! All players ready.`);
     io.emit('game:start');
   });
 
@@ -419,15 +402,6 @@ io.on('connection', (socket) => {
       console.log(`[~] New leader assigned after ${displayName} disconnected`);
     }
     
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`❌ CLIENT DISCONNECTED`);
-    console.log(`   Player: ${displayName}`);
-    console.log(`   Socket ID: ${socket.id}`);
-    console.log(`   User ID: ${userId ? userId.substring(0, 8) + '...' : 'Unknown'}`);
-    console.log(`   Was Leader: ${wasLeader}`);
-    console.log(`   Remaining Players: ${players.size}`);
-    console.log(`   Active Players: ${formatPlayerList()}`);
-    console.log(`${'='.repeat(60)}\n`);
     broadcastLobby();
   });
 });

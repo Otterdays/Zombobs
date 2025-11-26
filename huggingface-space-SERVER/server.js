@@ -264,9 +264,7 @@ function formatMemory(bytes) {
 
 // Root endpoint - serve a simple HTML page
 app.get('/', (req, res) => {
-  console.log('[DEBUG] Root endpoint accessed');
   if (!serverReady) {
-    console.log('[DEBUG] Server not ready yet, sending immediate response');
     res.send('Server starting... Please wait.');
     return;
   }
@@ -1045,13 +1043,10 @@ async function addHighscore(entry) {
 
   try {
     // Insert new score into MongoDB
-    console.log('[addHighscore] Inserting score to MongoDB:', { username: scoreEntry.username, score: scoreEntry.score, isMultiplayer: scoreEntry.isMultiplayer });
     await highscoresCollection.insertOne(scoreEntry);
 
     // Refresh cache from DB (get top 10)
     highscoresCache = await getHighscoresFromDB();
-    console.log('[addHighscore] Cache refreshed, top 10 count:', highscoresCache.length);
-    console.log('[addHighscore] Top scores:', highscoresCache.slice(0, 5).map(h => ({ username: h.username, score: h.score, isMultiplayer: h.isMultiplayer })));
 
     return [...highscoresCache];
   } catch (error) {
@@ -1063,12 +1058,10 @@ async function addHighscore(entry) {
 
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
-  console.log('[DEBUG] Health check requested');
   // Ensure user has a cookie so socket connection will have credentials
   getOrCreateUserId(req, res);
 
   if (!serverReady) {
-    console.log('[DEBUG] Server not ready yet, returning 503');
     return res.status(503).json({
       status: 'starting',
       message: 'Server is still initializing'
@@ -1143,7 +1136,6 @@ app.post('/api/highscores/refresh', async (req, res) => {
     } else {
       // No MongoDB connection - clear cache
       highscoresCache = [];
-      console.log('[highscores] Cache cleared (no MongoDB connection)');
       res.json({
         success: true,
         message: 'Cache cleared (MongoDB not connected)',
@@ -1420,7 +1412,6 @@ io.on('connection', (socket) => {
         } else {
           // Generate temporary ID so score is still saved
           userId = crypto.randomBytes(16).toString('hex');
-          console.log('[game:score] No User ID found in cookies/player, generated temporary ID:', userId);
         }
       }
 
@@ -1435,12 +1426,10 @@ io.on('connection', (socket) => {
       const isMultiplayer = typeof data.isMultiplayer === 'boolean' ? data.isMultiplayer : false;
 
       if (score <= 0) {
-        console.log('[game:score] Invalid score, skipping submission');
         return;
       }
 
       // Add highscore (now async)
-      console.log('[game:score] Submitting score:', { userId, username, score, wave, zombiesKilled, isMultiplayer });
       const updatedHighscores = await addHighscore({
         userId,
         username,
@@ -1450,15 +1439,10 @@ io.on('connection', (socket) => {
         isMultiplayer
       });
 
-      console.log('[game:score] Updated highscores count:', updatedHighscores.length);
-      console.log('[game:score] Top 10 scores:', updatedHighscores.slice(0, 10).map(h => ({ username: h.username, score: h.score, isMultiplayer: h.isMultiplayer })));
-
       // Check if this score made it to top 10
       const entry = updatedHighscores.find(h => h.userId === userId && h.score === score && h.wave === wave);
       const isInTop10 = !!entry;
       const rank = isInTop10 ? updatedHighscores.indexOf(entry) + 1 : null;
-
-      console.log('[game:score] Score result:', { isInTop10, rank, score, topScore: updatedHighscores[0]?.score || 0 });
 
       // Notify client of submission result
       socket.emit('game:score:result', {
@@ -1576,9 +1560,6 @@ initMongoDB().then(() => {
       serverReady = true; // Mark server as ready
       console.log(`🚀 Zombobs Server running on port ${PORT} `);
       console.log(`🧟 The horde is approaching...`);
-      console.log(`[DEBUG] Server is ready and listening for requests`);
-      console.log(`[DEBUG] Health check available at: http://0.0.0.0:${PORT}/health`);
-      console.log(`[DEBUG] Highscores API available at: http://0.0.0.0:${PORT}/api/highscores`);
     });
 
     httpServer.on('error', (error) => {
@@ -1595,7 +1576,5 @@ initMongoDB().then(() => {
     serverReady = true; // Mark server as ready
     console.log(`🚀 Zombobs Server running on port ${PORT} (MongoDB unavailable)`);
     console.log(`🧟 The horde is approaching...`);
-    console.log(`[DEBUG] Server is ready (MongoDB unavailable - using in-memory only)`);
-    console.log(`[DEBUG] Health check available at: http://0.0.0.0:${PORT}/health`);
   });
 });

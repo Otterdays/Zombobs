@@ -576,7 +576,6 @@ export class WebGPURenderer {
                 try {
                     await this.zombobsFX.init(this.device, this.context, this.format, gpuCanvas);
                 } catch (error) {
-                    console.warn('Failed to initialize ZombobsFX:', error);
                     this.zombobsFX = null;
                 }
             }
@@ -705,7 +704,6 @@ export class WebGPURenderer {
             console.error('Error rendering WebGPU frame:', error);
             // Graceful fallback: disable WebGPU and fall back to Canvas 2D
             if (!this.fallbackMode) {
-                console.warn('WebGPU render error detected, falling back to Canvas 2D');
                 this.fallbackMode = true;
             }
             // Don't throw, just log the error to prevent breaking the game loop

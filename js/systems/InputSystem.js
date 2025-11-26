@@ -41,7 +41,6 @@ export class InputSystem {
         this.rebindCallback = null;
 
         window.addEventListener("gamepadconnected", (e) => {
-            console.log(`Gamepad connected: ${e.gamepad.id} (Index: ${e.gamepad.index})`);
             // Ensure state exists
             if (!this.gamepadStates.has(e.gamepad.index)) {
                 this.gamepadStates.set(e.gamepad.index, new GamepadState());
@@ -49,7 +48,6 @@ export class InputSystem {
         });
 
         window.addEventListener("gamepaddisconnected", (e) => {
-            console.log(`Gamepad disconnected: ${e.gamepad.index}`);
             this.gamepadStates.delete(e.gamepad.index);
         });
     }

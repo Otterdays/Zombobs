@@ -72,11 +72,9 @@ export class LeaderboardDisplay {
             if (error.name === 'AbortError') {
                 // Timeout occurred
                 this.leaderboardFetchState = 'timeout';
-                console.log('[LeaderboardDisplay] Leaderboard fetch timed out after 10 seconds');
             } else {
                 // Other error (network, CORS, etc.)
                 this.leaderboardFetchState = 'error';
-                console.log('[LeaderboardDisplay] Could not fetch leaderboard:', error);
             }
         }
     }
@@ -219,8 +217,6 @@ export class LeaderboardDisplay {
      * Call this from browser console: window.gameHUD?.leaderboardDisplay?.refresh()
      */
     async refresh() {
-        console.log('[LeaderboardDisplay] Refreshing server cache from MongoDB...');
-        
         try {
             // Refresh server cache from MongoDB
             const refreshResponse = await fetch(`${SERVER_URL}/api/highscores/refresh`, {
@@ -228,10 +224,7 @@ export class LeaderboardDisplay {
                 headers: { 'Content-Type': 'application/json' }
             });
             
-            if (refreshResponse.ok) {
-                const refreshData = await refreshResponse.json();
-                console.log(`[LeaderboardDisplay] Server cache refreshed: ${refreshData.count} entries`);
-            } else {
+            if (!refreshResponse.ok) {
                 console.error('[LeaderboardDisplay] Failed to refresh server cache');
             }
         } catch (error) {
@@ -243,8 +236,6 @@ export class LeaderboardDisplay {
         this.leaderboardFetchState = 'loading';
         this.leaderboard = [];
         await this.fetch();
-        
-        console.log(`[LeaderboardDisplay] Refresh complete. Entries: ${this.leaderboard.length}`);
     }
 
     /**
@@ -263,10 +254,7 @@ export class LeaderboardDisplay {
                 body: JSON.stringify({ clearDatabase: true })
             });
             
-            if (clearResponse.ok) {
-                const clearData = await clearResponse.json();
-                console.log('[LeaderboardDisplay] Server cache and database cleared:', clearData);
-            } else {
+            if (!clearResponse.ok) {
                 console.error('[LeaderboardDisplay] Failed to clear server data');
             }
         } catch (error) {
@@ -280,8 +268,6 @@ export class LeaderboardDisplay {
         
         // Fetch fresh (empty) data
         await this.fetch();
-        
-        console.log('[LeaderboardDisplay] Full reset complete. Leaderboard is now empty.');
     }
 }
 

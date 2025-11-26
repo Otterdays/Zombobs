@@ -43,11 +43,6 @@ export class GameStateManager {
             // Determine game mode: arcade if not coop and not multiplayer
             const gameMode = (!gameState.isCoop && !gameState.multiplayer.active) ? 'arcade' :
                 (gameState.isCoop ? 'coop' : 'multiplayer');
-            console.log('[GameStateManager] Saving scoreboard entry:', {
-                isCoop: gameState.isCoop,
-                multiplayerActive: gameState.multiplayer.active,
-                gameMode: gameMode
-            });
             saveScoreboardEntry({
                 score: gameState.score,
                 wave: gameState.wave,
@@ -203,7 +198,6 @@ export class GameStateManager {
         if (gameState.multiplayer.socket && gameState.multiplayer.socket.connected) {
             try {
                 gameState.multiplayer.socket.emit('game:score', scoreData);
-                console.log('[GameStateManager] Score submitted via Socket.IO:', { score, wave, isMultiplayer });
             } catch (error) {
                 console.error('[GameStateManager] Error sending score via socket:', error);
                 // Fall back to HTTP POST
@@ -239,7 +233,6 @@ export class GameStateManager {
             }
         } catch (error) {
             // Silently fail - don't block game over screen
-            console.log('[GameStateManager] Could not submit score to server:', error);
         }
     }
 }

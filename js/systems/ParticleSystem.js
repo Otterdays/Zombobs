@@ -46,7 +46,6 @@ export function spawnParticle(x, y, color, props = {}) {
 
     const p = particlePool.get(x, y, color, props);
     if (!p) {
-        console.warn('spawnParticle: particlePool.get returned null!');
         return null;
     }
 
@@ -191,7 +190,6 @@ export function createExplosion(x, y, size = 1.0) {
 
     // Safety check - ensure we have valid coordinates
     if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-        console.warn('createExplosion called with invalid coordinates:', x, y);
         return;
     }
 
@@ -215,7 +213,6 @@ export function createExplosion(x, y, size = 1.0) {
             hasTrails: true
         };
     } catch (e) {
-        console.warn('Error getting explosion quality, using defaults:', e);
         explosionQuality = {
             fireParticles: 30,
             smokeParticles: 15,
@@ -430,7 +427,6 @@ export function updateParticles() {
         const p = gameState.particles[i];
 
         if (!p) {
-            console.warn('updateParticles: Found null particle at index', i);
             continue;
         }
 
@@ -496,7 +492,6 @@ export function drawParticles() {
         const particle = gameState.particles[i];
 
         if (!particle) {
-            console.warn('[ParticleSystem] drawParticles: Null particle at index', i);
             continue;
         }
 
@@ -513,7 +508,6 @@ export function drawParticles() {
 
             // Validate particle data
             if (isNaN(particle.x) || isNaN(particle.y) || isNaN(particle.radius)) {
-                console.warn('[ParticleSystem] Invalid particle data at index', i, particle);
                 continue;
             }
 

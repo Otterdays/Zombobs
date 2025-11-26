@@ -39,7 +39,7 @@ export function initAudio() {
             }
 
         } catch (error) {
-            console.log('Audio context not supported:', error);
+            // Audio context not supported
         }
     }
     return audioContext;
@@ -95,7 +95,7 @@ export function playMenuMusic() {
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
-            console.log("Could not connect menu music to audio context", e);
+            // Could not connect menu music to audio context
         }
     }
 
@@ -103,9 +103,6 @@ export function playMenuMusic() {
     if (menuMusic.paused) {
         menuMusic.play().catch(e => {
             // Ignore AbortError (happens when restarting quickly)
-            if (e.name !== 'AbortError') {
-                console.log("Menu music play failed (likely autoplay block):", e);
-            }
         });
     }
 }

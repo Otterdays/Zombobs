@@ -20,10 +20,6 @@ export class LobbyScreen {
         // Validate canvas dimensions
         if (!this.canvas || !Number.isFinite(this.canvas.width) || !Number.isFinite(this.canvas.height) || 
             this.canvas.width <= 0 || this.canvas.height <= 0) {
-            console.warn('drawLobby: Invalid canvas dimensions', { 
-                width: this.canvas?.width, 
-                height: this.canvas?.height 
-            });
             return;
         }
         
@@ -117,7 +113,6 @@ export class LobbyScreen {
         
         // Validate calculated dimensions
         if (!Number.isFinite(cardWidth) || !Number.isFinite(cardHeight) || cardWidth <= 0 || cardHeight <= 0) {
-            console.warn('drawLobby: Invalid card dimensions', { cardWidth, cardHeight, scale });
             return;
         }
         
@@ -128,7 +123,6 @@ export class LobbyScreen {
         
         // Validate calculated positions
         if (!Number.isFinite(cardStartX) || !Number.isFinite(cardStartY)) {
-            console.warn('drawLobby: Invalid card positions', { cardStartX, cardStartY, centerX, topY });
             return;
         }
 
@@ -391,7 +385,6 @@ export class LobbyScreen {
     drawPlayerCard(x, y, player, index, isLocalPlayer) {
         // Validate input parameters
         if (!player || !Number.isFinite(x) || !Number.isFinite(y)) {
-            console.warn('drawPlayerCard: Invalid parameters', { x, y, player });
             return;
         }
         
@@ -402,7 +395,6 @@ export class LobbyScreen {
         
         // Validate calculated dimensions
         if (!Number.isFinite(cardWidth) || !Number.isFinite(cardHeight) || cardWidth <= 0 || cardHeight <= 0) {
-            console.warn('drawPlayerCard: Invalid card dimensions', { cardWidth, cardHeight, scale });
             return;
         }
         

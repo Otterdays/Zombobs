@@ -63,7 +63,6 @@ export class GameHUD {
         const scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
         // Ensure scale is always a finite positive number
         if (!Number.isFinite(scale) || scale <= 0) {
-            console.warn('getUIScale: Invalid scale value, using default 1.0', { scale });
             return 1.0;
         }
         return scale;
@@ -1002,7 +1001,6 @@ export class GameHUD {
     drawGlassCard(x, y, width, height, borderGlow = false) {
         // Validate all parameters are finite numbers
         if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
-            console.warn('drawGlassCard: Invalid parameters', { x, y, width, height });
             return;
         }
         

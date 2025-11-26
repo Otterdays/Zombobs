@@ -289,7 +289,6 @@ class SkillSystem {
         } else {
             // Add new skill
             if (gameState.activeSkills.length >= MAX_SKILL_SLOTS) {
-                console.warn('Cannot add more skills, max slots reached');
                 return;
             }
             gameState.activeSkills.push({

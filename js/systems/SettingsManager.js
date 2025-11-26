@@ -101,7 +101,7 @@ export class SettingsManager {
                 return this.mergeSettings(this.defaultSettings, parsed);
             }
         } catch (error) {
-            console.log('Failed to load settings:', error);
+            // Failed to load settings
         }
         // Return defaults copy
         return JSON.parse(JSON.stringify(this.defaultSettings));
@@ -151,7 +151,7 @@ export class SettingsManager {
         try {
             localStorage.setItem('zombobs_settings', JSON.stringify(this.settings));
         } catch (error) {
-            console.log('Failed to save settings:', error);
+            // Failed to save settings
         }
     }
 

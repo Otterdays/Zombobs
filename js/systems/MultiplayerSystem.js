@@ -46,7 +46,6 @@ export class MultiplayerSystem {
                 gameState.multiplayer.serverStatus = 'online';
             })
             .catch(error => {
-                console.log('Server appears offline or waking up:', error);
                 gameState.multiplayer.serverStatus = 'offline';
 
                 // Retry check after 5 seconds if offline (to handle wake-up)
@@ -166,8 +165,6 @@ export class MultiplayerSystem {
         gameState.multiplayer.socket = socket;
 
             socket.on('connect', () => {
-                console.log('✅ Successfully connected to multiplayer server');
-
                 gameState.multiplayer.connected = true;
                 gameState.multiplayer.status = 'connected';
                 gameState.multiplayer.playerId = socket.id;
@@ -183,7 +180,6 @@ export class MultiplayerSystem {
             });
 
             socket.on('disconnect', () => {
-                console.log('Disconnected from multiplayer server');
                 gameState.multiplayer.connected = false;
                 gameState.multiplayer.status = 'disconnected';
                 gameState.multiplayer.playerId = null;
@@ -212,9 +208,6 @@ export class MultiplayerSystem {
             });
 
             socket.on('game:start', () => {
-                console.log('🎮 Game start signal received from server');
-
-
                 if (gameState.showLobby) {
                     // Enable co-op mode for multiplayer
                     gameState.isCoop = true;
@@ -385,7 +378,6 @@ export class MultiplayerSystem {
             });
 
             socket.on('game:starting', (data) => {
-                console.log('Game starting in ' + data.duration + 'ms');
                 gameState.multiplayer.isGameStarting = true;
                 // Calculate start time - server sends startTime which is Date.now() + 3000
                 // We need to account for network latency, so use current time + duration
@@ -399,7 +391,6 @@ export class MultiplayerSystem {
 
                 const disconnectedPlayerIndex = gameState.players.findIndex(p => p.id === data.playerId);
                 if (disconnectedPlayerIndex !== -1) {
-                    console.log(`[Multiplayer] Player ${gameState.players[disconnectedPlayerIndex].name} disconnected`);
                     gameState.players.splice(disconnectedPlayerIndex, 1);
                 }
             });
@@ -565,7 +556,6 @@ export class MultiplayerSystem {
             });
 
             socket.on('reconnect_attempt', (attemptNumber) => {
-                console.log(`Reconnection attempt ${attemptNumber}...`);
                 gameState.multiplayer.status = 'connecting';
             });
 
@@ -584,11 +574,9 @@ export class MultiplayerSystem {
 
             // Listen for score submission result
             socket.on('game:score:result', (data) => {
-                console.log('[MultiplayerSystem] Score submission result:', data);
                 if (data.success && gameHUD) {
                     // If server sent updated highscores, use them directly (faster than fetching)
                     if (data.highscores && Array.isArray(data.highscores)) {
-                        console.log('[MultiplayerSystem] Updating leaderboard from server response:', data.highscores.length, 'entries');
                         gameHUD.leaderboardDisplay.leaderboard = data.highscores;
                         gameHUD.leaderboardDisplay.leaderboardLastFetch = Date.now();
                         gameHUD.leaderboardDisplay.leaderboardFetchState = 'success';

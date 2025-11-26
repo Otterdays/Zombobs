@@ -180,7 +180,7 @@ export function saveMultiplierStats() {
         };
         localStorage.setItem('zombobs_multiplier_stats', JSON.stringify(stats));
     } catch (error) {
-        console.log('Failed to save multiplier stats:', error);
+        // Failed to save multiplier stats
     }
 }
 
@@ -195,7 +195,7 @@ export function loadMultiplierStats() {
             gameState.allTimeMaxMultiplier = stats.allTimeMaxMultiplier || 1.0;
         }
     } catch (error) {
-        console.log('Failed to load multiplier stats:', error);
+        // Failed to load multiplier stats
     }
 }
 
@@ -216,7 +216,7 @@ export function loadScoreboard() {
             }
         }
     } catch (error) {
-        console.log('Failed to load scoreboard:', error);
+        // Failed to load scoreboard
     }
     return [];
 }
@@ -227,10 +227,8 @@ export function loadScoreboard() {
 export function clearScoreboard() {
     try {
         localStorage.removeItem('zombobs_scoreboard');
-        console.log('Scoreboard cleared');
         return true;
     } catch (error) {
-        console.log('Failed to clear scoreboard:', error);
         return false;
     }
 }
@@ -256,7 +254,7 @@ function saveToRecentRuns(entry) {
 
         localStorage.setItem('zombobs_recent_runs', JSON.stringify(recentRunsToSave));
     } catch (error) {
-        console.log('Failed to save to recent runs:', error);
+        // Failed to save to recent runs
     }
 }
 
@@ -321,7 +319,6 @@ export function saveScoreboardEntry(entry) {
         
         return entryQualified;
     } catch (error) {
-        console.log('Failed to save scoreboard entry:', error);
         return false;
     }
 }
@@ -354,7 +351,7 @@ export function getLastRuns(count, gameMode = null) {
             }
         }
     } catch (error) {
-        console.log('Failed to load last runs:', error);
+        // Failed to load last runs
     }
     return [];
 }
