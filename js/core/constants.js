@@ -106,7 +106,26 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.2.0 ALPHA: Visual Polish Update! ✨ | Glowing Zombie Eyes 👀 | Particle Explosions 💥 | Textured Buttons 🎨 | V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
+
+// Player Skin Definitions
+export const PLAYER_SKINS = {
+    'skin_red': { name: 'Red', highlight: '#ffcccc', mid: '#ff6666', shadow: '#990000', outline: '#660000' },
+    'skin_blue': { name: 'Blue', highlight: '#cce6ff', mid: '#66b3ff', shadow: '#0066cc', outline: '#004080' },
+    'skin_green': { name: 'Green', highlight: '#ccffcc', mid: '#66ff66', shadow: '#009900', outline: '#006600' },
+    'skin_orange': { name: 'Orange', highlight: '#ffebd6', mid: '#ff9933', shadow: '#cc6600', outline: '#804000' },
+    'skin_purple': { name: 'Purple', highlight: '#f3e6ff', mid: '#b366ff', shadow: '#6600cc', outline: '#400080' },
+    'skin_gold': { name: 'Gold', highlight: '#fff9e6', mid: '#ffd700', shadow: '#b8860b', outline: '#8b6914' },
+    'skin_platinum': { name: 'Platinum', highlight: '#f2f2f2', mid: '#e5e5e5', shadow: '#a6a6a6', outline: '#737373' },
+    'skin_legendary': { name: 'Legendary', highlight: '#fff', mid: '#ff00ff', shadow: '#800080', outline: '#400040' },
+    'skin_immortal': { name: 'Immortal', highlight: '#e6ffff', mid: '#00ffff', shadow: '#008b8b', outline: '#004d4d' },
+    'skin_godlike': { name: 'Godlike', highlight: '#fff', mid: '#ff3300', shadow: '#801a00', outline: '#4d1000' },
+    'skin_divine': { name: 'Divine', highlight: '#fff', mid: '#ffffff', shadow: '#ccc', outline: '#999' },
+    'skin_transcendent': { name: 'Transcendent', highlight: '#fff', mid: '#7df9ff', shadow: '#0047ab', outline: '#002366' },
+    'skin_ultimate': { name: 'Ultimate', highlight: '#000', mid: '#ff1744', shadow: '#880e4f', outline: '#000' }
+};
+
+export const DEFAULT_PLAYER_SKIN = { name: 'Default', highlight: '#f5d0b5', mid: '#d4a574', shadow: '#b8956b', outline: '#8b6914' };
 
 // Weapon definitions
 export const WEAPONS = {

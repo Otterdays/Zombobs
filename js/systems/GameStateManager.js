@@ -166,6 +166,12 @@ export class GameStateManager {
         // Set game start time for session tracking AFTER resetting state
         gameState.gameStartTime = Date.now();
 
+        // Apply profile skin to local player
+        const profile = playerProfileSystem.getProfile();
+        if (profile && profile.equippedSkin) {
+            gameState.player.equippedSkin = profile.equippedSkin;
+        }
+
         gameState.showMainMenu = false;
 
         triggerWaveNotification();

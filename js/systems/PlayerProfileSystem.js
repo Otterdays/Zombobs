@@ -34,6 +34,7 @@ export class PlayerProfileSystem {
             playerId: this.generatePlayerId(),
             avatar: null,
             title: null,
+            equippedSkin: null,
             rank: {
                 rankXP: 0,
                 rank: 1,
@@ -292,8 +293,16 @@ export class PlayerProfileSystem {
         // Check badges
         const newlyUnlockedBadges = badgeSystem.checkBadges();
 
-        // Update battlepass (basic match completion bonus)
-        const battlepassProgress = battlepassSystem.addXP(10); // Base match completion
+        // Check Battlepass Challenges
+        battlepassSystem.checkChallenges(sessionStats);
+
+        // Update battlepass (XP based on performance)
+        const bpScoreXP = Math.floor((sessionStats.score || 0) / 100);
+        const bpWaveXP = (sessionStats.wave || 0) * 10;
+        const bpBaseXP = 25;
+        const totalBPXP = bpScoreXP + bpWaveXP + bpBaseXP;
+        
+        const battlepassProgress = battlepassSystem.addXP(totalBPXP);
 
         // Save profile
         this.saveProfile();
@@ -421,6 +430,18 @@ export class PlayerProfileSystem {
             this.loadProfile();
         }
         return this.profile;
+    }
+
+    /**
+     * Set equipped skin
+     * @param {string} skinId - ID of skin to equip
+     */
+    setEquippedSkin(skinId) {
+        if (!this.profile) {
+            this.loadProfile();
+        }
+        this.profile.equippedSkin = skinId;
+        this.saveProfile();
     }
 
     /**

@@ -5,6 +5,10 @@ import { MAX_PARTICLES } from '../core/constants.js';
 import { graphicsSettings } from '../systems/GraphicsSystem.js';
 import { ObjectPool } from '../utils/ObjectPool.js';
 import { settingsManager } from './SettingsManager.js';
+import { compactArrayWithUpdate } from '../utils/arrayUtils.js';
+
+// Reusable batching map to avoid allocation per frame
+const particleBatches = new Map();
 
 // Particle Pool
 export const particlePool = new ObjectPool(
@@ -419,16 +423,9 @@ export function createExplosion(x, y, size = 1.0) {
 }
 
 export function updateParticles() {
-    // Use filter pattern instead of reverse loop + splice for better performance
-    const aliveParticles = [];
-    let removedCount = 0;
-
-    for (let i = 0; i < gameState.particles.length; i++) {
-        const p = gameState.particles[i];
-
-        if (!p) {
-            continue;
-        }
+    // In-place compaction with update - no array allocation per frame
+    compactArrayWithUpdate(gameState.particles, p => {
+        if (!p) return false;
 
         if (p.update) {
             p.update();
@@ -440,22 +437,84 @@ export function updateParticles() {
         }
 
         if (p.life > 0) {
-            aliveParticles.push(p);
+            return true; // Keep particle
         } else {
-            removedCount++;
             // Return to pool if it's a Particle instance
             if (p instanceof Particle) {
                 particlePool.release(p);
             }
+            return false; // Remove particle
         }
+    });
+}
+
+/**
+ * Batch draw particles by color for better performance
+ * Groups particles by color and draws them with a single fillStyle change
+ */
+function drawParticlesBatched() {
+    const particles = gameState.particles;
+    const len = particles.length;
+    
+    if (len === 0) return 0;
+    
+    // Clear and reuse the batch map
+    particleBatches.clear();
+    
+    // Group particles by color (quantized to reduce unique batches)
+    for (let i = 0; i < len; i++) {
+        const p = particles[i];
+        if (!p || p.life <= 0) continue;
+        
+        // Use color as key (for hex colors, batch exactly; for rgba, approximate)
+        const key = p.color;
+        if (!particleBatches.has(key)) {
+            particleBatches.set(key, []);
+        }
+        particleBatches.get(key).push(p);
     }
-
-    if (removedCount > 0) {
-
-    }
-
-    // Replace array instead of splicing
-    gameState.particles = aliveParticles;
+    
+    let drawnCount = 0;
+    
+    // Draw each batch with a single fillStyle
+    particleBatches.forEach((batch, color) => {
+        if (batch.length === 0) return;
+        
+        // Calculate alpha from first particle's life (approximate for batch)
+        const firstParticle = batch[0];
+        const maxLife = firstParticle.maxLife || 30;
+        const alpha = Math.max(0, firstParticle.life / maxLife);
+        
+        // Convert color to rgba if needed
+        let fillColor = color;
+        if (color.startsWith('#')) {
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            fillColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        
+        ctx.fillStyle = fillColor;
+        ctx.beginPath();
+        
+        // Draw all particles in batch with single path
+        for (let i = 0; i < batch.length; i++) {
+            const p = batch[i];
+            const particleAlpha = Math.max(0, p.life / (p.maxLife || 30));
+            
+            // Skip nearly invisible particles
+            if (particleAlpha <= 0.05 || p.radius <= 0) continue;
+            
+            ctx.moveTo(p.x + p.radius, p.y);
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            drawnCount++;
+        }
+        
+        ctx.fill();
+    });
+    
+    return drawnCount;
 }
 
 export function drawParticles() {
@@ -482,11 +541,16 @@ export function drawParticles() {
         return; // No particles to draw
     }
 
-
-
     const particleDetail = graphicsSettings.particleDetail || 'standard';
+    
+    // Use batched rendering for minimal/standard detail (major performance win)
+    if (particleDetail === 'minimal' || particleDetail === 'standard') {
+        drawParticlesBatched();
+        ctx.globalAlpha = 1;
+        return;
+    }
 
-    // Optimized loop: use for loop instead of forEach
+    // Detailed/Ultra rendering - individual particles with gradients
     let drawnCount = 0;
     for (let i = 0; i < gameState.particles.length; i++) {
         const particle = gameState.particles[i];
@@ -494,8 +558,6 @@ export function drawParticles() {
         if (!particle) {
             continue;
         }
-
-
 
         if (particle.draw) {
             // If it has a custom draw method, use it
@@ -542,21 +604,8 @@ export function drawParticles() {
 
 
 
-            if (particleDetail === 'minimal') {
-                // Minimal: Simple solid circles
-                ctx.fillStyle = fillColor;
-                ctx.globalAlpha = 1.0; // Alpha is already in fillColor
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (particleDetail === 'standard') {
-                // Standard: Current particle system
-                ctx.fillStyle = fillColor;
-                ctx.globalAlpha = 1.0; // Alpha is already in fillColor
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (particleDetail === 'detailed') {
+            // Only detailed and ultra modes reach here (minimal/standard use batched rendering)
+            if (particleDetail === 'detailed') {
                 // Detailed: Gradients and light glow
                 const gradient = ctx.createRadialGradient(
                     particle.x, particle.y, 0,

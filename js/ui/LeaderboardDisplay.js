@@ -13,6 +13,11 @@ export class LeaderboardDisplay {
         this.leaderboardFetchInterval = 30000; // Fetch every 30 seconds
         this.leaderboardFetchState = 'loading'; // 'loading' | 'success' | 'timeout' | 'error'
         this.leaderboardFetchStartTime = 0; // Timestamp when fetch started
+        
+        // Scrolling text animation for long usernames (radio-style)
+        this.usernameScrollOffsets = {}; // { username: { offset: 0, pauseUntil: 0 } }
+        this.scrollSpeed = 30; // pixels per second
+        this.pauseDuration = 2000; // 2 seconds pause at start
     }
 
     getUIScale() {
@@ -146,22 +151,145 @@ export class LeaderboardDisplay {
             return;
         }
 
+        // Header row with column labels
+        const headerY = startY + 25 * scale; // Position below title
+        const leftX = rightX - 280 * scale;
+        const headerFontSize = Math.max(8, 9 * scale);
+        
+        ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.6)';
+        
+        // Rank header (left-aligned)
+        ctx.textAlign = 'left';
+        ctx.fillText('Rank', leftX, headerY);
+        
+        // Name header (left-aligned, after rank)
+        ctx.fillText('Name', leftX + 40 * scale, headerY);
+        
+        // Multi header (left-aligned, closer to name, before score)
+        ctx.fillText('Multi', leftX + 150 * scale, headerY);
+        
+        // Score header (right-aligned)
+        ctx.textAlign = 'right';
+        ctx.fillText('Score', rightX - 50 * scale, headerY);
+        
+        // Wave header (right-aligned, rightmost)
+        ctx.fillText('Wave', rightX, headerY);
+        
+        // Divider line under header
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(leftX, headerY + 8 * scale);
+        ctx.lineTo(rightX, headerY + 8 * scale);
+        ctx.stroke();
+
         // Leaderboard entries (top 10)
         ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
         const entryHeight = (leaderboardFontSize + 4) * scale;
         const maxEntries = Math.min(10, this.leaderboard.length);
+        const firstEntryY = headerY + 15 * scale; // Start entries below header
 
         for (let i = 0; i < maxEntries; i++) {
             const entry = this.leaderboard[i];
-            const y = startY + (i + 1.5) * entryHeight;
+            const y = firstEntryY + i * entryHeight;
             const isPlayerEntry = entry.username === gameState.username;
             const isMultiplayer = entry.isMultiplayer === true;
 
+            // Define left starting position
+            const leftX = rightX - 280 * scale;
+            
             // Highlight player's own score
             if (isPlayerEntry) {
                 ctx.fillStyle = 'rgba(255, 152, 0, 0.3)';
-                ctx.fillRect(rightX - 280 * scale, y - entryHeight / 2, 280 * scale, entryHeight);
+                ctx.fillRect(leftX, y - entryHeight / 2, 280 * scale, entryHeight);
             }
+
+            // Rank (LEFT-ALIGNED, leftmost position)
+            ctx.textAlign = 'left';
+            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            ctx.fillText(`#${i + 1}`, leftX, y);
+            
+            // Username (LEFT-ALIGNED, after rank, with scrolling animation for long names)
+            const fullUsername = entry.username || 'Survivor';
+            const usernameStartX = leftX + 40 * scale; // Position after rank number
+            const maxUsernameWidth = isMultiplayer ? 110 * scale : 130 * scale; // Adjust for MP icon
+            
+            // Measure full username width
+            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
+            const fullUsernameWidth = ctx.measureText(fullUsername).width;
+            
+            // If username is too long, implement scrolling animation
+            if (fullUsernameWidth > maxUsernameWidth) {
+                // Initialize scroll state for this username if not exists
+                if (!this.usernameScrollOffsets[fullUsername]) {
+                    this.usernameScrollOffsets[fullUsername] = {
+                        offset: 0,
+                        pauseUntil: Date.now() + this.pauseDuration
+                    };
+                }
+                
+                const scrollState = this.usernameScrollOffsets[fullUsername];
+                const now = Date.now();
+                
+                // Check if we're in pause state
+                if (now < scrollState.pauseUntil) {
+                    // Paused at beginning - show from start
+                    scrollState.offset = 0;
+                } else {
+                    // Scroll the text
+                    const deltaTime = 16.67 / 1000; // Approximate frame time
+                    scrollState.offset += this.scrollSpeed * deltaTime;
+                    
+                    // If scrolled past the end, reset to beginning and pause
+                    if (scrollState.offset > fullUsernameWidth) {
+                        scrollState.offset = 0;
+                        scrollState.pauseUntil = now + this.pauseDuration;
+                    }
+                }
+                
+                // Create clipping region for username
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(usernameStartX, y - entryHeight / 2, maxUsernameWidth, entryHeight);
+                ctx.clip();
+                
+                // Draw scrolling username (LEFT-ALIGNED)
+                ctx.textAlign = 'left';
+                ctx.fillText(fullUsername, usernameStartX - scrollState.offset, y);
+                
+                ctx.restore();
+            } else {
+                // Username fits - display normally (LEFT-ALIGNED)
+                ctx.textAlign = 'left';
+                ctx.fillText(fullUsername, usernameStartX, y);
+            }
+
+            // Multiplayer indicator (if applicable, right after username)
+            if (isMultiplayer) {
+                ctx.textAlign = 'left';
+                const mpX = usernameStartX + maxUsernameWidth + 5 * scale; // Position after username
+                // Larger font size and bold weight for better visibility
+                const mpFontSize = Math.max(11, 12 * scale);
+                ctx.font = `bold ${mpFontSize}px "Roboto Mono", monospace`;
+                // Full opacity for maximum clarity
+                ctx.fillStyle = 'rgba(0, 255, 200, 1.0)';
+                // Add subtle stroke for better definition
+                ctx.strokeStyle = 'rgba(0, 200, 150, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.lineJoin = 'round';
+                // Draw stroke first, then fill for crisp edges
+                ctx.strokeText('MP', mpX, y);
+                ctx.fillText('MP', mpX, y);
+                // Reset font to leaderboard size
+                ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
+            }
+
+            // Score (right-aligned, next to wave)
+            ctx.textAlign = 'right';
+            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 215, 0, 0.8)';
+            const score = entry.score || 0;
+            ctx.fillText(score.toLocaleString(), rightX - 50 * scale, y);
 
             // Wave (rightmost, smaller font)
             ctx.textAlign = 'right';
@@ -170,42 +298,6 @@ export class LeaderboardDisplay {
             const wave = entry.wave || 0;
             ctx.fillText(`Wave ${wave}`, rightX, y);
             ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
-
-            // Score (right-aligned, next to wave)
-            ctx.textAlign = 'right';
-            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 215, 0, 0.8)';
-            const score = entry.score || 0;
-            ctx.fillText(score.toLocaleString(), rightX - 50 * scale, y);
-
-            // Username (right-aligned, truncated if needed)
-            ctx.textAlign = 'right';
-            const username = entry.username && entry.username.length > 12 ? entry.username.substring(0, 12) + '...' : (entry.username || 'Survivor');
-            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
-            const usernameX = isMultiplayer ? rightX - 150 * scale : rightX - 130 * scale;
-            ctx.fillText(username, usernameX, y);
-
-            // Multiplayer indicator (if applicable, right after username)
-            if (isMultiplayer) {
-                ctx.textAlign = 'right';
-                // Larger font size and bold weight for better visibility and pixel density
-                const mpFontSize = Math.max(11, 12 * scale);
-                ctx.font = `bold ${mpFontSize}px "Roboto Mono", monospace`;
-                // Full opacity for maximum clarity
-                ctx.fillStyle = 'rgba(0, 255, 200, 1.0)';
-                // Add subtle stroke for better definition and pixel density
-                ctx.strokeStyle = 'rgba(0, 200, 150, 0.6)';
-                ctx.lineWidth = 1;
-                ctx.lineJoin = 'round';
-                // Draw stroke first, then fill for crisp edges
-                ctx.strokeText('MP', rightX - 135 * scale, y);
-                ctx.fillText('MP', rightX - 135 * scale, y);
-                // Reset font to leaderboard size
-                ctx.font = `${leaderboardFontSize}px "Roboto Mono", monospace`;
-            }
-
-            // Rank (right-aligned, leftmost)
-            ctx.fillStyle = isPlayerEntry ? '#ff9800' : 'rgba(255, 255, 255, 0.7)';
-            ctx.fillText(`#${i + 1}`, rightX - 200 * scale, y);
         }
 
         // Reset text alignment

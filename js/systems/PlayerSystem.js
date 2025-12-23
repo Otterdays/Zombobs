@@ -13,6 +13,7 @@ import { shootBullet, reloadWeapon, throwGrenade } from '../utils/combatUtils.js
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
+import { drawEnhancedPlayer, getPlayerDirection } from './PlayerRenderer.js';
 
 /**
  * PlayerSystem - Handles player updates, rendering, and co-op lobby management
@@ -125,7 +126,7 @@ export class PlayerSystem {
             // Sprint Logic (with speed boost buff and skill multiplier)
             const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
             const skillSpeedMultiplier = player.speedMultiplier || 1.0;
-            
+
             // Adrenaline boost (20% speed for 3s after kill)
             let adrenalineBoostMultiplier = 1.0;
             if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime > Date.now()) {
@@ -135,7 +136,7 @@ export class PlayerSystem {
                 player.adrenalineBoostActive = false;
                 player.adrenalineBoostEndTime = null;
             }
-            
+
             const totalSpeedMultiplier = speedBoostMultiplier * skillSpeedMultiplier * adrenalineBoostMultiplier;
             // autoSprint moved to gameplay, check both for migration safety or just gameplay
             const autoSprint = settingsManager.getSetting('gameplay', 'autoSprint') || false;
@@ -345,7 +346,7 @@ export class PlayerSystem {
         const cachedGraphicsSettings = graphicsSettings;
         const cachedShadows = settingsManager.getSetting('video', 'shadows') ?? true;
         const cachedReloadBar = settingsManager.getSetting('video', 'reloadBar') ?? true;
-        
+
         // Update weapon switch flash animation (V0.7.1)
         if (gameState.weaponSwitchFlash && gameState.weaponSwitchFlash.active) {
             const now = Date.now();
@@ -354,57 +355,15 @@ export class PlayerSystem {
                 gameState.weaponSwitchFlash.active = false;
             }
         }
-        
+
         gameState.players.forEach(player => {
             if (player.health <= 0) return;
 
-            // Shadow - only if shadows enabled
-            if (cachedShadows) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.beginPath();
-                ctx.ellipse(player.x + 2, player.y + player.radius + 2, player.radius * 0.8, player.radius * 0.3, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            // Check if muzzle flash is active for firing animation
+            const isFiring = player.muzzleFlash && player.muzzleFlash.active;
 
-            // Outer glow - use player color
-            const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius * 1.5);
-            gradient.addColorStop(0, player.color.glow);
-            gradient.addColorStop(1, player.color.glow.replace(/[\d.]+\)/, '0)'));
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius * 1.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Body - use player color
-            const bodyGradient = ctx.createRadialGradient(player.x - 5, player.y - 5, 0, player.x, player.y, player.radius);
-            bodyGradient.addColorStop(0, player.color.light);
-            bodyGradient.addColorStop(1, player.color.dark);
-            ctx.fillStyle = bodyGradient;
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Body outline - use player color
-            ctx.strokeStyle = player.color.outline;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Direction indicator (gun)
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 4;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y);
-            const gunX = player.x + Math.cos(player.angle) * player.radius * 1.8;
-            const gunY = player.y + Math.sin(player.angle) * player.radius * 1.8;
-            ctx.lineTo(gunX, gunY);
-            ctx.stroke();
-
-            // Gun tip
-            ctx.fillStyle = '#ffaa00';
-            ctx.beginPath();
-            ctx.arc(gunX, gunY, 3, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw enhanced player model with 4-directional views and round hands
+            drawEnhancedPlayer(player, isFiring);
 
             // Stamina bar
             if (player.stamina < PLAYER_STAMINA_MAX) {
@@ -471,7 +430,7 @@ export class PlayerSystem {
                     // Ultra quality: Multi-layer flash with glow
                     ctx.shadowBlur = flashSize * 0.5;
                     ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
-                    
+
                     // Outer glow layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.5);
                     outerGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.3})`);
@@ -481,7 +440,7 @@ export class PlayerSystem {
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.5, 0, Math.PI * 2);
                     ctx.fill();
-                    
+
                     // Middle layer
                     const middleGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.2);
                     middleGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.6})`);
@@ -496,7 +455,7 @@ export class PlayerSystem {
                     // High quality: Two-layer flash
                     ctx.shadowBlur = flashSize * 0.3;
                     ctx.shadowColor = 'rgba(255, 255, 200, 0.6)';
-                    
+
                     // Outer layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.3);
                     outerGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.4})`);
@@ -507,7 +466,7 @@ export class PlayerSystem {
                     ctx.arc(flashX, flashY, flashSize * 1.3, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                
+
                 // Main flash (all quality levels)
                 const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
                 if (flashQuality.gradientLayers >= 3) {
@@ -532,10 +491,10 @@ export class PlayerSystem {
                 ctx.beginPath();
                 ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 // Reset shadow
                 ctx.shadowBlur = 0;
-                
+
                 // Ultra quality: Add particle trail
                 if (flashQuality.hasTrail && Math.random() < 0.3) {
                     spawnParticle(flashX, flashY, '#ffff00', {

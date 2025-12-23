@@ -6,7 +6,7 @@ $Host.UI.RawUI.WindowTitle = "Zombobs Server"
 # Server configuration
 $script:SERVER_PORT = 3000
 $SERVER_PORT = $script:SERVER_PORT  # For backward compatibility
-$SERVER_VERSION = "0.8.1.7-ALPHA"
+$SERVER_VERSION = "0.8.2.0-ALPHA"
 $HF_SPACE_URL = "https://ottertondays-zombs.hf.space"
 $HF_SPACE_PAGE = "https://huggingface.co/spaces/OttertonDays/zombs"
 
@@ -247,13 +247,15 @@ function Check-NodeJS {
 function Check-PortAvailable {
     param([int]$Port)
     try {
-        $connection = Test-NetConnection -ComputerName localhost -Port $Port -WarningAction SilentlyContinue -InformationLevel Quiet
-        if ($connection) {
+        # Check if port is listening using native .NET/Windows command (Instant, no waiting)
+        $portInUse = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+        if ($portInUse) {
             Write-Colored "[-] Port $Port is in use" "Red"
             return $false
         }
         return $true
     } catch {
+        # If Get-NetTCPConnection fails (e.g. no ports found at all), it throws an error, which implies port is free
         return $true
     }
 }

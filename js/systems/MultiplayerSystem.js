@@ -172,7 +172,8 @@ export class MultiplayerSystem {
                 gameState.multiplayer.isLeader = false;
                 socket.emit('player:register', {
                     name: gameState.username || `Survivor-${socket.id.slice(-4)}`,
-                    rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
+                    rank: rankSystem.getData(), // { rankXP, rank, rankTier, rankName }
+                    equippedSkin: playerProfileSystem.getProfile().equippedSkin || null
                 });
 
                 // Start latency measurement (ping/pong)
@@ -228,6 +229,7 @@ export class MultiplayerSystem {
                         // Override with lobby data
                         player.id = lobbyPlayer.id;
                         player.name = lobbyPlayer.name;
+                        player.equippedSkin = lobbyPlayer.equippedSkin || null;
                         player.inputSource = isLocalPlayer ? 'mouse' : 'remote';
 
 
@@ -667,7 +669,8 @@ export class MultiplayerSystem {
         // Emit player:register with new username to update server
         gameState.multiplayer.socket.emit('player:register', {
             name: gameState.username || `Survivor-${gameState.multiplayer.playerId?.slice(-4) || '0000'}`,
-            rank: rankSystem.getData() // { rankXP, rank, rankTier, rankName }
+            rank: rankSystem.getData(), // { rankXP, rank, rankTier, rankName }
+            equippedSkin: playerProfileSystem.getProfile().equippedSkin || null
         });
 
 

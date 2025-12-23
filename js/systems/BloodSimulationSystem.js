@@ -20,7 +20,12 @@ export class BloodSimulationSystem {
         this.gridWidth = 128;
         this.gridHeight = 128;
         this.cellSize = 5; // pixels per cell
-        this.bloodGrid = []; // Array of blood cells { height, viscosity, worldX, worldY }
+        
+        // Double-buffered grids to avoid allocating new objects every frame
+        this.gridA = []; // Primary grid
+        this.gridB = []; // Secondary grid (swap target)
+        this.currentGrid = null; // Points to active grid
+        this.nextGrid = null; // Points to next grid (for writing)
         this.enabled = false;
 
         // Quality settings
@@ -33,6 +38,13 @@ export class BloodSimulationSystem {
 
         // Performance tracking
         this.simulationTime = 0;
+    }
+    
+    /**
+     * Getter for backwards compatibility - returns current active grid
+     */
+    get bloodGrid() {
+        return this.currentGrid || this.gridA;
     }
 
     /**
@@ -54,20 +66,33 @@ export class BloodSimulationSystem {
     }
 
     /**
-     * Initialize blood grid with empty cells
+     * Initialize blood grids with empty cells (double-buffered)
      */
     initializeGrid() {
-        this.bloodGrid = [];
         const totalCells = this.gridWidth * this.gridHeight;
-
+        
+        // Initialize both grids for double-buffering
+        this.gridA = [];
+        this.gridB = [];
+        
         for (let i = 0; i < totalCells; i++) {
-            this.bloodGrid.push({
+            this.gridA.push({
                 height: 0,      // Blood depth (0.0 - 1.0)
                 viscosity: 0.8, // Thickness (fresh = 0.8, dried = 0.2)
                 worldX: 0,      // World position X (for camera offset)
                 worldY: 0       // World position Y (for camera offset)
             });
+            this.gridB.push({
+                height: 0,
+                viscosity: 0.8,
+                worldX: 0,
+                worldY: 0
+            });
         }
+        
+        // Set initial pointers
+        this.currentGrid = this.gridA;
+        this.nextGrid = this.gridB;
     }
 
     /**
@@ -169,12 +194,15 @@ export class BloodSimulationSystem {
      * Process queued blood spawns
      */
     processSpawnQueue() {
+        const grid = this.currentGrid;
+        const gridLen = grid ? grid.length : 0;
+        
         while (this.spawnQueue.length > 0) {
             const spawn = this.spawnQueue.shift();
             const index = this.worldToGridIndex(spawn.worldX, spawn.worldY);
 
-            if (index >= 0 && index < this.bloodGrid.length) {
-                const cell = this.bloodGrid[index];
+            if (index >= 0 && index < gridLen) {
+                const cell = grid[index];
                 cell.height = Math.min(1.0, cell.height + spawn.amount);
                 cell.viscosity = 0.8; // Fresh blood is thick
                 cell.worldX = spawn.worldX;
@@ -184,44 +212,43 @@ export class BloodSimulationSystem {
     }
 
     /**
-     * Simulate blood physics (simplified CPU version)
+     * Simulate blood physics (simplified CPU version with double-buffering)
      * @param {number} dt - Delta time in ms
      */
     simulateBloodPhysics(dt) {
         const dtSeconds = dt / 1000;
-        const newGrid = [];
+        const currentGrid = this.currentGrid;
+        const nextGrid = this.nextGrid;
+        const gridWidth = this.gridWidth;
+        const gridHeight = this.gridHeight;
 
-        // Copy current grid for neighbor sampling
-        for (let i = 0; i < this.bloodGrid.length; i++) {
-            newGrid.push({ ...this.bloodGrid[i] });
-        }
+        // Update each cell (write to nextGrid based on currentGrid)
+        for (let y = 0; y < gridHeight; y++) {
+            const rowOffset = y * gridWidth;
+            
+            for (let x = 0; x < gridWidth; x++) {
+                const idx = rowOffset + x;
+                const cell = currentGrid[idx];
+                const newCell = nextGrid[idx];
 
-        // Update each cell
-        for (let y = 0; y < this.gridHeight; y++) {
-            for (let x = 0; x < this.gridWidth; x++) {
-                const idx = y * this.gridWidth + x;
-                const cell = this.bloodGrid[idx];
-                const newCell = newGrid[idx];
-
-                // Skip empty cells
+                // Skip empty cells - just copy zero state
                 if (cell.height <= 0.01) {
                     newCell.height = 0;
+                    newCell.viscosity = cell.viscosity;
+                    newCell.worldX = cell.worldX;
+                    newCell.worldY = cell.worldY;
                     continue;
                 }
 
-                // Get neighbors (with wrapping)
-                const leftIdx = y * this.gridWidth + ((x - 1 + this.gridWidth) % this.gridWidth);
-                const rightIdx = y * this.gridWidth + ((x + 1) % this.gridWidth);
-                const topIdx = ((y - 1 + this.gridHeight) % this.gridHeight) * this.gridWidth + x;
-                const bottomIdx = ((y + 1) % this.gridHeight) * this.gridWidth + x;
-
-                const left = this.bloodGrid[leftIdx];
-                const right = this.bloodGrid[rightIdx];
-                const top = this.bloodGrid[topIdx];
-                const bottom = this.bloodGrid[bottomIdx];
+                // Get neighbors (with wrapping) - cache indices
+                const leftIdx = rowOffset + ((x - 1 + gridWidth) % gridWidth);
+                const rightIdx = rowOffset + ((x + 1) % gridWidth);
+                const topIdx = ((y - 1 + gridHeight) % gridHeight) * gridWidth + x;
+                const bottomIdx = ((y + 1) % gridHeight) * gridWidth + x;
 
                 // Calculate average height (simple flow model)
-                const avgHeight = (left.height + right.height + top.height + bottom.height) / 4;
+                const avgHeight = (currentGrid[leftIdx].height + currentGrid[rightIdx].height + 
+                                   currentGrid[topIdx].height + currentGrid[bottomIdx].height) * 0.25;
 
                 // Flow towards lower pressure
                 const pressure = (avgHeight - cell.height) * 0.1;
@@ -229,21 +256,21 @@ export class BloodSimulationSystem {
                 // Apply viscosity damping
                 const dampedPressure = pressure * cell.viscosity;
 
-                // Update height
-                newCell.height += dampedPressure * dtSeconds;
+                // Update height with evaporation
+                let newHeight = (cell.height + dampedPressure * dtSeconds) * 0.998;
+                let newViscosity = cell.viscosity * 0.999; // Dries over time
 
-                // Evaporation
-                newCell.height *= 0.998;
-                newCell.viscosity *= 0.999; // Dries over time
-
-                // Clamp
-                newCell.height = Math.max(0, Math.min(1, newCell.height));
-                newCell.viscosity = Math.max(0.2, newCell.viscosity);
+                // Clamp values
+                newCell.height = newHeight < 0 ? 0 : (newHeight > 1 ? 1 : newHeight);
+                newCell.viscosity = newViscosity < 0.2 ? 0.2 : newViscosity;
+                newCell.worldX = cell.worldX;
+                newCell.worldY = cell.worldY;
             }
         }
 
-        // Swap grids
-        this.bloodGrid = newGrid;
+        // Swap grid pointers (no allocation!)
+        this.currentGrid = nextGrid;
+        this.nextGrid = currentGrid;
     }
 
     /**
@@ -251,20 +278,42 @@ export class BloodSimulationSystem {
      * @returns {Array} Blood cells with worldX, worldY, height, viscosity
      */
     getBloodData() {
-        if (!this.enabled) return [];
+        if (!this.enabled || !this.currentGrid) return [];
 
         // Return only non-empty cells for efficient rendering
-        return this.bloodGrid.filter(cell => cell.height > 0.01);
+        // Use manual filter to avoid allocating intermediate arrays in hot path
+        const result = [];
+        const grid = this.currentGrid;
+        const len = grid.length;
+        
+        for (let i = 0; i < len; i++) {
+            if (grid[i].height > 0.01) {
+                result.push(grid[i]);
+            }
+        }
+        
+        return result;
     }
 
     /**
      * Clear all blood from simulation
      */
     clear() {
-        if (this.bloodGrid.length > 0) {
-            this.initializeGrid();
+        // Reset both grids without reallocating
+        const totalCells = this.gridWidth * this.gridHeight;
+        
+        for (let i = 0; i < totalCells; i++) {
+            if (this.gridA[i]) {
+                this.gridA[i].height = 0;
+                this.gridA[i].viscosity = 0.8;
+            }
+            if (this.gridB[i]) {
+                this.gridB[i].height = 0;
+                this.gridB[i].viscosity = 0.8;
+            }
         }
-        this.spawnQueue = [];
+        
+        this.spawnQueue.length = 0; // Clear without allocating new array
     }
 
     /**
@@ -272,13 +321,21 @@ export class BloodSimulationSystem {
      * @returns {Object} Debug information
      */
     getDebugInfo() {
-        const activeBlood = this.bloodGrid.filter(cell => cell.height > 0.01).length;
+        let activeBlood = 0;
+        const grid = this.currentGrid;
+        if (grid) {
+            const len = grid.length;
+            for (let i = 0; i < len; i++) {
+                if (grid[i].height > 0.01) activeBlood++;
+            }
+        }
+        
         return {
             enabled: this.enabled,
             gridSize: `${this.gridWidth}x${this.gridHeight}`,
             cellSize: this.cellSize,
             activeCells: activeBlood,
-            totalCells: this.bloodGrid.length,
+            totalCells: grid ? grid.length : 0,
             queuedSpawns: this.spawnQueue.length,
             simulationTime: this.simulationTime.toFixed(2) + 'ms',
             quality: this.qualityPreset

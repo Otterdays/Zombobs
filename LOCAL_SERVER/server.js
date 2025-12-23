@@ -21,17 +21,17 @@ app.use((req, res, next) => {
   if (req.path === '/dashboard' || req.path === '/dashboard/html' || req.path === '/health') {
     return next();
   }
-  
+
   const userId = getOrCreateUserId(req, res);
   const referer = req.headers.referer || req.headers.referrer || 'Direct';
   const page = req.path || '/';
-  
+
   trackPageView(userId, {
     path: page,
     referer: referer,
     method: req.method
   });
-  
+
   next();
 });
 
@@ -52,7 +52,7 @@ const pageViews = new Map(); // Track page views per user
 // Generate unique user ID from cookie or create new one
 function getOrCreateUserId(req, res) {
   let userId = req.cookies?.zombobs_user_id;
-  
+
   if (!userId || !userSessions.has(userId)) {
     // Create new user ID
     userId = crypto.randomBytes(16).toString('hex');
@@ -62,7 +62,7 @@ function getOrCreateUserId(req, res) {
       secure: false, // Set to true in production with HTTPS
       sameSite: 'lax'
     });
-    
+
     // Initialize user session
     userSessions.set(userId, {
       userId,
@@ -82,14 +82,14 @@ function getOrCreateUserId(req, res) {
       session.ip = req.ip || req.connection.remoteAddress || session.ip;
     }
   }
-  
+
   return userId;
 }
 
 // Track page view
 function trackPageView(userId, pageData) {
   if (!userSessions.has(userId)) return;
-  
+
   const session = userSessions.get(userId);
   const pageEntry = {
     path: pageData.path || '/',
@@ -98,9 +98,9 @@ function trackPageView(userId, pageData) {
     timestamp: new Date(),
     socketId: null // Will be set when socket connects
   };
-  
+
   session.pages.push(pageEntry);
-  
+
   // Keep only last 20 page views per user
   if (session.pages.length > 20) {
     session.pages.shift();
@@ -110,12 +110,12 @@ function trackPageView(userId, pageData) {
 function assignLeader() {
   // Assign leader to first player in Map
   if (players.size === 0) return;
-  
+
   // Clear all leader flags
   players.forEach((player) => {
     player.isLeader = false;
   });
-  
+
   // Assign to first player
   const firstPlayerId = Array.from(players.keys())[0];
   const firstPlayer = players.get(firstPlayerId);
@@ -139,12 +139,14 @@ function formatPlayerList() {
 const PORT = process.env.PORT || 3000;
 
 // Serve static files from the parent directory (where index.html is located)
-const parentDir = path.join(__dirname, '..');
+// Use path.resolve to get an absolute path
+const parentDir = path.resolve(__dirname, '..');
+console.log(`📁 Serving static files from: ${parentDir}`);
 app.use(express.static(parentDir));
 
-// Root endpoint - serve index.html
+// Root endpoint - serve index.html (fallback if static doesn't catch it)
 app.get('/', (req, res) => {
-  res.sendFile(path.join(parentDir, 'index.html'));
+  res.sendFile(path.resolve(parentDir, 'index.html'));
 });
 
 // Dashboard endpoint to view connected users
@@ -163,7 +165,7 @@ app.get('/dashboard', (req, res) => {
           } : null;
         })
         .filter(p => p !== null);
-      
+
       return {
         userId: session.userId,
         firstSeen: session.firstSeen,
@@ -175,7 +177,7 @@ app.get('/dashboard', (req, res) => {
         totalPageViews: session.pages.length
       };
     });
-  
+
   const allUsers = Array.from(userSessions.values()).map(session => ({
     userId: session.userId,
     firstSeen: session.firstSeen,
@@ -184,7 +186,7 @@ app.get('/dashboard', (req, res) => {
     totalPageViews: session.pages.length,
     ip: session.ip
   }));
-  
+
   res.json({
     timestamp: new Date().toISOString(),
     stats: {
@@ -201,7 +203,7 @@ app.get('/dashboard', (req, res) => {
 app.get('/dashboard/html', (req, res) => {
   const connectedUsers = Array.from(userSessions.values())
     .filter(session => session.socketIds.size > 0);
-  
+
   let html = `
 <!DOCTYPE html>
 <html>
@@ -238,7 +240,7 @@ app.get('/dashboard/html', (req, res) => {
   
   <h2>👥 Connected Users</h2>
 `;
-  
+
   if (connectedUsers.length === 0) {
     html += '<p>No users currently connected.</p>';
   } else {
@@ -271,19 +273,19 @@ app.get('/dashboard/html', (req, res) => {
       html += `</div>`;
     });
   }
-  
+
   html += `
 </body>
 </html>
 `;
-  
+
   res.send(html);
 });
 
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     players: players.size,
     timestamp: new Date().toISOString()
   });
@@ -295,12 +297,12 @@ io.on('connection', (socket) => {
   const cookies = socket.handshake.headers.cookie || '';
   const cookieMatch = cookies.match(/zombobs_user_id=([^;]+)/);
   const userId = cookieMatch ? cookieMatch[1] : null;
-  
+
   const defaultName = `Player-${socket.id.slice(-4)}`;
   const isFirstPlayer = players.size === 0;
-  
-  players.set(socket.id, { 
-    id: socket.id, 
+
+  players.set(socket.id, {
+    id: socket.id,
     name: defaultName,
     isReady: false,
     isLeader: isFirstPlayer,
@@ -312,7 +314,7 @@ io.on('connection', (socket) => {
     const session = userSessions.get(userId);
     session.socketIds.add(socket.id);
     session.lastSeen = new Date();
-    
+
     // Update latest page view with socket ID
     if (session.pages.length > 0) {
       session.pages[session.pages.length - 1].socketId = socket.id;
@@ -325,12 +327,12 @@ io.on('connection', (socket) => {
   }
 
   // Get user info for logging
-  const userInfo = userId && userSessions.has(userId) 
-    ? userSessions.get(userId) 
+  const userInfo = userId && userSessions.has(userId)
+    ? userSessions.get(userId)
     : null;
   const userPages = userInfo ? userInfo.pages.length : 0;
-  const latestPage = userInfo && userInfo.pages.length > 0 
-    ? userInfo.pages[userInfo.pages.length - 1] 
+  const latestPage = userInfo && userInfo.pages.length > 0
+    ? userInfo.pages[userInfo.pages.length - 1]
     : null;
 
   broadcastLobby();
@@ -339,10 +341,11 @@ io.on('connection', (socket) => {
   socket.on('player:register', (payload = {}) => {
     const rawName = typeof payload.name === 'string' ? payload.name : defaultName;
     const name = rawName.trim().substring(0, 24) || defaultName;
+    const equippedSkin = payload.equippedSkin || null;
     const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
-    players.set(socket.id, { ...current, name });
+    players.set(socket.id, { ...current, name, equippedSkin });
     console.log(
-      `[~] ${socket.id} set name to "${name}" | Players online: ${players.size}`
+      `[~] ${socket.id} set name to "${name}" | Skin: ${equippedSkin} | Players online: ${players.size}`
     );
     broadcastLobby();
   });
@@ -363,20 +366,20 @@ io.on('connection', (socket) => {
   socket.on('game:start', () => {
     const player = players.get(socket.id);
     if (!player) return;
-    
+
     // Check if requester is leader
     if (!player.isLeader) {
       socket.emit('game:start:error', { message: 'Only the lobby leader can start the game' });
       return;
     }
-    
+
     // Check if all players are ready
     const allReady = Array.from(players.values()).every(p => p.isReady);
     if (!allReady) {
       socket.emit('game:start:error', { message: 'All players must be ready to start' });
       return;
     }
-    
+
     // All checks passed - broadcast game start to all clients
     io.emit('game:start');
   });
@@ -388,20 +391,20 @@ io.on('connection', (socket) => {
     const userId = player?.userId;
     players.delete(socket.id);
     const displayName = player?.name || defaultName;
-    
+
     // Remove socket from user session
     if (userId && userSessions.has(userId)) {
       const session = userSessions.get(userId);
       session.socketIds.delete(socket.id);
       session.lastSeen = new Date();
     }
-    
+
     // If leader disconnected, assign new leader
     if (wasLeader && players.size > 0) {
       assignLeader();
       console.log(`[~] New leader assigned after ${displayName} disconnected`);
     }
-    
+
     broadcastLobby();
   });
 });

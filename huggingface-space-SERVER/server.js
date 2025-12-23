@@ -1234,6 +1234,9 @@ io.on('connection', (socket) => {
     const rawName = typeof payload.name === 'string' ? payload.name : defaultName;
     const name = rawName.trim().substring(0, 24) || defaultName;
 
+    // Extract skin data
+    const equippedSkin = payload.equippedSkin || null;
+
     // Extract rank data from payload, with defaults
     const rankData = payload.rank || {};
     const rank = {
@@ -1243,7 +1246,7 @@ io.on('connection', (socket) => {
     };
 
     const current = players.get(socket.id) || { id: socket.id, isReady: false, isLeader: false };
-    players.set(socket.id, { ...current, name, rank });
+    players.set(socket.id, { ...current, name, rank, equippedSkin });
 
     // Reduced logging
     logEvent(`${name} updated their ID tag`);

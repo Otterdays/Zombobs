@@ -56,22 +56,25 @@ export function getMasterGainNode() {
 export function updateAudioSettings() {
     if (!audioContext) return;
 
-    const masterVol = settingsManager.getSetting('audio', 'masterVolume');
+    // Check if audio is muted
+    const isMuted = settingsManager.getSetting('audio', 'muted') === true;
+    
+    const masterVol = isMuted ? 0 : (settingsManager.getSetting('audio', 'masterVolume') ?? 1.0);
     if (masterGainNode) {
-        masterGainNode.gain.value = masterVol !== undefined ? masterVol : 1.0;
+        masterGainNode.gain.value = masterVol;
     }
 
-    const sfxVol = settingsManager.getSetting('audio', 'sfxVolume');
+    const sfxVol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
     if (sfxGainNode) {
-        sfxGainNode.gain.value = sfxVol !== undefined ? sfxVol : 1.0;
+        sfxGainNode.gain.value = sfxVol;
     }
 
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
     if (menuMusicGain) {
-        menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+        menuMusicGain.gain.value = musicVol;
     } else if (menuMusic) {
         // Fallback if Web Audio API isn't fully connected for music
-        menuMusic.volume = (musicVol !== undefined ? musicVol : 0.5) * (masterVol !== undefined ? masterVol : 1.0);
+        menuMusic.volume = musicVol * masterVol;
     }
 }
 

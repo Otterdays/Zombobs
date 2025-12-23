@@ -15,7 +15,67 @@ const COLORS = {
     textMain: '#f5f5f5',
     textMuted: '#9e9e9e',
     glassBg: 'rgba(10, 12, 16, 0.95)',
-    glassBorder: 'rgba(255, 255, 255, 0.12)'
+    glassBorder: 'rgba(255, 255, 255, 0.12)',
+    tooltipBg: 'rgba(20, 20, 25, 0.98)',
+    tooltipBorder: 'rgba(255, 23, 68, 0.6)'
+};
+
+// Tooltip descriptions for each setting
+const TOOLTIPS = {
+    // Audio
+    'audio.muted': 'Mute all game audio instantly',
+    'audio.masterVolume': 'Controls overall game volume. Affects both music and sound effects.',
+    'audio.musicVolume': 'Background music volume. Relative to master volume.',
+    'audio.sfxVolume': 'Sound effects volume (gunshots, explosions, etc). Relative to master.',
+    'audio.spatialAudio': 'Enable stereo panning based on sound position. Left/right audio cues.',
+    
+    // Video - WebGPU
+    'video.webgpuEnabled': 'Enable GPU-accelerated rendering. Disable for older hardware.',
+    'video.bloomIntensity': 'Glow effect strength around lights and projectiles. Set to 0 to disable.',
+    'video.particleCount': 'Particle density. Low=CPU only, High=10k GPU, Ultra=50k GPU particles.',
+    'video.lightingQuality': 'Dynamic lighting quality. Off=fastest, Advanced=most realistic.',
+    'video.distortionEffects': 'Screen distortion effects like shockwaves. Minor GPU impact.',
+    'video.zombobsFXEnabled': 'Spore cloud effect around zombies. Atmospheric but costs performance.',
+    
+    // Video - General
+    'video.qualityPreset': 'Quick quality settings. Choose Custom for manual control.',
+    'video.resolutionScale': 'Render resolution multiplier. Lower = better performance, higher = sharper.',
+    'video.vignette': 'Dark edges around screen. Adds atmosphere.',
+    'video.shadows': 'Shadow rendering under entities. Disable to improve performance.',
+    'video.lighting': 'Player-centered radial lighting overlay.',
+    'video.screenShakeMultiplier': 'Screen shake intensity. 0% = disabled, 200% = intense.',
+    'video.bloodGoreLevel': 'Blood splatter and gore intensity. 0% = none, 100% = maximum.',
+    'video.crosshairStyle': 'Crosshair appearance style.',
+    'video.dynamicCrosshair': 'Crosshair expands when moving or firing to show accuracy.',
+    'video.crosshairSize': 'Crosshair size multiplier.',
+    'video.crosshairOpacity': 'Crosshair transparency. 0% = invisible, 100% = solid.',
+    'video.crosshairColor': 'Crosshair color. Click to open color picker.',
+    'video.damageNumberStyle': 'How damage numbers appear. Off = disabled.',
+    'video.damageNumberScale': 'Damage number size multiplier.',
+    'video.lowHealthWarning': 'Red screen flash when health is critical.',
+    'video.enemyHealthBars': 'Show health bars above zombies.',
+    'video.enemyHealthBarStyle': 'Enemy health bar visual style.',
+    'video.reloadBar': 'Show reload progress bar on HUD.',
+    'video.showDebugStats': 'Show FPS, entity counts, and performance info.',
+    'video.fpsLimit': 'Cap frame rate. OFF = unlimited (uses more power).',
+    'video.vsync': 'Sync frames to monitor refresh. Reduces tearing but may add input lag.',
+    'video.uiScale': 'User interface size. Adjust for your screen.',
+    'video.textRenderingQuality': 'Text clarity. Higher = sharper but slower.',
+    'video.showRankBadge': 'Display your rank badge on the HUD.',
+    'video.rankBadgeSize': 'Rank badge display size.',
+    'video.effectIntensity': 'Global multiplier for all visual effects.',
+    'video.postProcessingQuality': 'Post-processing effects quality (bloom, vignette).',
+    'video.particleDetail': 'Particle rendering quality. Ultra = gradients and glow.',
+    
+    // Gameplay
+    'gameplay.enableAICompanion': 'Enable AI companion that fights alongside you.',
+    'gameplay.autoSprint': 'Always sprint when moving. No need to hold shift.',
+    'gameplay.autoReload': 'Automatically reload when magazine is empty.',
+    'gameplay.pauseOnFocusLoss': 'Pause game when you switch to another window.',
+    'gameplay.showFps': 'Display FPS counter in corner of screen.',
+    
+    // Controls
+    'controls.scrollWheelSwitch': 'Use mouse scroll wheel to switch weapons.'
 };
 
 export class SettingsPanel {
@@ -57,6 +117,19 @@ export class SettingsPanel {
         this.tabHeight = this.getScaledTabHeight();
         
         this.controls = []; // List of interactive elements for hit testing
+        
+        // Control mode (keyboard/gamepad) - loaded from settings
+        this.controlMode = this.settingsManager.getSetting('ui', 'controlMode') || 'keyboard';
+        
+        // Tooltip state
+        this.hoveredControl = null; // { category, key, x, y, label }
+        this.tooltipDelay = 400; // ms before showing tooltip
+        this.hoverStartTime = 0;
+        this.lastMousePos = { x: 0, y: 0 };
+        
+        // Color picker state
+        this.colorPickerOpen = false;
+        this.colorPickerTarget = null; // { category, key }
     }
 
     getUIScale() {
@@ -92,6 +165,8 @@ export class SettingsPanel {
         } else {
             this.activeTab = 'video'; // Default to first tab
         }
+        // Restore control mode preference
+        this.controlMode = this.settingsManager.getSetting('ui', 'controlMode') || 'keyboard';
     }
 
     close() {
@@ -107,6 +182,13 @@ export class SettingsPanel {
 
     draw(mouse) {
         if (!this.visible) return;
+
+        // Track mouse movement for tooltip hover detection
+        if (mouse.x !== this.lastMousePos.x || mouse.y !== this.lastMousePos.y) {
+            this.lastMousePos = { x: mouse.x, y: mouse.y };
+            this.hoverStartTime = Date.now();
+            this.hoveredControl = null;
+        }
 
         // Update scaled dimensions dynamically
         const scale = this.getUIScale();
@@ -170,6 +252,20 @@ export class SettingsPanel {
         // Draw active dropdown on top if exists
         if (this.activeDropdown) {
             this.drawDropdownMenu(this.activeDropdown, mouse);
+        }
+        
+        // Draw color picker if open
+        if (this.colorPickerOpen) {
+            this.drawColorPicker(mouse);
+        }
+        
+        // Find hovered control and show tooltip after delay
+        this.updateHoveredControl(mouse);
+        if (this.hoveredControl && !this.activeDropdown && !this.colorPickerOpen) {
+            const hoverDuration = Date.now() - this.hoverStartTime;
+            if (hoverDuration >= this.tooltipDelay) {
+                this.drawTooltip(mouse);
+            }
         }
     }
 
@@ -297,16 +393,53 @@ export class SettingsPanel {
 
     drawFooter(mouse) {
         const scale = this.getUIScale();
-        const btnWidth = 120 * scale;
-        const btnHeight = 40 * scale;
-        const btnX = this.panelX + (this.panelWidth - btnWidth) / 2;
-        const btnY = this.panelY + this.panelHeight - (50 * scale);
+        const btnWidth = 110 * scale;
+        const btnHeight = 36 * scale;
+        const btnSpacing = 15 * scale;
+        const totalWidth = btnWidth * 2 + btnSpacing;
+        const startX = this.panelX + (this.panelWidth - totalWidth) / 2;
+        const btnY = this.panelY + this.panelHeight - (48 * scale);
         
-        const isHovered = mouse.x >= btnX && mouse.x <= btnX + btnWidth &&
-                         mouse.y >= btnY && mouse.y <= btnY + btnHeight;
+        // Reset Button
+        const resetX = startX;
+        const isResetHovered = mouse.x >= resetX && mouse.x <= resetX + btnWidth &&
+                               mouse.y >= btnY && mouse.y <= btnY + btnHeight;
         
-        // Back Button background
-        if (isHovered) {
+        if (isResetHovered) {
+            this.ctx.fillStyle = 'rgba(255, 152, 0, 0.4)'; // Orange for reset
+            this.ctx.strokeStyle = '#ff9800';
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(255, 152, 0, 0.6)';
+        } else {
+            this.ctx.fillStyle = 'rgba(255, 152, 0, 0.15)';
+            this.ctx.strokeStyle = COLORS.glassBorder;
+            this.ctx.shadowBlur = 0;
+        }
+        
+        this.ctx.fillRect(resetX, btnY, btnWidth, btnHeight);
+        this.ctx.lineWidth = isResetHovered ? 2 : 1;
+        this.ctx.strokeRect(resetX, btnY, btnWidth, btnHeight);
+        this.ctx.shadowBlur = 0;
+        
+        this.ctx.fillStyle = isResetHovered ? '#ffffff' : COLORS.textMuted;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        const btnFontSize = Math.max(8, Math.round(13 * scale));
+        this.ctx.font = `bold ${btnFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText("RESET ALL", resetX + btnWidth / 2, btnY + btnHeight / 2);
+        
+        this.controls.push({
+            type: 'button',
+            action: 'resetAll',
+            x: resetX, y: btnY, width: btnWidth, height: btnHeight
+        });
+        
+        // Back Button
+        const backX = startX + btnWidth + btnSpacing;
+        const isBackHovered = mouse.x >= backX && mouse.x <= backX + btnWidth &&
+                              mouse.y >= btnY && mouse.y <= btnY + btnHeight;
+        
+        if (isBackHovered) {
             this.ctx.fillStyle = 'rgba(255, 23, 68, 0.4)';
             this.ctx.strokeStyle = COLORS.accent;
             this.ctx.shadowBlur = 8;
@@ -317,23 +450,18 @@ export class SettingsPanel {
             this.ctx.shadowBlur = 0;
         }
         
-        this.ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
-        this.ctx.lineWidth = isHovered ? 2 : 1;
-        this.ctx.strokeRect(btnX, btnY, btnWidth, btnHeight);
-        
-        // Text
+        this.ctx.fillRect(backX, btnY, btnWidth, btnHeight);
+        this.ctx.lineWidth = isBackHovered ? 2 : 1;
+        this.ctx.strokeRect(backX, btnY, btnWidth, btnHeight);
         this.ctx.shadowBlur = 0;
+        
         this.ctx.fillStyle = COLORS.textMain;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        const btnFontSize = Math.max(8, Math.round(16 * scale));
-        this.ctx.font = `bold ${btnFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillText("BACK", btnX + btnWidth / 2, btnY + btnHeight / 2);
+        this.ctx.fillText("BACK", backX + btnWidth / 2, btnY + btnHeight / 2);
         
         this.controls.push({
             type: 'button',
             action: 'close',
-            x: btnX, y: btnY, width: btnWidth, height: btnHeight
+            x: backX, y: btnY, width: btnWidth, height: btnHeight
         });
     }
 
@@ -402,6 +530,7 @@ export class SettingsPanel {
         y = this.drawToggle("Dynamic Crosshair", "video", "dynamicCrosshair", y, mouse);
         y = this.drawSlider("Crosshair Size", "video", "crosshairSize", 0.5, 2.0, y, mouse);
         y = this.drawSlider("Crosshair Opacity", "video", "crosshairOpacity", 0.0, 1.0, y, mouse);
+        y = this.drawColorSwatch("Crosshair Color", "video", "crosshairColor", y, mouse);
         y = this.drawDropdown("Damage Numbers", "video", "damageNumberStyle", ['floating', 'stacking', 'off'], y, mouse);
         y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
         y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
@@ -498,6 +627,9 @@ export class SettingsPanel {
     drawAudioSettings(y, mouse) {
         const scale = this.getUIScale();
         y += 20 * scale; // Top padding
+        
+        // Mute All toggle at top for quick access
+        y = this.drawToggle("Mute All", "audio", "muted", y, mouse);
         
         y = this.drawSectionHeader("VOLUME", y);
         y = this.drawSlider("Master Volume", "audio", "masterVolume", 0, 1, y, mouse);
@@ -808,6 +940,296 @@ export class SettingsPanel {
         });
     }
 
+    updateHoveredControl(mouse) {
+        // Find which control the mouse is over
+        const scale = this.getUIScale();
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
+        
+        for (const ctrl of this.controls) {
+            // Skip non-setting controls
+            if (!ctrl.category || !ctrl.key) continue;
+            
+            // Check if within content viewport
+            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar') {
+                if (ctrl.y < contentStartY || ctrl.y + ctrl.height > contentStartY + this.viewportHeight) {
+                    continue;
+                }
+            }
+            
+            if (mouse.x >= ctrl.x && mouse.x <= ctrl.x + ctrl.width &&
+                mouse.y >= ctrl.y && mouse.y <= ctrl.y + ctrl.height) {
+                const tooltipKey = `${ctrl.category}.${ctrl.key}`;
+                if (TOOLTIPS[tooltipKey]) {
+                    this.hoveredControl = {
+                        category: ctrl.category,
+                        key: ctrl.key,
+                        x: ctrl.x,
+                        y: ctrl.y,
+                        width: ctrl.width,
+                        height: ctrl.height,
+                        tooltip: TOOLTIPS[tooltipKey]
+                    };
+                    return;
+                }
+            }
+        }
+        
+        // No control hovered
+        if (Date.now() - this.hoverStartTime > 50) {
+            this.hoveredControl = null;
+        }
+    }
+
+    drawTooltip(mouse) {
+        if (!this.hoveredControl || !this.hoveredControl.tooltip) return;
+        
+        const scale = this.getUIScale();
+        const tooltip = this.hoveredControl.tooltip;
+        const padding = 10 * scale;
+        const maxWidth = 280 * scale;
+        const fontSize = Math.max(10, 11 * scale);
+        
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        
+        // Word wrap the tooltip text
+        const words = tooltip.split(' ');
+        const lines = [];
+        let currentLine = '';
+        
+        for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = this.ctx.measureText(testLine);
+            if (metrics.width > maxWidth - padding * 2) {
+                if (currentLine) lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        if (currentLine) lines.push(currentLine);
+        
+        const lineHeight = fontSize * 1.4;
+        const tooltipWidth = Math.min(maxWidth, Math.max(...lines.map(l => this.ctx.measureText(l).width)) + padding * 2);
+        const tooltipHeight = lines.length * lineHeight + padding * 2;
+        
+        // Position tooltip near control but avoid screen edges
+        let tooltipX = this.hoveredControl.x + this.hoveredControl.width + 10 * scale;
+        let tooltipY = this.hoveredControl.y;
+        
+        // Flip to left side if would overflow right
+        if (tooltipX + tooltipWidth > this.canvas.width - 10) {
+            tooltipX = this.hoveredControl.x - tooltipWidth - 10 * scale;
+        }
+        
+        // Keep within vertical bounds
+        if (tooltipY + tooltipHeight > this.canvas.height - 10) {
+            tooltipY = this.canvas.height - tooltipHeight - 10;
+        }
+        if (tooltipY < 10) {
+            tooltipY = 10;
+        }
+        
+        // Draw tooltip background
+        this.ctx.fillStyle = COLORS.tooltipBg;
+        this.ctx.strokeStyle = COLORS.tooltipBorder;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+        
+        // Rounded rectangle
+        const radius = 6 * scale;
+        this.ctx.beginPath();
+        this.ctx.moveTo(tooltipX + radius, tooltipY);
+        this.ctx.lineTo(tooltipX + tooltipWidth - radius, tooltipY);
+        this.ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY, tooltipX + tooltipWidth, tooltipY + radius);
+        this.ctx.lineTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight - radius);
+        this.ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight, tooltipX + tooltipWidth - radius, tooltipY + tooltipHeight);
+        this.ctx.lineTo(tooltipX + radius, tooltipY + tooltipHeight);
+        this.ctx.quadraticCurveTo(tooltipX, tooltipY + tooltipHeight, tooltipX, tooltipY + tooltipHeight - radius);
+        this.ctx.lineTo(tooltipX, tooltipY + radius);
+        this.ctx.quadraticCurveTo(tooltipX, tooltipY, tooltipX + radius, tooltipY);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+        
+        // Draw text
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        
+        lines.forEach((line, index) => {
+            this.ctx.fillText(line, tooltipX + padding, tooltipY + padding + index * lineHeight);
+        });
+    }
+
+    drawColorPicker(mouse) {
+        const scale = this.getUIScale();
+        const pickerWidth = 220 * scale;
+        const pickerHeight = 260 * scale;
+        const pickerX = (this.canvas.width - pickerWidth) / 2;
+        const pickerY = (this.canvas.height - pickerHeight) / 2;
+        
+        // Background
+        this.ctx.fillStyle = COLORS.glassBg;
+        this.ctx.strokeStyle = COLORS.accent;
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
+        this.ctx.fillRect(pickerX, pickerY, pickerWidth, pickerHeight);
+        this.ctx.strokeRect(pickerX, pickerY, pickerWidth, pickerHeight);
+        this.ctx.shadowBlur = 0;
+        
+        // Title
+        const titleFontSize = Math.max(12, 16 * scale);
+        this.ctx.font = `bold ${titleFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('PICK COLOR', pickerX + pickerWidth / 2, pickerY + 25 * scale);
+        
+        // Color swatches (preset colors)
+        const swatchSize = 30 * scale;
+        const swatchGap = 8 * scale;
+        const swatchesPerRow = 5;
+        const colors = [
+            '#00ff00', '#ff0000', '#00ffff', '#ffff00', '#ff00ff',
+            '#ffffff', '#ff8800', '#0088ff', '#88ff00', '#ff0088',
+            '#00ff88', '#8800ff', '#ff4444', '#44ff44', '#4444ff'
+        ];
+        
+        const currentColor = this.settingsManager.getSetting(
+            this.colorPickerTarget?.category || 'video',
+            this.colorPickerTarget?.key || 'crosshairColor'
+        ) || '#00ff00';
+        
+        const swatchStartX = pickerX + (pickerWidth - (swatchSize * swatchesPerRow + swatchGap * (swatchesPerRow - 1))) / 2;
+        const swatchStartY = pickerY + 50 * scale;
+        
+        colors.forEach((color, index) => {
+            const row = Math.floor(index / swatchesPerRow);
+            const col = index % swatchesPerRow;
+            const swatchX = swatchStartX + col * (swatchSize + swatchGap);
+            const swatchY = swatchStartY + row * (swatchSize + swatchGap);
+            
+            const isHovered = mouse.x >= swatchX && mouse.x <= swatchX + swatchSize &&
+                              mouse.y >= swatchY && mouse.y <= swatchY + swatchSize;
+            const isSelected = color.toLowerCase() === currentColor.toLowerCase();
+            
+            // Swatch background
+            this.ctx.fillStyle = color;
+            this.ctx.fillRect(swatchX, swatchY, swatchSize, swatchSize);
+            
+            // Border
+            if (isSelected) {
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(swatchX - 2, swatchY - 2, swatchSize + 4, swatchSize + 4);
+            } else if (isHovered) {
+                this.ctx.strokeStyle = COLORS.accent;
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(swatchX, swatchY, swatchSize, swatchSize);
+            }
+            
+            // Register control
+            this.controls.push({
+                type: 'colorSwatch',
+                color: color,
+                x: swatchX, y: swatchY, width: swatchSize, height: swatchSize
+            });
+        });
+        
+        // Current color preview
+        const previewY = swatchStartY + Math.ceil(colors.length / swatchesPerRow) * (swatchSize + swatchGap) + 15 * scale;
+        const previewHeight = 35 * scale;
+        
+        this.ctx.fillStyle = currentColor;
+        this.ctx.fillRect(pickerX + 20 * scale, previewY, pickerWidth - 40 * scale, previewHeight);
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(pickerX + 20 * scale, previewY, pickerWidth - 40 * scale, previewHeight);
+        
+        // Current color text
+        this.ctx.fillStyle = COLORS.textMuted;
+        this.ctx.font = `${Math.max(10, 12 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(currentColor.toUpperCase(), pickerX + pickerWidth / 2, previewY + previewHeight + 15 * scale);
+        
+        // Close button
+        const closeBtnWidth = 80 * scale;
+        const closeBtnHeight = 32 * scale;
+        const closeBtnX = pickerX + (pickerWidth - closeBtnWidth) / 2;
+        const closeBtnY = pickerY + pickerHeight - 45 * scale;
+        
+        const isCloseHovered = mouse.x >= closeBtnX && mouse.x <= closeBtnX + closeBtnWidth &&
+                               mouse.y >= closeBtnY && mouse.y <= closeBtnY + closeBtnHeight;
+        
+        this.ctx.fillStyle = isCloseHovered ? 'rgba(255, 23, 68, 0.4)' : 'rgba(255, 23, 68, 0.2)';
+        this.ctx.strokeStyle = isCloseHovered ? COLORS.accent : COLORS.glassBorder;
+        this.ctx.lineWidth = isCloseHovered ? 2 : 1;
+        this.ctx.fillRect(closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
+        this.ctx.strokeRect(closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
+        
+        this.ctx.fillStyle = COLORS.textMain;
+        this.ctx.font = `bold ${Math.max(10, 13 * scale)}px "Roboto Mono", monospace`;
+        this.ctx.fillText('DONE', closeBtnX + closeBtnWidth / 2, closeBtnY + closeBtnHeight / 2);
+        
+        this.controls.push({
+            type: 'button',
+            action: 'closeColorPicker',
+            x: closeBtnX, y: closeBtnY, width: closeBtnWidth, height: closeBtnHeight
+        });
+    }
+
+    drawColorSwatch(label, category, key, y, mouse) {
+        const scale = this.getUIScale();
+        const rowHeight = 35 * scale;
+        const currentColor = this.settingsManager.getSetting(category, key) || '#00ff00';
+        
+        const labelX = this.panelX + this.padding + (10 * scale);
+        const swatchSize = 28 * scale;
+        const swatchX = this.panelX + this.panelWidth - this.padding - swatchSize - (10 * scale);
+        const swatchY = y + (4 * scale);
+        const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
+        const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
+
+        // Label
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = COLORS.textMain;
+        const fontSize = Math.max(8, Math.round(13 * scale));
+        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + (20 * scale));
+
+        const isHovered = mouse.x >= swatchX && mouse.x <= swatchX + swatchSize &&
+                          mouse.y >= swatchY && mouse.y <= swatchY + swatchSize &&
+                          mouse.y >= contentStartY && mouse.y <= contentStartY + this.viewportHeight;
+
+        // Color swatch
+        this.ctx.fillStyle = currentColor;
+        this.ctx.fillRect(swatchX, swatchY, swatchSize, swatchSize);
+        
+        // Border
+        this.ctx.strokeStyle = isHovered ? COLORS.accent : '#ffffff';
+        this.ctx.lineWidth = isHovered ? 2 : 1;
+        this.ctx.strokeRect(swatchX, swatchY, swatchSize, swatchSize);
+        
+        if (isHovered) {
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
+            this.ctx.strokeRect(swatchX, swatchY, swatchSize, swatchSize);
+            this.ctx.shadowBlur = 0;
+        }
+
+        this.controls.push({
+            type: 'colorSwatchPicker',
+            category, key,
+            x: swatchX, y: swatchY, width: swatchSize, height: swatchSize
+        });
+
+        return y + rowHeight;
+    }
+
     drawKeybinds(y, mouse) {
         const controls = this.controlMode === 'keyboard' ? 
             this.settingsManager.settings.controls : 
@@ -974,6 +1396,43 @@ export class SettingsPanel {
     handleClick(x, y) {
         if (!this.visible) return false;
 
+        // Handle color picker clicks first
+        if (this.colorPickerOpen) {
+            // Check color swatches and close button
+            for (const ctrl of this.controls) {
+                if (x >= ctrl.x && x <= ctrl.x + ctrl.width && y >= ctrl.y && y <= ctrl.y + ctrl.height) {
+                    if (ctrl.type === 'colorSwatch') {
+                        // Apply selected color
+                        if (this.colorPickerTarget) {
+                            this.settingsManager.setSetting(
+                                this.colorPickerTarget.category,
+                                this.colorPickerTarget.key,
+                                ctrl.color
+                            );
+                        }
+                        return true;
+                    }
+                    else if (ctrl.type === 'button' && ctrl.action === 'closeColorPicker') {
+                        this.colorPickerOpen = false;
+                        this.colorPickerTarget = null;
+                        return true;
+                    }
+                }
+            }
+            // Clicked outside picker - close it
+            const scale = this.getUIScale();
+            const pickerWidth = 220 * scale;
+            const pickerHeight = 260 * scale;
+            const pickerX = (this.canvas.width - pickerWidth) / 2;
+            const pickerY = (this.canvas.height - pickerHeight) / 2;
+            if (x < pickerX || x > pickerX + pickerWidth || y < pickerY || y > pickerY + pickerHeight) {
+                this.colorPickerOpen = false;
+                this.colorPickerTarget = null;
+                return true;
+            }
+            return true;
+        }
+
         // Handle active dropdown selection
         if (this.activeDropdown) {
             const { x: dropX, y: dropY, width, options, category, key, menuStartY } = this.activeDropdown;
@@ -1021,8 +1480,8 @@ export class SettingsPanel {
         // Check controls
         for (const ctrl of this.controls) {
             // Skip controls if they are clipped (not visible in viewport)
-            // Exception: Scrollbar, Footer, Tab, and ControlModeToggle are always clickable
-            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar' && ctrl.type !== 'controlModeToggle' && ctrl.type !== 'tab') {
+            // Exception: Scrollbar, Footer, Tab, ControlModeToggle, and ColorPicker controls are always clickable
+            if (ctrl.type !== 'button' && ctrl.type !== 'scrollbar' && ctrl.type !== 'controlModeToggle' && ctrl.type !== 'tab' && ctrl.type !== 'colorSwatch') {
                 const scale = this.getUIScale();
                 const headerHeight = (35 * scale) + (30 * scale) + (15 * scale);
                 const contentStartY = this.panelY + headerHeight + this.tabHeight + (5 * scale);
@@ -1044,6 +1503,11 @@ export class SettingsPanel {
                     this.close();
                     return true;
                 }
+                else if (ctrl.type === 'button' && ctrl.action === 'resetAll') {
+                    this.settingsManager.resetToDefaults();
+                    updateAudioSettings(); // Apply audio changes immediately
+                    return true;
+                }
                 else if (ctrl.type === 'slider') {
                     this.draggingSlider = true;
                     this.draggingSliderId = { category: ctrl.category, key: ctrl.key, min: ctrl.min, max: ctrl.max, width: ctrl.width, x: ctrl.x };
@@ -1053,6 +1517,10 @@ export class SettingsPanel {
                 else if (ctrl.type === 'toggle') {
                     const current = this.settingsManager.getSetting(ctrl.category, ctrl.key);
                     this.settingsManager.setSetting(ctrl.category, ctrl.key, !current);
+                    // Apply audio changes immediately for audio toggles
+                    if (ctrl.category === 'audio') {
+                        updateAudioSettings();
+                    }
                     return true;
                 }
                 else if (ctrl.type === 'uiScalePreset') {
@@ -1070,6 +1538,8 @@ export class SettingsPanel {
                     } else {
                         this.controlMode = 'gamepad';
                     }
+                    // Persist control mode preference
+                    this.settingsManager.setSetting('ui', 'controlMode', this.controlMode);
                     return true;
                 }
                 else if (ctrl.type === 'keybind') {
@@ -1080,6 +1550,12 @@ export class SettingsPanel {
                     this.draggingScrollBar = true;
                     // Move scroll immediately
                     this.updateScrollBar(y, ctrl);
+                    return true;
+                }
+                else if (ctrl.type === 'colorSwatchPicker') {
+                    // Open color picker for this setting
+                    this.colorPickerOpen = true;
+                    this.colorPickerTarget = { category: ctrl.category, key: ctrl.key };
                     return true;
                 }
             }

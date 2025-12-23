@@ -1,6 +1,7 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
 import { Quadtree } from './Quadtree.js';
+import { compactArray } from './arrayUtils.js';
 import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
@@ -421,8 +422,12 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 let xpAmount1 = skillSystem.getXPForZombieType(zombieType1);
                 if (sourceIsPlayer && sourcePlayer) {
                     xpAmount1 = Math.floor(xpAmount1 * sourcePlayer.scoreMultiplier);
+                    // Show XP popup over player instead of zombie
+                    skillSystem.gainXP(xpAmount1, { x: sourcePlayer.x, y: sourcePlayer.y, streak: gameState.killStreak });
+                } else {
+                    // Non-player kill (explosion, etc.) - show over zombie
+                    skillSystem.gainXP(xpAmount1, { x: zombie.x, y: zombie.y, streak: gameState.killStreak });
                 }
-                skillSystem.gainXP(xpAmount1);
                 // Play kill confirmed sound
                 playKillSound();
                 createBloodSplatter(zombie.x, zombie.y, Math.atan2(dy, dx), true);
@@ -871,7 +876,8 @@ export function handleBulletZombieCollisions() {
                     const zombieType = zombie.type || 'normal';
                     let xpAmount = skillSystem.getXPForZombieType(zombieType);
                     xpAmount = Math.floor(xpAmount * shootingPlayer.scoreMultiplier);
-                    skillSystem.gainXP(xpAmount);
+                    // Show XP popup over player instead of zombie
+                    skillSystem.gainXP(xpAmount, { x: shootingPlayer.x, y: shootingPlayer.y, streak: gameState.killStreak });
 
                     // Broadcast XP gain to other clients (leader only) - use multiplied amount
                     if (gameState.multiplayer.active && gameState.multiplayer.socket && gameState.multiplayer.isLeader) {
@@ -1021,11 +1027,8 @@ export function handleBulletZombieCollisions() {
         }
     }
 
-    // Remove marked bullets
-    // We need to filter the main array
-    // Since we can't easily replace the array in place if it's const (it's not, it's a prop of gameState), 
-    // we can do:
-    gameState.bullets = gameState.bullets.filter(b => !b.markedForRemoval);
+    // Remove marked bullets using in-place compaction (no array allocation)
+    compactArray(gameState.bullets, b => !b.markedForRemoval);
 }
 
 export function handlePlayerZombieCollisions() {

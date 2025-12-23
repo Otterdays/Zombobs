@@ -72,6 +72,7 @@ export function createPlayer(x, y, colorIndex = 0) {
 
         // Visual
         color: color,
+        equippedSkin: null,
         muzzleFlash: {
             active: false,
             intensity: 0,
@@ -128,6 +129,7 @@ export const gameState = {
     wave: 1,
     zombiesKilled: 0,
     zombiesPerWave: 5,
+    zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
     highScore: 0,
 
     // Score Multiplier Statistics
@@ -271,6 +273,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.wave = 1;
     gameState.zombiesKilled = 0;
     gameState.zombiesPerWave = 5;
+    gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;
 
     // Reset XP & Skills

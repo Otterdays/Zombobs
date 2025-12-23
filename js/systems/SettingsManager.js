@@ -1,12 +1,17 @@
+// Current settings version - increment when schema changes
+const SETTINGS_VERSION = 2;
+
 export class SettingsManager {
     constructor() {
         this.callbacks = []; // Array of callback functions to call when settings change
         this.defaultSettings = {
+            _version: SETTINGS_VERSION, // Track settings schema version
             audio: {
                 masterVolume: 1.0,
                 musicVolume: 0.5,
                 sfxVolume: 1.0,
-                spatialAudio: false // Stereo panning based on position
+                spatialAudio: false, // Stereo panning based on position
+                muted: false // Master mute toggle
             },
             video: {
                 // WebGPU Settings
@@ -87,6 +92,9 @@ export class SettingsManager {
                 prevWeapon: 4, // LB
                 nextWeapon: 3, // Y
                 melee: 11 // R3
+            },
+            ui: {
+                controlMode: 'keyboard' // 'keyboard' or 'gamepad' - persisted preference
             }
         };
         this.settings = this.loadSettings();
@@ -97,11 +105,17 @@ export class SettingsManager {
             const saved = localStorage.getItem('zombobs_settings');
             if (saved) {
                 const parsed = JSON.parse(saved);
+                
+                // Check for version mismatch - may need migrations in future
+                if (parsed._version !== SETTINGS_VERSION) {
+                    console.log(`[Settings] Migrating from v${parsed._version || 1} to v${SETTINGS_VERSION}`);
+                }
+                
                 // Merge with defaults to ensure all keys exist
                 return this.mergeSettings(this.defaultSettings, parsed);
             }
         } catch (error) {
-            // Failed to load settings
+            console.warn('[Settings] Failed to load settings, using defaults:', error.message);
         }
         // Return defaults copy
         return JSON.parse(JSON.stringify(this.defaultSettings));
@@ -151,8 +165,58 @@ export class SettingsManager {
         try {
             localStorage.setItem('zombobs_settings', JSON.stringify(this.settings));
         } catch (error) {
-            // Failed to save settings
+            console.warn('[Settings] Failed to save settings:', error.message);
         }
+    }
+
+    /**
+     * Reset all settings to defaults
+     */
+    resetToDefaults() {
+        this.settings = JSON.parse(JSON.stringify(this.defaultSettings));
+        this.saveSettings();
+        
+        // Notify all callbacks about the reset
+        for (const category in this.settings) {
+            if (category === '_version') continue;
+            for (const key in this.settings[category]) {
+                this.callbacks.forEach(cb => cb(category, key, this.settings[category][key]));
+            }
+        }
+        
+        console.log('[Settings] Reset to defaults');
+        return true;
+    }
+
+    /**
+     * Reset a specific category to defaults
+     * @param {string} category - Category to reset (audio, video, gameplay, controls, gamepad)
+     */
+    resetCategory(category) {
+        if (!this.defaultSettings[category]) {
+            console.warn(`[Settings] Unknown category: ${category}`);
+            return false;
+        }
+        
+        this.settings[category] = JSON.parse(JSON.stringify(this.defaultSettings[category]));
+        this.saveSettings();
+        
+        // Notify callbacks
+        for (const key in this.settings[category]) {
+            this.callbacks.forEach(cb => cb(category, key, this.settings[category][key]));
+        }
+        
+        console.log(`[Settings] Reset category: ${category}`);
+        return true;
+    }
+
+    /**
+     * Check if a setting differs from its default value
+     */
+    isModified(category, key) {
+        const current = this.settings[category]?.[key];
+        const defaultVal = this.defaultSettings[category]?.[key];
+        return current !== defaultVal;
     }
 
     getSetting(category, key) {

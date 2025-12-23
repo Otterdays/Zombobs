@@ -28,14 +28,197 @@ export class MainMenuScreen {
         // Username modal state
         this.usernameInputText = '';
         this.usernameInputFocused = false;
+
+        // Background Effects
+        this.eyes = [];
+        this.explosions = [];
+        this.particles = [];
+        this.lastEyeSpawn = 0;
+        this.lastExplosionSpawn = 0;
     }
 
     getUIScale() {
         return this.hud.getUIScale();
     }
 
+    updateEffects() {
+        const now = Date.now();
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        // Spawn Eyes
+        if (now - this.lastEyeSpawn > 2000 && Math.random() < 0.05) {
+            this.lastEyeSpawn = now;
+            // Spawn in dark areas (avoid center)
+            let x, y;
+            let valid = false;
+            let attempts = 0;
+            while (!valid && attempts < 10) {
+                x = Math.random() * width;
+                y = Math.random() * height;
+                // Avoid center menu area roughly
+                const distToCenter = Math.hypot(x - width/2, y - height/2);
+                if (distToCenter > 300) valid = true;
+                attempts++;
+            }
+            
+            if (valid) {
+                this.eyes.push({
+                    x: x,
+                    y: y,
+                    angle: (Math.random() - 0.5) * 0.5, // Slight tilt
+                    scale: 0.5 + Math.random() * 1.0,
+                    life: 0,
+                    maxLife: 100 + Math.random() * 100,
+                    state: 'in' // in, wait, out
+                });
+            }
+        }
+
+        // Update Eyes
+        for (let i = this.eyes.length - 1; i >= 0; i--) {
+            const eye = this.eyes[i];
+            
+            if (eye.state === 'in') {
+                eye.life += 2;
+                if (eye.life >= 50) eye.state = 'wait';
+            } else if (eye.state === 'wait') {
+                eye.life += 0.5; // Slowly progress through wait
+                if (eye.life >= eye.maxLife - 50) eye.state = 'out';
+            } else if (eye.state === 'out') {
+                eye.life += 2;
+                if (eye.life >= eye.maxLife) {
+                    this.eyes.splice(i, 1);
+                }
+            }
+        }
+
+        // Spawn Explosions/Flashes
+        if (now - this.lastExplosionSpawn > 3000 && Math.random() < 0.02) {
+            this.lastExplosionSpawn = now;
+             let x, y;
+            let valid = false;
+            let attempts = 0;
+             while (!valid && attempts < 10) {
+                x = Math.random() * width;
+                y = Math.random() * height;
+                 const distToCenter = Math.hypot(x - width/2, y - height/2);
+                if (distToCenter > 250) valid = true;
+                attempts++;
+            }
+
+            if (valid) {
+                this.explosions.push({
+                    x: x,
+                    y: y,
+                    radius: 10,
+                    maxRadius: 50 + Math.random() * 50,
+                    alpha: 1.0,
+                    color: Math.random() > 0.5 ? '#ffeb3b' : '#ff5722' // Yellow or Orange
+                });
+                
+                // Add some particles for the explosion
+                for(let k=0; k<10; k++) {
+                    this.particles.push({
+                         x: x,
+                         y: y,
+                         vx: (Math.random() - 0.5) * 10,
+                         vy: (Math.random() - 0.5) * 10,
+                         life: 30 + Math.random() * 20,
+                         color: '#ffffff',
+                         size: 2 + Math.random() * 3
+                    });
+                }
+            }
+        }
+
+        // Update Explosions
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const exp = this.explosions[i];
+            exp.radius += 2;
+            exp.alpha -= 0.05;
+            if (exp.alpha <= 0) {
+                this.explosions.splice(i, 1);
+            }
+        }
+
+        // Update Particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+            p.vx *= 0.95;
+            p.vy *= 0.95;
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+    }
+
+    drawEffects() {
+        // Draw Eyes
+        this.ctx.save();
+        for (const eye of this.eyes) {
+            let opacity = 0;
+            if (eye.state === 'in') opacity = eye.life / 50;
+            else if (eye.state === 'wait') opacity = 1.0;
+            else if (eye.state === 'out') opacity = 1.0 - ((eye.life - (eye.maxLife - 50)) / 50);
+            
+            this.ctx.globalAlpha = opacity;
+            this.ctx.translate(eye.x, eye.y);
+            this.ctx.rotate(eye.angle);
+            this.ctx.scale(eye.scale, eye.scale);
+
+            // Left Eye
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = '#ff0000';
+            this.ctx.beginPath();
+            this.ctx.ellipse(-10, 0, 4, 2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Right Eye
+            this.ctx.beginPath();
+            this.ctx.ellipse(10, 0, 4, 2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+            // Reset transform for next eye
+             this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+             this.ctx.save();
+        }
+        this.ctx.restore();
+
+        // Draw Explosions
+        this.ctx.save();
+        for (const exp of this.explosions) {
+            this.ctx.globalAlpha = exp.alpha;
+            this.ctx.fillStyle = exp.color;
+            this.ctx.beginPath();
+            this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Inner white flash
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(exp.x, exp.y, exp.radius * 0.7, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        this.ctx.restore();
+
+        // Draw Particles
+        this.ctx.save();
+        for (const p of this.particles) {
+            this.ctx.globalAlpha = p.life / 50;
+            this.ctx.fillStyle = p.color;
+            this.ctx.fillRect(p.x, p.y, p.size, p.size);
+        }
+        this.ctx.restore();
+    }
+
     draw() {
+        this.updateEffects();
         this.hud.drawCreepyBackground();
+        this.drawEffects();
 
         const scale = this.getUIScale();
 
@@ -622,7 +805,7 @@ export class MainMenuScreen {
     }
 
     drawVersionBox() {
-        const version = "V0.8.1.7 ALPHA";
+        const version = "V0.8.2.0 ALPHA";
         const padding = 15;
         const boxHeight = 24;
         const spacing = 8; // Space between WebGPU icon and version box
@@ -692,7 +875,7 @@ export class MainMenuScreen {
         const versionBoxHeight = 24;
         // Calculate version box width (same logic as drawVersionBox)
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const versionTextWidth = this.ctx.measureText("V0.8.1.7 ALPHA").width;
+        const versionTextWidth = this.ctx.measureText("V0.8.2.0 ALPHA").width;
         const versionBoxWidth = versionTextWidth + 24;
         // Position to the right of version box
         const panelX = padding + webgpuIconWidth + spacing + versionBoxWidth + spacing;

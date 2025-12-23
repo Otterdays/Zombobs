@@ -9,6 +9,7 @@ import {
     MAX_GRENADES,
     TWO_PI
 } from './core/constants.js';
+import { compactArray, compactArrayWithUpdate } from './utils/arrayUtils.js';
 import { canvas, ctx, gpuCanvas, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
@@ -498,8 +499,8 @@ function updateGame() {
     }
 
     // Update bullets (only update those near viewport for better performance)
-    // Early return optimization: filter out marked bullets first
-    gameState.bullets = gameState.bullets.filter(bullet => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.bullets, bullet => {
         // Early exit for bullets marked for removal
         if (bullet.markedForRemoval) return false;
         const exploded = bullet.update();
@@ -508,8 +509,8 @@ function updateGame() {
     });
 
     // Update grenades (only update those near viewport)
-    // Early return optimization: check exploded state first
-    gameState.grenades = gameState.grenades.filter(grenade => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.grenades, grenade => {
         // Early exit for exploded grenades
         if (grenade.exploded) return false;
         // Update if near viewport
@@ -522,8 +523,8 @@ function updateGame() {
     });
 
     // Update acid projectiles (only update those near viewport)
-    // Early return optimization: check off-screen first
-    gameState.acidProjectiles = gameState.acidProjectiles.filter(projectile => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.acidProjectiles, projectile => {
         // Early exit for off-screen projectiles
         if (projectile.isOffScreen(canvas.width, canvas.height)) return false;
         if (shouldUpdateEntity(projectile, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
@@ -533,8 +534,8 @@ function updateGame() {
     });
 
     // Update acid pools (only update those near viewport)
-    // Early return optimization: check expired state first
-    gameState.acidPools = gameState.acidPools.filter(pool => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.acidPools, pool => {
         // Early exit for expired pools
         if (pool.isExpired()) return false;
         if (shouldUpdateEntity(pool, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
@@ -553,7 +554,8 @@ function updateGame() {
     bloodSimulationSystem.update(16.67); // Use fixed timeStep (1000/60 = 16.67ms for 60 FPS)
 
     // Update shells (only update those near viewport - shells are small and fast to despawn)
-    gameState.shells = gameState.shells.filter(shell => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.shells, shell => {
         if (shell.life <= 0) return false;
         // Update shells near viewport, but always check life for cleanup
         if (shouldUpdateEntity(shell, viewport.left, viewport.top, viewport.right, viewport.bottom)) {
@@ -566,14 +568,16 @@ function updateGame() {
     });
 
     // Update damage numbers
-    gameState.damageNumbers = gameState.damageNumbers.filter(num => {
+    // In-place compaction: avoids creating new array every frame
+    compactArrayWithUpdate(gameState.damageNumbers, num => {
         num.update();
         return num.life > 0;
     });
 
     // Update spawn indicators
-    gameState.spawnIndicators = gameState.spawnIndicators.filter(indicator => {
-        const elapsed = Date.now() - indicator.startTime;
+    // In-place compaction: avoids creating new array every frame
+    compactArray(gameState.spawnIndicators, indicator => {
+        const elapsed = now - indicator.startTime;
         return elapsed < indicator.duration;
     });
 
@@ -1090,6 +1094,45 @@ function drawGame() {
             num.draw(ctx);
         }
     });
+
+    // Draw XP popups (floating XP gain numbers)
+    // Use fixed timestep for consistent animation speed (GameEngine uses fixed timestep)
+    const xpPopups = skillSystem.updateXPPopups(gameEngine.timeStep);
+    xpPopups.forEach(popup => {
+        let drawX = popup.x;
+        let drawY = popup.y + popup.offsetY;
+
+        // Convert world coordinates to screen in single player arcade mode
+        if (isSinglePlayerArcade) {
+            const screenPos = cameraSystem.worldToScreen(drawX, drawY);
+            drawX = screenPos.x;
+            drawY = screenPos.y;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = popup.alpha;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // XP popup style
+        const fontSize = popup.isBonus ? 18 : 14;
+        ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
+
+        // Glow effect for bonus XP
+        if (popup.isBonus) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ffd700';
+            ctx.fillStyle = '#ffd700'; // Gold for bonus XP
+        } else {
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = '#4caf50';
+            ctx.fillStyle = '#76ff03'; // Green for normal XP
+        }
+
+        ctx.fillText(`+${popup.amount} XP`, drawX, drawY);
+        ctx.restore();
+    });
+
     drawCrosshairUtil(mouse);
 
     // Draw low health vignette before HUD

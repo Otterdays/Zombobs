@@ -38,6 +38,7 @@ export class ZombieSpawnSystem {
 
         gameState.isSpawningWave = true;
         gameState.bossActive = true;
+        gameState.zombiesSpawnedThisWave = 1;  // Boss wave = 1 enemy
 
         // v0.8.1.2: In single player arcade mode, spawn boss relative to player position in world space
         const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
@@ -98,6 +99,9 @@ export class ZombieSpawnSystem {
 
         // Increase spawn count by 1.5x for regular zombies (not bosses)
         count = Math.floor(count * 1.5);
+
+        // Track actual zombies spawned this wave for HUD display
+        gameState.zombiesSpawnedThisWave = count;
 
         // Mark that we're spawning a wave
         gameState.isSpawningWave = true;

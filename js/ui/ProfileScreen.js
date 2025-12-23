@@ -4,6 +4,7 @@ import { achievementSystem } from '../systems/AchievementSystem.js';
 import { battlepassSystem } from '../systems/BattlepassSystem.js';
 import { badgeSystem } from '../systems/BadgeSystem.js';
 import { gameState } from '../core/gameState.js';
+import { PLAYER_SKINS, DEFAULT_PLAYER_SKIN } from '../core/constants.js';
 
 /**
  * ProfileScreen - UI component for player profile
@@ -416,6 +417,56 @@ export class ProfileScreen {
 
         commendationsSection.appendChild(commendationsGrid);
         rightColumn.appendChild(commendationsSection);
+
+        // Customization Section (Skins)
+        const customizationSection = document.createElement('div');
+        customizationSection.className = 'dossier-section';
+
+        const customizationTitle = document.createElement('div');
+        customizationTitle.className = 'section-title';
+        customizationTitle.textContent = 'CUSTOMIZATION';
+        customizationSection.appendChild(customizationTitle);
+
+        const skinsContainer = document.createElement('div');
+        skinsContainer.style.display = 'flex';
+        skinsContainer.style.flexWrap = 'wrap';
+        skinsContainer.style.gap = '12px';
+        skinsContainer.style.marginTop = '12px';
+
+        const unlockedSkins = battlepassSystem.getUnlockedSkins();
+        const equippedSkin = profile.equippedSkin || 'default';
+
+        unlockedSkins.forEach(skinId => {
+            const skinData = skinId === 'default' ? DEFAULT_PLAYER_SKIN : PLAYER_SKINS[skinId];
+            if (!skinData) return;
+
+            const skinButton = document.createElement('div');
+            skinButton.className = `skin-preview-slot ${equippedSkin === skinId ? 'equipped' : ''}`;
+            skinButton.title = skinData.name;
+            
+            // Preview Circle
+            const preview = document.createElement('div');
+            preview.className = 'skin-preview-circle';
+            preview.style.background = `radial-gradient(circle at 30% 30%, ${skinData.highlight}, ${skinData.mid} 60%, ${skinData.shadow})`;
+            preview.style.borderColor = skinData.outline;
+            
+            skinButton.appendChild(preview);
+
+            const skinName = document.createElement('div');
+            skinName.className = 'skin-preview-name';
+            skinName.textContent = skinData.name;
+            skinButton.appendChild(skinName);
+
+            skinButton.addEventListener('click', () => {
+                playerProfileSystem.setEquippedSkin(skinId);
+                this.update(); // Refresh UI
+            });
+
+            skinsContainer.appendChild(skinButton);
+        });
+
+        customizationSection.appendChild(skinsContainer);
+        rightColumn.appendChild(customizationSection);
 
         this.main.appendChild(rightColumn);
     }

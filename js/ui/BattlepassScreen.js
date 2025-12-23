@@ -1,5 +1,6 @@
 import { battlepassSystem } from '../systems/BattlepassSystem.js';
 import { gameState } from '../core/gameState.js';
+import { PLAYER_SKINS } from '../core/constants.js';
 
 /**
  * BattlepassScreen - UI component for battlepass progression
@@ -78,6 +79,14 @@ export class BattlepassScreen {
         progressWrapper.appendChild(progressText);
         progressContainer.appendChild(progressWrapper);
 
+        // Challenges Container
+        const challengesContainer = document.createElement('div');
+        challengesContainer.className = 'battlepass-challenges-container';
+        this.challengesContainer = challengesContainer;
+        
+        main.appendChild(progressContainer);
+        main.appendChild(challengesContainer);
+
         // Track container
         const trackContainer = document.createElement('div');
         trackContainer.className = 'battlepass-track-container';
@@ -87,7 +96,6 @@ export class BattlepassScreen {
         this.track = track;
 
         trackContainer.appendChild(track);
-        main.appendChild(progressContainer);
         main.appendChild(trackContainer);
 
         // Assemble
@@ -95,7 +103,8 @@ export class BattlepassScreen {
         this.container.appendChild(main);
         document.body.appendChild(this.container);
 
-        // Render tiers
+        // Render content
+        this.renderChallenges();
         this.renderTiers();
         this.update();
 
@@ -120,6 +129,7 @@ export class BattlepassScreen {
         this.track = null;
         this.progressFill = null;
         this.progressText = null;
+        this.challengesContainer = null;
     }
 
     /**
@@ -146,9 +156,81 @@ export class BattlepassScreen {
         if (subtitle) {
             subtitle.textContent = `${seasonInfo.daysRemaining} days remaining`;
         }
+        
+        // Refresh challenges display to show progress updates
+        this.renderChallenges();
 
         // Update tier states
         this.updateTierStates();
+    }
+
+    /**
+     * Render active challenges
+     */
+    renderChallenges() {
+        if (!this.challengesContainer) return;
+        
+        this.challengesContainer.innerHTML = '';
+        const progress = battlepassSystem.getProgress();
+        
+        // Daily Challenges Header
+        const dailyHeader = document.createElement('div');
+        dailyHeader.className = 'challenges-header';
+        dailyHeader.textContent = 'Daily Challenges';
+        this.challengesContainer.appendChild(dailyHeader);
+        
+        const dailyWrapper = document.createElement('div');
+        dailyWrapper.className = 'challenges-wrapper';
+        
+        progress.dailyChallenges.forEach(challenge => {
+            this.createChallengeCard(challenge, dailyWrapper);
+        });
+        this.challengesContainer.appendChild(dailyWrapper);
+
+        // Weekly Challenges Header
+        const weeklyHeader = document.createElement('div');
+        weeklyHeader.className = 'challenges-header';
+        weeklyHeader.textContent = 'Weekly Challenges';
+        this.challengesContainer.appendChild(weeklyHeader);
+
+        const weeklyWrapper = document.createElement('div');
+        weeklyWrapper.className = 'challenges-wrapper';
+        
+        progress.weeklyChallenges.forEach(challenge => {
+            this.createChallengeCard(challenge, weeklyWrapper);
+        });
+        this.challengesContainer.appendChild(weeklyWrapper);
+    }
+    
+    /**
+     * Create a single challenge card element
+     */
+    createChallengeCard(challenge, parent) {
+        const card = document.createElement('div');
+        card.className = `challenge-card ${challenge.completed ? 'completed' : ''}`;
+        
+        const info = document.createElement('div');
+        info.className = 'challenge-info';
+        
+        const title = document.createElement('div');
+        title.className = 'challenge-title';
+        title.textContent = challenge.description;
+        
+        const reward = document.createElement('div');
+        reward.className = 'challenge-reward';
+        reward.textContent = `+${challenge.reward} XP`;
+        
+        info.appendChild(title);
+        info.appendChild(reward);
+        
+        const progress = document.createElement('div');
+        progress.className = 'challenge-progress';
+        progress.textContent = `${challenge.progress} / ${challenge.target}`;
+        
+        card.appendChild(info);
+        card.appendChild(progress);
+        
+        parent.appendChild(card);
     }
 
     /**
@@ -184,38 +266,74 @@ export class BattlepassScreen {
             tierNumber.textContent = `Tier ${tier}`;
             card.appendChild(tierNumber);
 
-            // Reward
-            const reward = document.createElement('div');
-            reward.className = 'tier-reward';
+            // Reward Container
+            const rewardsContainer = document.createElement('div');
+            rewardsContainer.className = 'tier-rewards-container';
 
+            // Free Reward
             if (tierReward && tierReward.freeReward) {
-                const freeReward = tierReward.freeReward;
-                if (freeReward.type === 'rankXP') {
-                    reward.textContent = '💎';
-                    const rewardText = document.createElement('div');
-                    rewardText.className = 'tier-reward-text';
-                    rewardText.textContent = `+${freeReward.amount} XP`;
-                    card.appendChild(rewardText);
-                } else if (freeReward.type === 'title') {
-                    reward.textContent = '🏷️';
-                    const rewardText = document.createElement('div');
-                    rewardText.className = 'tier-reward-text';
-                    rewardText.textContent = 'TITLE';
-                    card.appendChild(rewardText);
-                } else if (freeReward.type === 'emblem') {
-                    reward.textContent = '🎖️';
-                    const rewardText = document.createElement('div');
-                    rewardText.className = 'tier-reward-text';
-                    rewardText.textContent = 'EMBLEM';
-                    card.appendChild(rewardText);
-                }
+                this.createRewardElement(tierReward.freeReward, rewardsContainer, false);
+            }
+            
+            // Premium Reward
+            if (tierReward && tierReward.premiumReward) {
+                this.createRewardElement(tierReward.premiumReward, rewardsContainer, true);
             } else {
-                reward.textContent = '📦';
+                // Empty slot for alignment if needed, or just let it stack
+                const empty = document.createElement('div');
+                empty.className = 'tier-reward empty';
+                rewardsContainer.appendChild(empty);
             }
 
-            card.appendChild(reward);
+            card.appendChild(rewardsContainer);
             this.track.appendChild(card);
         }
+    }
+    
+    /**
+     * Helper to create reward icon/text
+     */
+    createRewardElement(rewardData, parent, isPremium) {
+        const rewardEl = document.createElement('div');
+        rewardEl.className = `tier-reward ${isPremium ? 'premium' : 'free'}`;
+        
+        let icon = '📦';
+        let text = 'REWARD';
+        
+        if (rewardData.type === 'rankXP') {
+            icon = '💎';
+            text = `+${rewardData.amount} XP`;
+        } else if (rewardData.type === 'title') {
+            icon = '🏷️';
+            text = `Title: ${rewardData.value}`;
+        } else if (rewardData.type === 'emblem') {
+            icon = '🎖️';
+            text = 'Emblem';
+        } else if (rewardData.type === 'cosmetic') {
+             icon = '🎨';
+             const skinName = PLAYER_SKINS[rewardData.value]?.name || 'Skin';
+             text = `${skinName} Skin`;
+        }
+        
+        const iconEl = document.createElement('div');
+        iconEl.className = 'reward-icon';
+        iconEl.textContent = icon;
+        
+        const textEl = document.createElement('div');
+        textEl.className = 'reward-text';
+        textEl.textContent = text;
+        
+        rewardEl.appendChild(iconEl);
+        rewardEl.appendChild(textEl);
+        
+        if (isPremium) {
+            const badge = document.createElement('div');
+            badge.className = 'premium-badge';
+            badge.textContent = 'PRO';
+            rewardEl.appendChild(badge);
+        }
+        
+        parent.appendChild(rewardEl);
     }
 
     /**
