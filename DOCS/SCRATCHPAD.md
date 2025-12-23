@@ -38,6 +38,9 @@
   - ✅ **Date.now() Caching**: Cached timestamp per frame in `main.js`.
 
 ## Compacted History
+- WebGPU White Particle Boxes Fix [2025-12-23] - Fixed color parsing bug causing white rectangular artifacts
+  - Changed `startsWith('rgba')` to `startsWith('rgb')` in WebGPU particle sync
+  - Fixed Shell.js color parsing to use regex instead of hardcoded substrings
 - Main Menu Polish [2025-12-22] - Added glowing zombie eyes, explosion effects, ground texture buttons
 - Version Update [2025-12-22] - Bumped to V0.8.2.0 ALPHA
 

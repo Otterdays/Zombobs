@@ -51,7 +51,15 @@ export class Shell {
         if (this.life < this.fadeThreshold) {
             alpha = this.life / this.fadeThreshold;
         }
-        ctx.fillStyle = `rgba(${parseInt(this.color.substring(4, 7))}, ${parseInt(this.color.substring(9, 12))}, ${parseInt(this.color.substring(14, 17))}, ${alpha})`;
+        
+        // Parse RGB color properly using regex
+        const match = this.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (match) {
+            ctx.fillStyle = `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})`;
+        } else {
+            // Fallback to brass color
+            ctx.fillStyle = `rgba(180, 160, 0, ${alpha})`;
+        }
 
         ctx.fillRect(-this.size / 2, -this.size / 4, this.size, this.size / 2); // Draw a small rectangle for the shell
         ctx.restore();

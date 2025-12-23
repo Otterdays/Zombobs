@@ -886,7 +886,8 @@ export class WebGPURenderer {
             // Parse color
             let r = 1.0, g = 1.0, b = 1.0, a = 1.0;
             if (p.color) {
-                if (p.color.startsWith('rgba')) {
+                if (p.color.startsWith('rgb')) {
+                    // Handle both rgb(...) and rgba(...) formats
                     const match = p.color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
                     if (match) {
                         r = parseFloat(match[1]) / 255;

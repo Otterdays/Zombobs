@@ -149,6 +149,15 @@ All notable changes to the Zombie Survival Game project will be documented in th
   - Result: Smooth, stable particle effects on burnt cars
   - Location: `js/entities/Prop.js`
 
+- **WebGPU White Particle Boxes** - Fixed white rectangular artifacts appearing randomly on screen
+  - **Problem**: White boxes appearing in screen space (not shaking with camera) during gameplay
+  - **Root Cause**: WebGPU particle color parser only checked for `rgba(...)` format, missing `rgb(...)` colors
+  - **Solution**: Changed color parsing condition from `startsWith('rgba')` to `startsWith('rgb')` to handle both formats
+  - When `rgb(...)` colors were encountered, parsing failed and particles defaulted to white (r=1.0, g=1.0, b=1.0)
+  - Also fixed Shell.js color parsing to use proper regex instead of hardcoded substring positions
+  - Result: All particles now render with correct colors, no white artifacts
+  - Location: `js/core/WebGPURenderer.js` - `syncGameParticles()` method, `js/entities/Shell.js` - `draw()` method
+
 ### Performance Impact
 - Array allocations reduced by ~95% in hot paths
 - GC pressure significantly reduced

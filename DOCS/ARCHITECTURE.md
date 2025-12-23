@@ -139,6 +139,16 @@ This modular structure improves maintainability, testability, and scalability.
 
 All adjustment points are marked with `// ADJUSTMENT:` comments in the code for easy finding.
 
+**Game Particle Sync** (`syncGameParticles()`):
+- Syncs Canvas 2D particles (explosions, blood splatter, etc.) to WebGPU for enhanced rendering
+- Particles rendered as quads (4 vertices each) with circular alpha falloff in fragment shader
+- **Color Parsing**: Supports `rgb(...)`, `rgba(...)`, and `#hex` formats
+  - **Important**: Color parser checks `startsWith('rgb')` to handle both `rgb` and `rgba` formats
+  - Unparsed colors default to white (r=1.0, g=1.0, b=1.0), which can cause visual artifacts
+  - Particles are 8x larger in WebGPU (minimum 10px) for better visibility
+- Renders in world space with camera offset applied in vertex shader
+- Location: `js/core/WebGPURenderer.js` - `syncGameParticles()` method
+
 **Performance Features**:
 - **Dirty Flag System**: Only writes to uniform buffer when values actually change
 - **Buffer Reuse**: Particle buffers reused when count doesn't change, only recreated when size increases
