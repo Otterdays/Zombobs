@@ -106,7 +106,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.2.0 ALPHA: Visual Polish Update! ✨ | Glowing Zombie Eyes 👀 | Particle Explosions 💥 | Textured Buttons 🎨 | V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.2.1 ALPHA: WebGPU Screen Shake Sync! 🫨 | Particle Sync Fix 🎨 | HUD Refinements 🖥️ | V0.8.2.0 ALPHA: Visual Polish Update! ✨ | Glowing Zombie Eyes 👀 | Particle Explosions 💥 | Textured Buttons 🎨 | V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

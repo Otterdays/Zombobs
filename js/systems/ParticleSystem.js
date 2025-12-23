@@ -86,6 +86,76 @@ export function createParticles(x, y, color, count) {
     }
 }
 
+/**
+ * Spawns a snow particle at a random position at the top of the screen
+ * @param {Object} viewport - Current viewport bounds {left, top, right, bottom}
+ */
+export function spawnSnowParticle(viewport) {
+    const width = viewport.right - viewport.left;
+    const height = viewport.bottom - viewport.top;
+    
+    // Spawn slightly above the viewport
+    const x = viewport.left + Math.random() * width;
+    const y = viewport.top - 10;
+    
+    // Use rgba to avoid batching with #ffffff sparks (which would mess up opacity)
+    const p = spawnParticle(x, y, 'rgba(255, 255, 255, 1)', {
+        life: 600, // Long life
+        maxLife: 600
+    });
+    
+    if (!p) return;
+    
+    // Custom properties for snow
+    p.radius = Math.random() * 2 + 1;
+    p.vx = (Math.random() - 0.5) * 2; // Slight horizontal drift
+    p.vy = Math.random() * 2 + 1; // Falling speed
+    p.swayOffset = Math.random() * Math.PI * 2;
+    p.swaySpeed = Math.random() * 0.05 + 0.02;
+    
+    // Custom update for snow behavior
+    p.customUpdate = function() {
+        this.y += this.vy;
+        this.x += Math.sin(this.life * this.swaySpeed + this.swayOffset) * 0.5;
+        this.life--;
+        
+        // Wrap around if it goes below the viewport (optional, but good for density)
+        // For now, let's just let them die to respect the pool, or we can reset them.
+        // If we reset them, they might hog the pool. Let's just let them die and spawn new ones.
+    };
+    // No customDraw needed - default rendering handles white particles well
+}
+
+/**
+ * Manages snow effect
+ * @param {Object} viewport - Current viewport bounds
+ */
+export function updateSnowSystem(viewport) {
+    const limit = getParticleLimit();
+    
+    // Target about 30% of the particle limit for snow
+    // This leaves room for gameplay effects (blood, explosions)
+    const targetSnowCount = Math.floor(limit * 0.3);
+    
+    // Calculate spawn probability to maintain target count
+    // Steady state: spawn_rate * life = count
+    // spawn_rate = count / life
+    // Life is 600
+    const spawnRate = targetSnowCount / 600;
+    
+    // Spawn based on calculated rate
+    if (Math.random() < spawnRate) {
+        spawnSnowParticle(viewport);
+    }
+    
+    // Add a second chance for higher densities if needed
+    if (spawnRate > 1.0) {
+         if (Math.random() < (spawnRate - 1.0)) {
+            spawnSnowParticle(viewport);
+        }
+    }
+}
+
 export function createBloodSplatter(x, y, angle, isKill = false) {
     const bloodGoreLevel = settingsManager.getSetting('video', 'bloodGoreLevel') ?? 1.0;
     if (bloodGoreLevel === 0) return;

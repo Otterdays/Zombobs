@@ -80,7 +80,8 @@ export class SettingsManager {
                 weapon5: '5',
                 weapon6: '6',
                 weapon7: '7',
-                scrollWheelSwitch: true
+                scrollWheelSwitch: true,
+                flashlight: 'f'
             },
             gamepad: {
                 fire: 7, // RT

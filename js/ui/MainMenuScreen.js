@@ -805,7 +805,7 @@ export class MainMenuScreen {
     }
 
     drawVersionBox() {
-        const version = "V0.8.2.0 ALPHA";
+        const version = "V0.8.2.1 ALPHA";
         const padding = 15;
         const boxHeight = 24;
         const spacing = 8; // Space between WebGPU icon and version box

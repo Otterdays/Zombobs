@@ -2,6 +2,24 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.2.1] - 2025-12-23
+
+### Added
+- **WebGPU Screen Shake Synchronization** - Synced background particle shake with screen shake
+  - **Problem**: Background particles (stars/dust) were static during explosions/impacts while the rest of the screen shook, breaking immersion.
+  - **Solution**: Shared shake offset state between Canvas 2D and WebGPU renderers via `gameState`.
+  - **Implementation**:
+    - `gameState.currentShakeX` and `gameState.currentShakeY` track current frame's shake offset.
+    - WebGPU renderer applies this offset to the camera position uniform.
+  - **Result**: Particles now shake in perfect sync with the game world during heavy action.
+  - Location: `js/main.js` (shake calculation), `js/core/WebGPURenderer.js` (uniform update)
+
+### Changed
+- **HUD Layout Adjustments** - Refined Multiplier UI positioning
+  - Moved Multiplier/Combo UI to `100 * scale` (just below compass) to prevent overlap with the directional compass.
+  - Applied consistent positioning for both Single Player and Co-op modes.
+  - Location: `js/ui/GameHUD.js`
+
 ## [v0.8.2.0] - 2025-12-22
 
 ### Added

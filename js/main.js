@@ -41,7 +41,7 @@ import {
 
 // Make triggerDamageIndicator available globally for AcidPool
 window.triggerDamageIndicator = triggerDamageIndicator;
-import { createParticles, createBloodSplatter, spawnParticle, updateParticles, drawParticles } from './systems/ParticleSystem.js';
+import { createParticles, createBloodSplatter, spawnParticle, updateParticles, drawParticles, updateSnowSystem } from './systems/ParticleSystem.js';
 import { inputSystem } from './systems/InputSystem.js';
 import { GameEngine } from './core/GameEngine.js';
 import { CompanionSystem } from './companions/CompanionSystem.js';
@@ -549,6 +549,9 @@ function updateGame() {
 
     // Update particles
     updateParticles();
+    
+    // Update snow effect
+    updateSnowSystem(viewport);
 
     // Update blood simulation (volumetric blood)
     bloodSimulationSystem.update(16.67); // Use fixed timeStep (1000/60 = 16.67ms for 60 FPS)
@@ -846,10 +849,17 @@ function drawGame() {
     if (gameState.shakeAmount > 0.1) {
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
+        
+        // Store current shake for WebGPU renderer
+        gameState.currentShakeX = shakeX;
+        gameState.currentShakeY = shakeY;
+        
         ctx.translate(shakeX, shakeY);
         gameState.shakeAmount *= gameState.shakeDecay;
     } else {
         gameState.shakeAmount = 0;
+        gameState.currentShakeX = 0;
+        gameState.currentShakeY = 0;
     }
 
     // Ground pattern (cached)
@@ -1330,13 +1340,37 @@ gameEngine.draw = () => {
         const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
         // Pass camera position for parallax
         const cameraPos = cameraSystem.getPosition();
-        webgpuRenderer.render(dt, cameraPos);
+        
+        // Apply screen shake to WebGPU camera (inverse of translation)
+        // If ctx.translate(dx, dy) moves world right, we want background to move right too.
+        // In shader: pos = worldPos - cameraPos.
+        // To move result right (+dx), we need -(cameraPos) to be larger => cameraPos should be smaller.
+        // So cameraPos - shakeOffset.
+        const shakeX = gameState.currentShakeX || 0;
+        const shakeY = gameState.currentShakeY || 0;
+        
+        const shakeCamera = {
+            x: cameraPos.x - shakeX,
+            y: cameraPos.y - shakeY
+        };
+        
+        webgpuRenderer.render(dt, shakeCamera);
     }
 };
 
 // Event Listeners
 document.addEventListener('keydown', (e) => {
     activeInputSource = 'mouse';
+
+    // Flashlight Toggle
+    const flashlightKey = settingsManager.settings.controls.flashlight || 'f';
+    if (e.key.toLowerCase() === flashlightKey.toLowerCase() && !gameState.gamePaused && gameState.gameRunning) {
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        if (localPlayer) {
+            if (!localPlayer.flashlight) localPlayer.flashlight = { active: false };
+            localPlayer.flashlight.active = !localPlayer.flashlight.active;
+        }
+    }
 
     // Username modal input handling (when modal is open)
     if (gameState.showUsernameModal && gameHUD.mainMenuScreen && gameHUD.mainMenuScreen.usernameInputFocused) {

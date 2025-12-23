@@ -340,6 +340,14 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
 
+## Recent Updates (v0.8.2.1)
+- **WebGPU Screen Shake Sync**: Fixed immersion-breaking static particles during screen shake.
+  - Background particles now shake in sync with the rest of the game world during explosions.
+  - Implemented via shared state synchronization between Canvas 2D and WebGPU renderers.
+- **HUD Refinement**: Optimized Multiplier UI positioning.
+  - Repositioned multiplier indicator to avoid overlapping with the directional compass.
+  - Consistent layout across Single Player and Co-op modes.
+
 ## Recent Updates (V0.8.1.7 ALPHA)
 - **Console Error Fixes (V0.8.1.7)**: Fixed Permissions Policy warnings on Hugging Face and Itch.io pages
   - Suppressed "Unrecognized feature" warnings (monetization, xr, etc.)

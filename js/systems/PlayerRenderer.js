@@ -644,11 +644,59 @@ function drawHeadgear(x, y, radius, direction, color) {
 }
 
 /**
+ * Draw flashlight beam
+ * @param {object} player - Player object
+ */
+export function drawFlashlight(player) {
+    if (!player.flashlight || !player.flashlight.active) return;
+
+    const { x, y, angle } = player;
+    
+    ctx.save();
+    
+    // Flashlight cone
+    const beamLength = 400;
+    const beamWidth = Math.PI / 4; // 45 degrees
+    
+    // Use overlay blend mode for better lighting effect
+    ctx.globalCompositeOperation = 'screen';
+    
+    // Gradient for the beam
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, beamLength);
+    gradient.addColorStop(0, 'rgba(255, 255, 200, 0.4)'); // Bright center start
+    gradient.addColorStop(0.4, 'rgba(255, 255, 220, 0.15)'); // Mid beam
+    gradient.addColorStop(1, 'rgba(255, 255, 220, 0)'); // Fade out at end
+    
+    ctx.fillStyle = gradient;
+    
+    // Draw cone
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, beamLength, angle - beamWidth/2, angle + beamWidth/2);
+    ctx.lineTo(x, y);
+    ctx.fill();
+    
+    // Add some glare/bloom at the source
+    const glareGradient = ctx.createRadialGradient(x, y, 0, x, y, 20);
+    glareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+    glareGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = glareGradient;
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+/**
  * Draw the complete player with hands and gun
  * @param {object} player - Player object
  * @param {boolean} isFiring - Whether player is currently firing
  */
 export function drawEnhancedPlayer(player, isFiring = false) {
+    // Draw flashlight first so it's behind the player
+    drawFlashlight(player);
+
     const { x, y, radius, angle, color, currentWeapon, equippedSkin } = player;
 
     // Resolve skin colors

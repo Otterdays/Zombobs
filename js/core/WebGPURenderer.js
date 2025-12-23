@@ -383,10 +383,15 @@ export class WebGPURenderer {
                     
                     struct VSOut { 
                         @builtin(position) position: vec4<f32>,
-                        @location(0) random: f32
+                        @location(0) random: f32,
+                        @location(1) uv: vec2<f32>
                     };
                     
-                    @vertex fn vs_main(@builtin(vertex_index) i: u32) -> VSOut {
+                    @vertex fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
+                        // Render as quads (2 triangles = 6 vertices)
+                        let i = vertexId / 6u;
+                        let quadVertex = vertexId % 6u;
+                        
                         let p = particles[i].pos;
                         
                         // Apply camera offset for world-space feel (wrapping)
@@ -394,31 +399,65 @@ export class WebGPURenderer {
                         let res = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
                         
                         // Calculate relative position with wrapping
-                        // We want particles to stay around the screen but move opposite to camera
-                        // effectively making them "world space" but repeating
                         let relativePos = (p - camPos) % res;
-                        
-                        // Handle negative modulo result in WGSL/GLSL style
                         let wrappedPos = relativePos + select(vec2<f32>(0.0), res, relativePos < vec2<f32>(0.0));
                         
+                        // Particle size (fixed small size for ash/snow)
+                        let size = 4.0; // 4px size
+                        
+                        // Quad expansion
+                        var offset = vec2<f32>(0.0, 0.0);
+                        var uv = vec2<f32>(0.0, 0.0);
+                        
+                        // Map 6 vertices to 4 corners
+                        // 0:TL, 1:BL, 2:TR, 3:TR, 4:BL, 5:BR
+                        var corner = 0u; // 0=TL, 1=BL, 2=TR, 3=BR
+                        if (quadVertex == 1u || quadVertex == 4u) { corner = 1u; }
+                        else if (quadVertex == 2u || quadVertex == 3u) { corner = 2u; }
+                        else if (quadVertex == 5u) { corner = 3u; }
+                        
+                        if (corner == 0u) { offset = vec2<f32>(-1.0, 1.0); uv = vec2<f32>(0.0, 0.0); }
+                        else if (corner == 1u) { offset = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); }
+                        else if (corner == 2u) { offset = vec2<f32>(1.0, 1.0); uv = vec2<f32>(1.0, 0.0); }
+                        else { offset = vec2<f32>(1.0, -1.0); uv = vec2<f32>(1.0, 1.0); }
+                        
+                        // Screen space position
                         let x = (wrappedPos.x / uniforms.resolutionX) * 2.0 - 1.0;
                         let y = (wrappedPos.y / uniforms.resolutionY) * -2.0 + 1.0;
+                        
+                        // Scale offset by resolution to keep size constant in pixels
+                        let scaleX = size / uniforms.resolutionX;
+                        let scaleY = size / uniforms.resolutionY;
+                        
                         var out: VSOut;
-                        out.position = vec4<f32>(x, y, 0.0, 1.0);
+                        out.position = vec4<f32>(
+                            x + offset.x * scaleX,
+                            y + offset.y * scaleY,
+                            0.0, 
+                            1.0
+                        );
+                        
                         // Generate stable random value based on index
                         out.random = fract(sin(f32(i)) * 43758.5453);
+                        out.uv = uv;
                         return out;
                     }
                     
                     @fragment fn fs_main(in: VSOut) -> @location(0) vec4<f32> { 
+                        // Circle shaping
+                        let center = vec2<f32>(0.5, 0.5);
+                        let dist = distance(in.uv, center);
+                        let shapeAlpha = 1.0 - smoothstep(0.3, 0.5, dist);
+                        
                         // Mix between Ash (grey) and Ember (orange)
                         // 90% Ash, 10% Embers
                         let isEmber = step(0.9, in.random);
                         
-                        let ashColor = vec4<f32>(0.5, 0.5, 0.5, 0.4); // Grey, semi-transparent
-                        let emberColor = vec4<f32>(1.0, 0.4, 0.1, 0.8); // Orange/Red, brighter
+                        let ashColor = vec4<f32>(0.6, 0.6, 0.6, 0.5); // Slightly lighter grey
+                        let emberColor = vec4<f32>(1.0, 0.5, 0.2, 0.8); // Orange/Red
                         
-                        return mix(ashColor, emberColor, isEmber);
+                        let color = mix(ashColor, emberColor, isEmber);
+                        return vec4<f32>(color.rgb, color.a * shapeAlpha);
                     }
                 `,
             });
@@ -432,7 +471,7 @@ export class WebGPURenderer {
                 layout: particleRenderPipelineLayout,
                 vertex: { module: particleVertexModule, entryPoint: 'vs_main' },
                 fragment: { module: particleVertexModule, entryPoint: 'fs_main', targets: [{ format: this.format }] },
-                primitive: { topology: 'point-list' },
+                primitive: { topology: 'triangle-list' },
             });
 
             // Create game particle shader (for explosions with color and radius)
@@ -461,10 +500,10 @@ export class WebGPURenderer {
                     
                     @vertex
                     fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
-                        // Each particle is rendered as a quad (4 vertices)
-                        // vertexId: 0,1,2,3 = one quad
-                        let particleIndex = vertexId / 4u;
-                        let quadVertex = vertexId % 4u;
+                        // Each particle is rendered as a quad (2 triangles = 6 vertices)
+                        // vertexId: 0..5 = one quad
+                        let particleIndex = vertexId / 6u;
+                        let quadVertex = vertexId % 6u;
                         
                         let idx = particleIndex * 8u;
                         let x = particleData[idx + 0u];
@@ -475,26 +514,36 @@ export class WebGPURenderer {
                         let a = particleData[idx + 5u];
                         let radius = particleData[idx + 6u];
                         
-                        // Make particles MUCH bigger - multiply radius by 8 and ensure minimum size
-                        // Use select() instead of max() for WGSL compatibility
-                        let baseSize = radius * 8.0;
-                        let size = select(10.0, baseSize, baseSize > 10.0); // At least 10 pixels, or 8x radius
+                        // Calculate size based on radius
+                        let baseSize = radius * 2.0;
+                        let size = select(10.0, baseSize, baseSize > 10.0);
                         
-                        // Quad corners for triangle-strip: order must be top-left, bottom-left, top-right, bottom-right
-                        // This creates triangles: (0,1,2) and (1,2,3)
+                        // Map 6 vertices to 4 corners for Triangle List
+                        // Tri 1: TL, BL, TR
+                        // Tri 2: TR, BL, BR
                         var quadPos = vec2<f32>(0.0, 0.0);
                         var uv = vec2<f32>(0.0, 0.0);
                         
-                        if (quadVertex == 0u) { // Top-left (first triangle start)
+                        // 0: TL, 1: BL, 2: TR, 3: TR, 4: BL, 5: BR
+                        // Map vertex index to corner type: 0=TL, 1=BL, 2=TR, 3=BR
+                        var cornerType = 0u;
+                        if (quadVertex == 0u) { cornerType = 0u; }      // TL
+                        else if (quadVertex == 1u) { cornerType = 1u; } // BL
+                        else if (quadVertex == 2u) { cornerType = 2u; } // TR
+                        else if (quadVertex == 3u) { cornerType = 2u; } // TR
+                        else if (quadVertex == 4u) { cornerType = 1u; } // BL
+                        else { cornerType = 3u; }                       // BR
+
+                        if (cornerType == 0u) { // Top-left
                             quadPos = vec2<f32>(-1.0, 1.0);
                             uv = vec2<f32>(0.0, 0.0);
-                        } else if (quadVertex == 1u) { // Bottom-left (first triangle, second triangle start)
+                        } else if (cornerType == 1u) { // Bottom-left
                             quadPos = vec2<f32>(-1.0, -1.0);
                             uv = vec2<f32>(0.0, 1.0);
-                        } else if (quadVertex == 2u) { // Top-right (first triangle end, second triangle)
+                        } else if (cornerType == 2u) { // Top-right
                             quadPos = vec2<f32>(1.0, 1.0);
                             uv = vec2<f32>(1.0, 0.0);
-                        } else { // Bottom-right (second triangle end)
+                        } else { // Bottom-right
                             quadPos = vec2<f32>(1.0, -1.0);
                             uv = vec2<f32>(1.0, 1.0);
                         }
@@ -567,7 +616,7 @@ export class WebGPURenderer {
                         }
                     }]
                 },
-                primitive: { topology: 'triangle-strip' },
+                primitive: { topology: 'triangle-list' },
             });
 
             // Initialize ZombobsFX spore cloud effect
@@ -759,9 +808,12 @@ export class WebGPURenderer {
 
     setParticleCount(level) {
         let count = 0;
-        if (level === 'low') count = 0;
-        else if (level === 'high') count = 10000;
-        else if (level === 'ultra') count = 50000;
+        if (level === 'low') count = 200; // Minimal atmosphere
+        else if (level === 'medium') count = 1000; // Default
+        else if (level === 'high') count = 2500; // Reduced from 10000
+        else if (level === 'ultra') count = 5000; // Reduced from 50000
+        else count = 1000; // Fallback default
+        
         if (count === this.particleCount) return;
         this.particleCount = count;
         if (!this.device) return;

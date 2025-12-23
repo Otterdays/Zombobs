@@ -37,7 +37,7 @@
     <img src="https://img.shields.io/badge/License-PROPRIETARY-FF1744?style=for-the-badge" alt="License" />
   </a>
   <a href="https://github.com/AfyKirby1/Zombobs/releases">
-    <img src="https://img.shields.io/badge/Version-0.8.1.7_ALPHA-00C853?style=for-the-badge" alt="Version 0.8.1.7 ALPHA" />
+    <img src="https://img.shields.io/badge/Version-0.8.2.1_ALPHA-00C853?style=for-the-badge" alt="Version 0.8.2.1 ALPHA" />
   </a>
 </p>
 
@@ -64,6 +64,52 @@
 </div>
 
 ---
+
+## 🔥 What's New in V0.8.2.1 ALPHA
+
+### 🫨 Visual Polish & HUD Refinements
+
+> **Immersion update: Synchronized screen shake and UI improvements**
+
+- **🫨 WebGPU Screen Shake Sync** - Fixed immersion-breaking static particles
+  - Background particles (stars/dust) now shake in perfect sync with the game world during explosions
+  - Seamless integration between Canvas 2D and WebGPU renderers
+  - Location: `js/core/WebGPURenderer.js`
+
+- **🖥️ HUD Layout Refinements** - Improved UI positioning
+  - Optimized Multiplier/Combo UI placement to avoid overlapping directional compass
+  - Consistent layout across Single Player and Co-op modes
+  - Location: `js/ui/GameHUD.js`
+
+## 🔥 What's New in V0.8.2.0 ALPHA
+
+### ✨ Visual Effects & Customization Update
+
+> **Major visual overhaul: Dynamic menu effects, player skins, and enhanced props**
+
+- **👀 Main Menu Visuals** - Dynamic background effects
+  - Glowing red zombie eyes appear and fade in the darkness
+  - Random explosion and muzzle flash effects with particles
+  - Textured menu buttons matching game ground aesthetic
+
+- **👕 Player Customization** - Functional Skin System
+  - **13 Unique Skins**: Red, Blue, Green, Gold, Platinum, Legendary, and more
+  - **New Player Model**: 4-directional humanoid sprite with round hands and tactical gear
+  - **Customization UI**: Equip skins directly from the Profile Dossier
+
+- **🏆 Challenge System** - Daily and Weekly tasks
+  - Randomly generated challenges (Kills, Score, Waves, Pickups)
+  - Earn XP rewards for completing daily/weekly goals
+
+- **💀 Enhanced Props & Gore** - Detailed world elements
+  - **Anatomical Zombie Parts**: Severed arms and legs with bone details
+  - **Enhanced Burnt Cars**: Complex body shapes with destruction effects
+  - **Detailed Rocks**: 3D shading and irregular polygon shapes
+
+- **🚀 Performance Optimizations** - Zero-allocation hot paths
+  - **In-Place Array Compaction**: 95% reduction in array allocations
+  - **Batched Particle Rendering**: 80% fewer draw calls for particles
+  - **Double-Buffered Blood**: 50-70% faster blood simulation
 
 ## 🔥 What's New in V0.8.1.7 ALPHA
 

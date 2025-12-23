@@ -73,6 +73,9 @@ export function createPlayer(x, y, colorIndex = 0) {
         // Visual
         color: color,
         equippedSkin: null,
+        flashlight: {
+            active: false
+        },
         muzzleFlash: {
             active: false,
             intensity: 0,

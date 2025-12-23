@@ -312,6 +312,14 @@ export class GameHUD {
         this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth);
         // ===== END DIRECTIONAL COMPASS STATS =====
 
+        // Draw centralized multiplier indicator at top center (if active or building up)
+        // Show if multiplier > 1.0 OR if player has any consecutive kills (progress bar)
+        if (player.scoreMultiplier > 1.0 || player.consecutiveKills > 0) {
+            const centerX = this.canvas.width / 2;
+            const multiplierY = 100 * scale; // Moved back up to be just below compass
+            this.drawMultiplierIndicator(player, centerX, multiplierY);
+        }
+
         this.drawPlayerStats(player, startX, startY);
 
         // Draw shared stats below player stats for single player
@@ -398,11 +406,11 @@ export class GameHUD {
         // Get local player (mouse input) or first player
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
 
-        // Draw centralized multiplier indicator at top center (if active)
+        // Draw centralized multiplier indicator at top center (if active or building up)
         // Use local player or first player for multiplier display
-        if (localPlayer && localPlayer.scoreMultiplier > 1.0) {
+        if (localPlayer && (localPlayer.scoreMultiplier > 1.0 || localPlayer.consecutiveKills > 0)) {
             const centerX = this.canvas.width / 2;
-            const multiplierY = padding + webgpuHeight + webgpuSpacing;
+            const multiplierY = 100 * scale; // Moved back up
             this.drawMultiplierIndicator(localPlayer, centerX, multiplierY);
         }
 
@@ -807,6 +815,7 @@ export class GameHUD {
         const sprintKey = controls.sprint || 'shift';
         const grenadeKey = controls.grenade || 'g';
         const meleeKey = controls.melee || 'v';
+        const flashlightKey = controls.flashlight || 'f';
         
         // Build weapon keybind string
         const weaponKeybinds = [
@@ -824,7 +833,7 @@ export class GameHUD {
         // Format lines
         const line1 = `WASD to move • Mouse to aim • Click to shoot • ${sprintKey.toUpperCase()} to sprint`;
         const line2 = weaponString;
-        const line3 = `${grenadeKey.toUpperCase()} for grenade • ${meleeKey.toUpperCase()} or Right-Click for melee`;
+        const line3 = `${grenadeKey.toUpperCase()} for grenade • ${flashlightKey.toUpperCase()} for light • ${meleeKey.toUpperCase()} or Right-Click for melee`;
 
         this.ctx.save();
         const scale = this.getUIScale();
@@ -1749,47 +1758,79 @@ export class GameHUD {
     }
 
     drawMultiplierIndicator(player, centerX, y, shrunk = false) {
-        if (player.scoreMultiplier <= 1.0) {
-            return; // Don't show at 1x
+        if (player.scoreMultiplier <= 1.0 && player.consecutiveKills === 0) {
+            return; // Don't show if no multiplier and no progress
         }
 
         // Shrink compass by ~15% if shrunk flag is set
         const shrinkFactor = shrunk ? 0.85 : 1.0;
-        const width = 120 * shrinkFactor;
-        const height = 40 * shrinkFactor;
+        const scale = this.getUIScale();
+        
+        // Box dimensions
+        const boxWidth = 160 * scale * shrinkFactor;
+        const boxHeight = 70 * scale * shrinkFactor;
+        const boxX = centerX - boxWidth / 2;
+        const boxY = y; // y is the top of the area in some calls, or center? 
+        // In drawSinglePlayerHUD: multiplierY = 55 * scale. This seems to be the center Y passed in.
+        // Let's assume y is center-ish.
+        
+        // Draw pronounced background plate
+        this.ctx.save();
+        
+        // Glassy background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        this.ctx.lineWidth = 2;
+        
+        // Draw background box centered on y
+        this.ctx.beginPath();
+        this.ctx.roundRect(boxX, boxY - boxHeight/2, boxWidth, boxHeight, 10 * scale);
+        this.ctx.fill();
+        this.ctx.stroke();
 
-        // Pulsing glow effect
-        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+        // Pulsing glow effect for text
+        const pulse = Math.sin(Date.now() / 150) * 0.1 + 1.0; // Fast pulse
 
         // Color based on tier
         let color;
+        let glowColor;
         if (player.scoreMultiplier >= 5.0) {
             color = '#ffd700'; // Gold for max
+            glowColor = '#ffb300';
         } else if (player.scoreMultiplier >= 4.0) {
             color = '#ff9800'; // Orange
+            glowColor = '#e65100';
         } else if (player.scoreMultiplier >= 3.0) {
             color = '#ffeb3b'; // Yellow
+            glowColor = '#fbc02d';
         } else {
             color = '#4caf50'; // Green
+            glowColor = '#2e7d32';
         }
 
-        // Render multiplier text (apply shrink factor)
-        this.ctx.save();
-        const scale = this.getUIScale();
-        const multiplierFontSize = Math.max(16, 24 * scale * shrinkFactor);
-        this.ctx.font = `bold ${multiplierFontSize}px "Roboto Mono"`;
+        // Render multiplier text - BIG and CENTERED
+        const multiplierFontSize = Math.max(24, 40 * scale * shrinkFactor * pulse);
+        this.ctx.font = `900 ${multiplierFontSize}px "Roboto Mono"`;
         this.ctx.fillStyle = color;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.shadowBlur = 15 * pulse * scale * shrinkFactor;
-        this.ctx.shadowColor = color;
-        this.ctx.fillText(`${player.scoreMultiplier}x`, centerX, y);
+        
+        // Strong glow
+        this.ctx.shadowBlur = 20 * scale * shrinkFactor;
+        this.ctx.shadowColor = glowColor;
+        this.ctx.fillText(`${player.scoreMultiplier}x`, centerX, y - (10 * scale));
         this.ctx.shadowBlur = 0;
 
-        // Progress bar to next tier (centered)
-        const progressX = centerX - width / 2;
-        const progressY = y + (25 * shrinkFactor);
-        this.drawMultiplierProgress(player, progressX, progressY, width, shrinkFactor);
+        // Label "MULTIPLIER" small below
+        this.ctx.font = `700 ${10 * scale * shrinkFactor}px "Roboto Mono"`;
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.fillText('MULTIPLIER', centerX, y - (30 * scale));
+
+        // Progress bar to next tier
+        const progressWidth = boxWidth - (30 * scale);
+        const progressX = centerX - progressWidth / 2;
+        const progressY = y + (15 * scale);
+        this.drawMultiplierProgress(player, progressX, progressY, progressWidth, shrinkFactor);
 
         this.ctx.restore();
     }
@@ -1797,6 +1838,7 @@ export class GameHUD {
     drawMultiplierProgress(player, x, y, width, shrinkFactor = 1.0) {
         const kills = player.consecutiveKills;
         const thresholds = player.multiplierTierThresholds;
+        const scale = this.getUIScale();
 
         // Find current and next threshold
         let currentThreshold = 0;
@@ -1810,44 +1852,52 @@ export class GameHUD {
             }
         }
 
-        // At max tier (apply shrink factor)
-        const scale = this.getUIScale();
+        // At max tier
         if (kills >= thresholds[thresholds.length - 1]) {
-            const maxFontSize = Math.max(9, 12 * scale * shrinkFactor);
-            this.ctx.font = `${maxFontSize}px "Roboto Mono"`;
+            const maxFontSize = Math.max(10, 12 * scale * shrinkFactor);
+            this.ctx.font = `700 ${maxFontSize}px "Roboto Mono"`;
             this.ctx.fillStyle = '#ffd700';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('MAX', x + width / 2, y);
+            this.ctx.textBaseline = 'top';
+            this.ctx.shadowBlur = 5;
+            this.ctx.shadowColor = '#ffd700';
+            this.ctx.fillText('MAX POWER', x + width / 2, y);
+            this.ctx.shadowBlur = 0;
             return;
         }
 
         // Calculate progress
         const progress = (kills - currentThreshold) / (nextThreshold - currentThreshold);
 
-        // Render progress bar background (apply shrink factor)
-        const barHeight = 6 * shrinkFactor;
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        this.ctx.fillRect(x, y, width, barHeight);
+        // Render progress bar background
+        const barHeight = 8 * scale * shrinkFactor;
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, width, barHeight, 4 * scale);
+        this.ctx.fill();
 
         // Render progress bar fill
-        const fillWidth = width * progress;
+        const fillWidth = Math.max(barHeight, width * progress); // Min width to show something
         const gradient = this.ctx.createLinearGradient(x, y, x + fillWidth, y);
         gradient.addColorStop(0, '#ff5252');
         gradient.addColorStop(1, '#ff1744');
 
         this.ctx.fillStyle = gradient;
-        this.ctx.shadowBlur = 8 * shrinkFactor;
-        this.ctx.shadowColor = 'rgba(255, 23, 68, 0.6)';
-        this.ctx.fillRect(x, y, fillWidth, barHeight);
+        this.ctx.shadowBlur = 10 * scale * shrinkFactor;
+        this.ctx.shadowColor = '#ff1744';
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, fillWidth, barHeight, 4 * scale);
+        this.ctx.fill();
         this.ctx.shadowBlur = 0;
 
-        // Show kills remaining (apply shrink factor to font and spacing)
+        // Show kills remaining text (small, below bar)
         const killsRemaining = nextThreshold - kills;
-        const killsFontSize = Math.max(8, Math.round(10 * scale * shrinkFactor));
-        this.ctx.font = `${killsFontSize}px "Roboto Mono"`;
-        this.ctx.fillStyle = '#9e9e9e';
+        const killsFontSize = Math.max(9, 10 * scale * shrinkFactor);
+        this.ctx.font = `700 ${killsFontSize}px "Roboto Mono"`;
+        this.ctx.fillStyle = '#dddddd';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(`${killsRemaining} kills to ${player.scoreMultiplier + 1.0}x`, x + width / 2, y + (16 * scale * shrinkFactor));
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText(`${killsRemaining} kills to next tier`, x + width / 2, y + barHeight + (4 * scale));
     }
 
     /**

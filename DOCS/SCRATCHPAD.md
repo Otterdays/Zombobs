@@ -38,6 +38,12 @@
   - ✅ **Date.now() Caching**: Cached timestamp per frame in `main.js`.
 
 ## Compacted History
+- WebGPU Screen Shake Sync [2025-12-23] - Fixed static background particles during screen shake
+  - Synced shake offset between Canvas 2D and WebGPU renderers
+  - Particles now move with the camera during explosions
+- HUD Refinement [2025-12-23] - Fixed Multiplier UI overlap
+  - Moved multiplier indicator below compass to prevent overlap
+  - Standardized positioning for single-player and co-op
 - WebGPU White Particle Boxes Fix [2025-12-23] - Fixed color parsing bug causing white rectangular artifacts
   - Changed `startsWith('rgba')` to `startsWith('rgb')` in WebGPU particle sync
   - Fixed Shell.js color parsing to use regex instead of hardcoded substrings
