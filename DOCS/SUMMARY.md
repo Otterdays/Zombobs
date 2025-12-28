@@ -402,8 +402,9 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Enhanced Burnt Cars: Increased car size (60-90px width, 80-120px height), added detailed features (hood lines, door lines, window frames, wheel rims)
   - Animated smoke particles: 3-5 particles per car rising upward with fade-out, drift horizontally and respawn after 2-4 seconds
   - New Zombie Props: Skull props (25-35px), Zombie Arms props (20-30px × 40-60px), Zombie Legs props (25-35px × 50-70px)
-  - Adjusted prop spawn distribution: Rock 35%, Debris 25%, Burnt Car 10%, Skull 15%, Zombie Arms 10%, Zombie Legs 5%
-  - Prop update system added for animated effects (smoke particles update each frame)
+  - Fire Trash Can Prop: 2.5D/3D cylindrical metal trash bin with animated fire particles (30-40px width, 35-45px height)
+  - Adjusted prop spawn distribution: Rock 30%, Debris 25%, Burnt Car 10%, Skull 15%, Zombie Arms 8%, Zombie Legs 5%, Trash Can 7%
+  - Prop update system added for animated effects (smoke and fire particles update each frame)
   - Location: `js/entities/Prop.js`, `js/systems/PropSpawnSystem.js`, `js/main.js`
 - **The Living World Update (V0.8.1.2)**: World-space gameplay system with camera and procedural props
   - Camera System: World-space camera following player, keeping them centered on screen while world moves around them

@@ -14,6 +14,15 @@
 > - Once a version is complete, move it to `CHANGELOG.md` and clear it from here (or archive it).
 ---
 
+## 🚀 CURRENT FOCUS: v0.8.2.2 (Bug Fixes)
+
+**Goal:** Fix visual bugs related to WebGPU particle rendering on menus.
+
+- [x] **v0.8.2.2: Menu Rendering Fixes** - ✅ COMPLETE
+    - [x] **Snow**: Restrict snow rendering to Arcade Gameplay only.
+    - [x] **ZombobsFX**: Disable spore clouds on main menu.
+    - [x] **Renderer**: Improve state management in WebGPU renderer.
+
 ## 🚀 CURRENT FOCUS: v0.8.1 (Small Polish Update)
 
 **Goal:** Fix and polish pass following the v0.8.0 release. Addressing immediate feedback.

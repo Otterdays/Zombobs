@@ -560,6 +560,7 @@ fn influencePathfinding(@builtin(global_invocation_id) id: vec3<u32>) {
 - ✅ WebGPU renderer infrastructure
 - ✅ Basic compute shader support
 - ✅ Volumetric blood simulation (completed v0.8.1.8)
+- ✅ GPU-driven Snow Accumulation System (completed v0.8.2.2)
 - 🔲 Radiance hints system (simplest GI method)
 - 🔲 Flow field pathfinding prototype (64×64 grid, 100 zombies)
 

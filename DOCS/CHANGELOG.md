@@ -2,6 +2,41 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.2.2] - 2025-12-28
+
+### Fixed
+- **Menu Rendering Artifacts** - Fixed particles appearing on non-gameplay screens
+  - **Snow Gating**: Snow now only renders during single-player Arcade Gameplay.
+  - **Menu Cleanup**: WebGPU effects (Snow, ZombobsFX) are explicitly disabled on all menu screens (Main Menu, Lobby, Gallery, etc.).
+  - **Particle Reset**: Game particles and snow accumulation are properly cleared when returning to lobby or restarting the game.
+  - Location: `js/main.js`, `js/core/WebGPURenderer.js`
+
+### Changed
+- **Snow Rendering System** - Optimized for visual quality and performance
+  - **Hybrid Approach**: Re-enabled JavaScript-based snow spawning synced to WebGPU for rendering.
+  - **Visuals**: Uses larger, softer snow particles (5x size with glow) instead of raw pixel-sized compute particles.
+  - **Configuration**: Disabled internal WebGPU falling snow and ground accumulation to prevent visual clutter and persistent "white screen" issues.
+  - Location: `js/systems/ParticleSystem.js`, `js/core/WebGPURenderer.js`
+
+### Added
+- **Fire Trash Can Prop** - New animated prop with 2.5D/3D perspective rendering
+  - Simpsons-style metal trash bin with dark green metallic appearance
+  - 3D cylindrical rendering with proper perspective (top and bottom ellipses)
+  - Animated fire particles rising from top opening (3-5 particles with flickering)
+  - Fire effect uses additive blending for realistic glow
+  - Metal bands, rims, and lid details with proper 3D perspective
+  - Dents and scratches for character
+  - Spawns at 7% chance in prop distribution
+  - Location: `js/entities/Prop.js` - `drawTrashCan()`, `initTrashCanFireParticles()`, `updateTrashCanFireParticles()` methods
+  - Integration: `js/systems/PropSpawnSystem.js` - Added to spawn distribution
+
+## [Unreleased]
+
+### Changed
+- **Snow Accumulation System (Internal)** - *Currently Disabled in Production*
+  - Tech stack exists for ground accumulation but is disabled by default in favor of cleaner gameplay visuals.
+
+
 ## [v0.8.2.1] - 2025-12-23
 
 ### Added

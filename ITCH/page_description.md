@@ -168,7 +168,7 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.5.3). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.8.2.2 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*
 

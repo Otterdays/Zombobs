@@ -10,7 +10,7 @@ import {
     TWO_PI
 } from './core/constants.js';
 import { compactArray, compactArrayWithUpdate } from './utils/arrayUtils.js';
-import { canvas, ctx, gpuCanvas, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
+import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
@@ -79,14 +79,14 @@ const companionSystem = new CompanionSystem();
 window.companionSystem = companionSystem;
 
 // Initialize HUD (needed by GameStateManager)
-const gameHUD = new GameHUD(canvas);
+const gameHUD = new GameHUD(uiCanvas);
 window.gameHUD = gameHUD; // Make globally accessible for text rendering quality
 
 // Initialize profile UI screens
-const profileScreen = new ProfileScreen(canvas);
-const achievementScreen = new AchievementScreen(canvas);
-const battlepassScreen = new BattlepassScreen(canvas);
-const badgeScreen = new BadgeScreen(canvas);
+const profileScreen = new ProfileScreen(uiCanvas);
+const achievementScreen = new AchievementScreen(uiCanvas);
+const battlepassScreen = new BattlepassScreen(uiCanvas);
+const badgeScreen = new BadgeScreen(uiCanvas);
 // Make globally accessible for text rendering quality
 window.profileScreen = profileScreen;
 window.achievementScreen = achievementScreen;
@@ -120,7 +120,7 @@ if (!initialVSync) {
 }
 
 // Initialize Settings Panel
-const settingsPanel = new SettingsPanel(canvas, settingsManager);
+const settingsPanel = new SettingsPanel(uiCanvas, settingsManager);
 window.settingsPanel = settingsPanel; // Make globally accessible for text rendering quality
 
 // Apply initial text rendering quality
@@ -553,6 +553,12 @@ function updateGame() {
     // Update snow effect
     updateSnowSystem(viewport);
 
+    // Update WebGPU Flashlight (Sync player and zombies)
+    if (webgpuRenderer && webgpuRenderer.isInitialized) {
+        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse') || gameState.players[0];
+        webgpuRenderer.updateFlashlight(localPlayer, gameState.zombies);
+    }
+
     // Update blood simulation (volumetric blood)
     bloodSimulationSystem.update(16.67); // Use fixed timeStep (1000/60 = 16.67ms for 60 FPS)
 
@@ -679,11 +685,39 @@ function updateGame() {
 }
 
 function drawGame() {
+    // Clear UI canvas
+    if (uiCtx) {
+        uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+        
+        // Manage pointer events for UI canvas
+        // Enable pointer events if any UI screen is active or game over
+        const isUIActive = gameState.showSettingsPanel || 
+                           gameState.showMainMenu || 
+                           gameState.showLobby || 
+                           gameState.showCoopLobby || 
+                           gameState.showAILobby || 
+                           gameState.showGallery || 
+                           gameState.showAbout || 
+                           gameState.showProfile || 
+                           gameState.showAchievements || 
+                           gameState.showBattlepass || 
+                           gameState.showBadges || 
+                           gameState.showLevelUp ||
+                           gameHUD.gameOver ||
+                           gameState.gamePaused;
+                           
+        if (isUIActive) {
+            uiCanvas.style.pointerEvents = 'auto';
+        } else {
+            uiCanvas.style.pointerEvents = 'none';
+        }
+    }
+
     // v0.8.1.2: Check if single player arcade mode (used for camera and world systems)
     const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
 
     if (gameState.showSettingsPanel) {
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         settingsPanel.draw(mouse);
         return;
     }
@@ -692,11 +726,11 @@ function drawGame() {
         gameHUD.mainMenu = true;
         // Set cursor based on news ticker interaction
         if (gameHUD.newsTickerDragging) {
-            canvas.style.cursor = 'grabbing';
+            uiCanvas.style.cursor = 'grabbing';
         } else if (gameHUD.checkNewsTickerHit(mouse.x, mouse.y)) {
-            canvas.style.cursor = 'grab';
+            uiCanvas.style.cursor = 'grab';
         } else {
-            canvas.style.cursor = 'none'; // Use custom cursor
+            uiCanvas.style.cursor = 'none'; // Custom cursor only
         }
         gameHUD.draw();
         return;
@@ -704,70 +738,70 @@ function drawGame() {
 
     if (gameState.showLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'none'; // Use custom cursor
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
     if (gameState.showCoopLobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'none'; // Use custom cursor
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
     if (gameState.showAILobby) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'none'; // Use custom cursor
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
     if (gameState.showGallery) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
     if (gameState.showAbout) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
     if (gameState.showProfile) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         profileScreen.draw();
         return;
     }
 
     if (gameState.showAchievements) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         achievementScreen.draw();
         return;
     }
 
     if (gameState.showBattlepass) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         battlepassScreen.draw();
         return;
     }
 
     if (gameState.showBadges) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'default';
+        uiCanvas.style.cursor = 'none';
         badgeScreen.draw();
         return;
     }
 
     if (gameState.showLevelUp) {
         gameHUD.mainMenu = false;
-        canvas.style.cursor = 'none'; // Use custom cursor
+        uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
@@ -778,12 +812,14 @@ function drawGame() {
     // Hide cursor during gameplay (crosshair used) or when paused (custom cursor used)
     // Settings panel uses default cursor, otherwise use custom
     if (!gameState.showSettingsPanel && (gameState.gamePaused || gameHUD.gameOver)) {
-        canvas.style.cursor = 'none'; // Use custom cursor when paused or game over
+        uiCanvas.style.cursor = 'none'; // Use custom cursor when paused or game over
     } else {
         // Hide cursor if P1 is gamepad, or always hide during game (crosshair used)
         if (activeInputSource === 'gamepad') {
+            uiCanvas.style.cursor = 'none';
             canvas.style.cursor = 'none';
         } else {
+            uiCanvas.style.cursor = 'none';
             canvas.style.cursor = 'none';
         }
     }
@@ -1354,7 +1390,53 @@ gameEngine.draw = () => {
             y: cameraPos.y - shakeY
         };
         
-        webgpuRenderer.render(dt, shakeCamera);
+        // Disable snow rendering on main menu and other non-gameplay screens
+        // Also restrict snow to single player arcade mode as requested
+        const isMenu = gameState.showMainMenu || gameState.showLobby || gameState.showAILobby || gameState.showCoopLobby || gameState.showGallery || gameState.showAbout;
+        const isArcade = !gameState.isCoop && !gameState.multiplayer.active && (!gameState.gameMode || gameState.gameMode === 'arcade');
+        const isGameplay = gameState.gameRunning && !gameState.gamePaused && !isMenu;
+        
+        if (webgpuRenderer.setSnowEnabled) {
+            // Only enable snow in gameplay, and specifically for arcade mode if requested (user said "should be rendering in arcade")
+            // Assuming they want it ONLY in arcade, or at least definitely NOT in menus.
+            webgpuRenderer.setSnowEnabled(isGameplay && isArcade);
+        }
+
+        // Disable ZombobsFX (Spore Cloud) on menus if it's active
+        if (webgpuRenderer.setZombobsFXEnabled) {
+            // Only enable spore cloud during gameplay (any mode), but not on menus
+            // This respects the user setting 'zombobsFXEnabled' internally in renderer, 
+            // but we override it here for menu visibility state.
+            // Wait, setZombobsFXEnabled updates the internal flag which might persist if we change settings.
+            // A better way is to add a separate 'visible' flag or just rely on this loop being called every frame.
+            // Since this loop runs every frame, we can toggle it based on menu state.
+            // However, we need to respect the user's setting.
+            // Let's assume the user wants it off on menus regardless of setting.
+            // We should check if it was enabled by settings first? 
+            // The renderer stores 'zombobsFXEnabled'. If we set it to false here, we lose the user's preference if we don't restore it.
+            // Actually, applyWebGPUSettings() restores it from settingsManager.
+            // But applyWebGPUSettings is only called on init or change.
+            // So if we set it false here, it stays false until user changes settings.
+            // We need a temporary toggle or pass it to render().
+            // Let's modify render() to accept an options object or flags, OR add a 'setMenuMode' to renderer.
+            // OR, just update render() in WebGPURenderer to check a new 'renderingEnabled' flag for specific layers.
+            
+            // Simpler: Just don't call render() for these layers in WebGPURenderer if we pass a flag.
+            // I'll update WebGPURenderer to handle this cleaner in a moment.
+            // For now, let's pass a 'renderEffects' flag to render().
+        }
+        
+        // Actually, let's just pass 'isGameplay' to render() and handle it there?
+        // Or better, let's update WebGPURenderer to have 'setGameplayEffectsEnabled'.
+        
+        // User said "all webgpu particle are showing".
+        // Snow is handled.
+        // Spore Cloud (ZombobsFX) needs handling.
+        // Game Particles (Explosions) needs handling.
+        
+        // If I update WebGPURenderer.js to respect 'isGameplay' state, that's cleanest.
+        
+        webgpuRenderer.render(dt, shakeCamera, isGameplay);
     }
 };
 
@@ -1523,7 +1605,8 @@ function getCanvasMousePos(e) {
     return { x, y };
 }
 
-canvas.addEventListener('mousemove', (e) => {
+// Use window for mouse events to ensure we catch them even if uiCanvas blocks canvas
+window.addEventListener('mousemove', (e) => {
     activeInputSource = 'mouse';
 
     const pos = getCanvasMousePos(e);
@@ -1544,7 +1627,14 @@ canvas.addEventListener('mousemove', (e) => {
     }
 });
 
-canvas.addEventListener('mousedown', (e) => {
+window.addEventListener('mousedown', (e) => {
+    // Check if click is within canvas bounds
+    const rect = canvas.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || 
+        e.clientY < rect.top || e.clientY > rect.bottom) {
+        return;
+    }
+
     activeInputSource = 'mouse';
 
     const pos = getCanvasMousePos(e);
@@ -1588,6 +1678,10 @@ canvas.addEventListener('mousedown', (e) => {
         if (clickedButton === 'single') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
+            // Reset snow accumulation when starting a new arcade game
+            if (isWebGPUActive() && webgpuRenderer.resetSnow) {
+                webgpuRenderer.resetSnow();
+            }
             startGame();
         } else if (clickedButton === 'survival') {
             // Survival mode is coming soon - button is disabled
@@ -1825,9 +1919,17 @@ canvas.addEventListener('mousedown', (e) => {
             }
 
             resetGameState(canvas.width, canvas.height);
+            // Ensure particles are cleared
+            gameState.particles = [];
+            // Reset snow accumulation
+            if (typeof isWebGPUActive === 'function' && isWebGPUActive() && window.webgpuRenderer && window.webgpuRenderer.resetSnow) {
+                window.webgpuRenderer.resetSnow();
+            }
         } else if (clickedButton === 'gameover_menu') {
             // Return to main menu
             restartGame();
+            // Ensure particles are cleared
+            gameState.particles = [];
         }
         return;
     }
@@ -1861,7 +1963,7 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
-canvas.addEventListener('mouseup', (e) => {
+window.addEventListener('mouseup', (e) => {
     if (e.button === 0) mouse.isDown = false;
     if (gameHUD.newsTickerDragging) {
         gameHUD.endNewsTickerDrag();
@@ -1869,10 +1971,10 @@ canvas.addEventListener('mouseup', (e) => {
     if (gameState.showSettingsPanel) settingsPanel.handleMouseUp();
 });
 
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-canvas.addEventListener('mouseleave', () => mouse.isDown = false);
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+window.addEventListener('mouseleave', () => mouse.isDown = false);
 
-canvas.addEventListener('wheel', (e) => {
+window.addEventListener('wheel', (e) => {
     if (gameState.showSettingsPanel) {
         settingsPanel.handleWheel(e);
         return;

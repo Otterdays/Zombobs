@@ -1,5 +1,15 @@
 # My Thoughts
 
+## 2025-12-27 - V0.8.2.2 ALPHA Bug Fix
+
+Addressed visual issues where WebGPU particles (Snow and ZombobsFX spore clouds) were incorrectly rendering on the main menu.
+
+- **Snow Gating**: Added strict checks to ensure snow only renders when in Arcade mode AND Gameplay state.
+- **ZombobsFX**: Updated `WebGPURenderer` to accept an `isGameplay` flag, ensuring spore clouds don't overlay the main menu.
+- **Refactoring**: Cleaned up the render loop in `main.js` to pass state flags explicitly to the renderer.
+
+This ensures a cleaner initial presentation while preserving the immersive effects during actual gameplay.
+
 ## 2025-01-XX - V0.8.0 ALPHA The Refactor Update
 
 Just completed the V0.8.0 ALPHA release, which focuses on major code refactoring and architecture improvements. This update represents a significant milestone in code organization and maintainability.

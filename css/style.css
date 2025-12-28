@@ -26,10 +26,20 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 0; /* Background layer (fog, atmosphere) - renders behind gameplay */
+            z-index: 2; /* Overlay layer (snow, rain, fog) - renders on top of gameplay */
             background: transparent;
+            pointer-events: none; /* Let clicks pass through to game canvas */
             /* Hidden by default, will be shown when WebGPU is active */
             display: none;
+        }
+        #uiCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3; /* UI layer - renders on top of everything (blood, fog, etc.) */
+            background: transparent;
+            pointer-events: none; /* Default to pass-through, enable for menus via JS */
         }
         #gameCanvas {
             position: relative;

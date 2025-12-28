@@ -65,6 +65,18 @@
 
 ---
 
+## 🔥 What's New in V0.8.2.2 ALPHA
+
+### 🐛 Bug Fixes & Rendering Improvements
+
+> **Polish update: Optimized snow effects and fixed menu rendering**
+
+- **❄️ Arcade-Only Snow** - Restricted snow effects to Single Player Arcade mode
+  - **Visual Upgrade**: Switched to larger, softer snow particles (JS synced to WebGPU)
+  - **Menu Fixes**: Completely disabled WebGPU effects (Snow, ZombobsFX) on all menus
+  - **Cleanup**: Auto-clearing of particles on Game Over and Restart
+  - Location: `js/main.js`, `js/systems/ParticleSystem.js`
+
 ## 🔥 What's New in V0.8.2.1 ALPHA
 
 ### 🫨 Visual Polish & HUD Refinements

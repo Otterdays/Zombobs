@@ -648,6 +648,13 @@ function drawHeadgear(x, y, radius, direction, color) {
  * @param {object} player - Player object
  */
 export function drawFlashlight(player) {
+    // Check if WebGPU renderer is active and handling flashlight
+    // This prevents double rendering (Canvas 2D + WebGPU)
+    const webgpuRenderer = window.webgpuRenderer;
+    if (webgpuRenderer && webgpuRenderer.isInitialized && webgpuRenderer.flashlightEnabled && !webgpuRenderer.fallbackMode) {
+        return; 
+    }
+
     if (!player.flashlight || !player.flashlight.active) return;
 
     const { x, y, angle } = player;

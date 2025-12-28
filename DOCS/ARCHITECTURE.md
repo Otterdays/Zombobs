@@ -398,39 +398,46 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 
 **Dependencies**: `core/canvas.js`, `core/gameState.js`, `utils/gameUtils.js` (via global reference)
 
-#### Prop.js (v0.8.1.7)
-**Purpose**: World prop entity class (rocks, debris, burnt cars, skulls, zombie parts) for single player arcade mode
+#### Prop.js (v0.8.1.7+)
+**Purpose**: World prop entity class (rocks, debris, burnt cars, skulls, zombie parts, fire trash cans) for single player arcade mode
 
 **Exports**: `Prop` class
 
 **Properties**:
 - `x, y` - Position
-- `type` - Prop type ('rock', 'debris', 'burntCar', 'skull', 'zombieArms', 'zombieLegs')
+- `type` - Prop type ('rock', 'debris', 'burntCar', 'skull', 'zombieArms', 'zombieLegs', 'trashCan')
 - `width, height` - Dimensions (varies by type)
 - `rotation` - Random rotation angle
 - `radius` - Collision radius (circular bounds)
 - `color, outlineColor` - Visual properties
 - `smokeParticles[]` - Smoke particle array (burntCar only)
-- `fireParticles[]` - Fire particle array (burntCar only)
-- `lastUpdateTime` - Timestamp for particle updates (burntCar only)
+- `fireParticles[]` - Fire particle array (burntCar and trashCan)
+- `lastUpdateTime` - Timestamp for particle updates (burntCar and trashCan)
 - `armCount` - Number of arms (zombieArms only, 2-3)
 - `armRotations[]` - Stored rotation angles for each arm (zombieArms only)
 - `armDecayMarks[]` - Stored decay mark positions for each arm (zombieArms only)
 - `legRotations[]` - Stored rotation angles for each leg (zombieLegs only)
 - `legDecayMarks[]` - Stored decay mark positions for each leg (zombieLegs only)
 - `textureMarks[]` - Stored bone texture mark positions (skull only, 4 marks)
+- `dents[]` - Stored dent positions and sizes (trashCan only, 2-3 dents)
+- `lidOpenAngle` - Lid opening angle in radians (trashCan only, 0.3-0.5)
 
 **Methods**:
 - `draw()` - Render the prop on canvas
-- `update()` - Update smoke and fire particles for burntCar props
+- `update()` - Update smoke and fire particles for burntCar and trashCan props
 - `initSmokeParticles()` - Initialize smoke particles for burnt car
 - `initFireParticles()` - Initialize fire particles for burnt car
+- `initTrashCanFireParticles()` - Initialize fire particles for trash can (3-5 particles from top center)
+- `initTrashCanDetails()` - Initialize static details for trash can (dents, lid angle)
+- `updateBurntCarParticles()` - Update burnt car smoke and fire particles
+- `updateTrashCanFireParticles()` - Update trash can fire particles with flickering
 - `drawRock()` - Render rock prop (irregular ellipse shape)
 - `drawDebris()` - Render debris prop (rectangular with detail lines)
 - `drawBurntCar()` - Render burnt car prop with enhanced details, animated smoke, and fire effects
 - `drawSkull()` - Render zombie skull prop with enhanced anatomical detail and glow effects
 - `drawZombieArms()` - Render severed zombie arms prop (2-3 arms with bone ends)
 - `drawZombieLegs()` - Render severed zombie legs prop (2 legs with bone ends)
+- `drawTrashCan()` - Render fire trash can prop with 2.5D/3D perspective and animated fire
 
 **Prop Types**:
 - **Rock**: 20-35px, gray colors, irregular ellipse shape
@@ -439,6 +446,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - **Skull**: 25-35px, bone white (#e8e8e8) with dark cracks (#4a4a4a), enhanced oval shape with detailed eye sockets, nasal cavity, jaw line with 6 teeth, 5 crack lines, cheekbone definition, bone texture marks, and glow effects (outer glow, inner eye socket glow, shadow)
 - **Zombie Arms**: 20-30px width, 40-60px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2-3 arms with visible bone ends and decay marks
 - **Zombie Legs**: 25-35px width, 50-70px height, decayed flesh (#8b7355) with bone (#d4c5a9), 2 legs with visible bone ends and decay marks
+- **Trash Can**: 30-40px width, 35-45px height, dark green metal (#2d5016) with lighter highlights (#4a6a2f), 2.5D/3D cylindrical rendering with perspective (top and bottom ellipses), metal bands, rims, slightly open lid, dents/scratches, and animated fire particles (3-5 particles rising from top opening with flickering effect)
 
 **Smoke Particle System** (burntCar only):
 - Each burnt car has 3-5 smoke particles
@@ -447,11 +455,11 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Particles respawn at car position when expired
 - White/gray gradient with radial fade-out effect
 
-**Fire Particle System** (burntCar only):
-- Each burnt car has 4-7 fire particles
-- Particles spawn from windows (40% left, 40% right) and engine/hood area (20%)
+**Fire Particle System** (burntCar and trashCan):
+- **Burnt Car**: 4-7 fire particles spawning from windows (40% left, 40% right) and engine/hood area (20%)
+- **Trash Can**: 3-5 fire particles spawning from top center opening
 - Fire colors: orange/yellow/red variations (#ff6600, #ff8800, #ffaa00, #ffff00, #ff4400, #ff0000)
-- Particles rise upward (0.8-1.4px per frame) with horizontal drift (-0.15 to 0.15px)
+- Particles rise upward (0.8-1.4px per frame for cars, 0.8-1.2px for trash cans) with horizontal drift
 - Flickering effect using sine wave for opacity and size variation
 - Particles fade over 1-2 second lifetime (shorter than smoke)
 - Particles respawn at original spawn locations when expired
@@ -1017,8 +1025,8 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 
 **Dependencies**: `core/constants.js` (spawn intervals, max counts), `entities/Pickup.js` (all pickup classes)
 
-#### PropSpawnSystem.js (v0.8.1.3)
-**Purpose**: Handles chunk-based spawning of world props (rocks, debris, burnt cars, skulls, zombie parts) for single player arcade mode
+#### PropSpawnSystem.js (v0.8.1.3+)
+**Purpose**: Handles chunk-based spawning of world props (rocks, debris, burnt cars, skulls, zombie parts, fire trash cans) for single player arcade mode
 
 **Exports**: `PropSpawnSystem` class, `propSpawnSystem` singleton
 
@@ -1033,7 +1041,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Spawns props when player enters new chunks (3x3 grid around player)
 - Configurable prop density per chunk
 - Minimum distance enforcement between props and from player spawn
-- Prop type distribution: Rock (35%), Debris (25%), Burnt Car (10%), Skull (15%), Zombie Arms (10%), Zombie Legs (5%)
+- Prop type distribution: Rock (30%), Debris (25%), Burnt Car (10%), Skull (15%), Zombie Arms (8%), Zombie Legs (5%), Trash Can (7%)
 - Only active in single player arcade mode (`!gameState.isCoop && !gameState.multiplayer.active`)
 
 **Dependencies**: `core/constants.js` (CHUNK_SIZE, PROP_SPAWN_DENSITY, etc.), `utils/ChunkManager.js`, `entities/Prop.js`

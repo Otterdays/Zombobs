@@ -6,9 +6,18 @@ export class WebGPURenderer {
         this.device = null;
         this.context = null;
         this.format = null;
-        this.renderPipeline = null;
+        
+        // Snow Overlay Pipelines
+        this.snowComputePipeline = null;
+        this.snowRenderPipeline = null;
+        this.snowBindGroup = null; // Shared for compute and render
+        
+        // Snow Grid Data
+        this.snowGridWidth = 128;
+        this.snowGridHeight = 128;
+        this.snowGridBuffer = null;
+        
         this.uniformBuffer = null;
-        this.bindGroup = null;
         this.isInitialized = false;
         this.fallbackMode = false;
         this.time = 0;
@@ -16,20 +25,16 @@ export class WebGPURenderer {
         // Bloom settings
         this.bloomEnabled = true;
         this.bloomIntensity = 0.5;
-        this.bloomTexture = null;
-        this.bloomPipeline = null;
-        this.bloomBindGroup = null;
-        this.sampler = null;
-
+        
         this.distortionEnabled = true;
         this.lightingQuality = 1;
 
+        // Falling Snow/Ash Particles
         this.particleCount = 0;
         this.particleBuffer = null;
-        this.particleStaging = null;
         this.computePipeline = null;
         this.particleRenderPipeline = null;
-        this.particleBindGroup = null;
+        this.particleBindGroup = null; // We'll use a single bind group for simplicity if possible, or separate
         this.particleComputeBindGroup = null;
         this.particleRenderBindGroup = null;
         this.particleComputeBindGroupLayout = null;
@@ -48,7 +53,6 @@ export class WebGPURenderer {
 
         // Particle buffer management
         this.particleBufferSize = 0;
-        this.particleStagingBuffer = null;
 
         // Game particle sync (for explosions, etc.)
         this.gameParticleCount = 0;
@@ -57,26 +61,20 @@ export class WebGPURenderer {
         this.gameParticleRenderPipeline = null;
         this.gameParticleBindGroupLayout = null;
 
-        // Game particle sync (for explosions, etc.)
-        this.gameParticleCount = 0;
-        this.gameParticleBuffer = null;
-        this.gameParticleRenderBindGroup = null;
-
-        // Blood simulation system
-        this.bloodSimulationEnabled = false;
-        this.bloodGridBuffer = null;
-        this.bloodGridWidth = 128;
-        this.bloodGridHeight = 128;
-        this.bloodComputePipeline = null;
-        this.bloodRenderPipeline = null;
-        this.bloodComputeBindGroup = null;
-        this.bloodRenderBindGroup = null;
-        this.bloodComputeBindGroupLayout = null;
-        this.bloodRenderBindGroupLayout = null;
-
         // ZombobsFX spore cloud effect
         this.zombobsFX = null;
         this.zombobsFXEnabled = false;
+
+        // Flashlight System
+        this.flashlightEnabled = true;
+        this.flashlightBindGroup = null;
+        this.flashlightPipeline = null;
+        this.flashlightUniformBuffer = null;
+        this.zombieBuffer = null;
+        this.maxZombies = 100; // Limit for shader performance
+        this.cachedFlashlightActive = false;
+        this.cachedFlashlightPos = { x: 0, y: 0 };
+        this.cachedFlashlightAngle = 0;
     }
 
     async init() {
@@ -118,366 +116,370 @@ export class WebGPURenderer {
             this.context.configure({
                 device: this.device,
                 format: this.format,
+                alphaMode: 'premultiplied', // Ensure transparency works correctly
             });
 
+            // 1. Uniform Buffer
             this.uniformBuffer = this.device.createBuffer({
                 size: 48,
                 usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
             });
 
-            // Create procedural background shader pipeline
-            const shaderModule = this.device.createShaderModule({
-                code: `
-                    struct Uniforms {
-                        time: f32,
-                        resolutionX: f32,
-                        resolutionY: f32,
-                        bloomIntensity: f32,
-                        distortionEnabled: f32,
-                        lightingQuality: f32,
-                        cameraX: f32,
-                        cameraY: f32,
-                    }
-                    
-                    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-                    
-                    struct VertexOutput {
-                        @builtin(position) position: vec4<f32>,
-                        @location(0) uv: vec2<f32>,
-                    }
-                    
-                    @vertex
-                    fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
-                        var pos = array<vec2<f32>, 3>(
-                            vec2<f32>(-1.0, -1.0),
-                            vec2<f32>(3.0, -1.0),
-                            vec2<f32>(-1.0, 3.0)
-                        );
-                        var output: VertexOutput;
-                        output.position = vec4<f32>(pos[in_vertex_index], 0.0, 1.0);
-                        output.uv = pos[in_vertex_index] * 0.5 + 0.5;
-                        return output;
-                    }
-                    
-                    // Simple noise function
-                    fn hash(p: vec2<f32>) -> f32 {
-                        var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.13);
-                        p3 += dot(p3, vec3<f32>(p3.y, p3.z, p3.x) + 3.333);
-                        return fract((p3.x + p3.y) * p3.z);
-                    }
-                    
-                    fn noise(p: vec2<f32>) -> f32 {
-                        let i = floor(p);
-                        let f = fract(p);
-                        let u = f * f * (3.0 - 2.0 * f);
-                        
-                        return mix(
-                            mix(hash(i + vec2<f32>(0.0, 0.0)), hash(i + vec2<f32>(1.0, 0.0)), u.x),
-                            mix(hash(i + vec2<f32>(0.0, 1.0)), hash(i + vec2<f32>(1.0, 1.0)), u.x),
-                            u.y
-                        );
-                    }
-                    
-                    fn fbm(p: vec2<f32>) -> f32 {
-                        var value = 0.0;
-                        var amplitude = 0.5;
-                        var frequency = 1.0;
-                        var pp = p;
-                        
-                        for (var i = 0; i < 5; i++) {
-                            value += amplitude * noise(pp * frequency);
-                            frequency *= 2.0;
-                            amplitude *= 0.5;
-                        }
-                        
-                        return value;
-                    }
-                    
-                    @fragment
-                    fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-                        let resolution = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
-                        let uv = input.uv;
-                        let aspect = resolution.x / resolution.y;
-                        
-                        // Parallax offset for background (moves slower than camera)
-                        let cameraOffset = vec2<f32>(uniforms.cameraX, uniforms.cameraY) / resolution;
-                        var coord = vec2<f32>(uv.x * aspect, uv.y) + cameraOffset * 0.2; // 20% parallax speed
-                        
-                        // Animated noise layers - SLOWER and LESS BUSY
-                        let time = uniforms.time * 0.05; // Slowed down
-                        let noise1 = fbm(coord * 1.5 + vec2<f32>(time * 0.1, time * 0.05));
-                        let noise2 = fbm(coord * 2.0 - vec2<f32>(time * 0.05, time * 0.1));
-                        
-                        // Combine noise layers
-                        let combined = (noise1 * 0.6 + noise2 * 0.4);
-                        
-                        // Apocalyptic / Ash / Burnt Paper Theme
-                        let darkBase = vec3<f32>(0.05, 0.05, 0.05); // Dark Grey/Black
-                        let ashColor = vec3<f32>(0.2, 0.2, 0.2); // Ash Grey
-                        let emberColor = vec3<f32>(0.3, 0.1, 0.05); // Dull glowing ember
-                        
-                        // Mix colors based on noise
-                        var color = mix(darkBase, ashColor, combined * 0.8);
-                        // Add subtle ember glow in dark spots
-                        color = mix(color, emberColor, (1.0 - combined) * 0.3);
-
-                        if (uniforms.distortionEnabled > 0.5) {
-                            // Subtle heat haze instead of heavy swirl
-                            let haze = sin(coord.y * 10.0 + time * 2.0) * 0.005;
-                            coord.x += haze;
-                        }
-                        
-                        // Vignette effect
-                        let center = uv - 0.5;
-                        let vignette = 1.0 - dot(center, center) * 0.8;
-                        color *= vignette;
-                        
-                        // Apply bloom effect (brighten highlights)
-                        let bloomIntensity = uniforms.bloomIntensity;
-                        if (bloomIntensity > 0.0) {
-                            // Identify bright areas
-                            let brightness = dot(color, vec3<f32>(0.299, 0.587, 0.114));
-                            let bloomThreshold = 0.2; // Higher threshold
-                            if (brightness > bloomThreshold) {
-                                let bloomAmount = (brightness - bloomThreshold) * bloomIntensity * 2.0;
-                                color += vec3<f32>(bloomAmount * 0.4, bloomAmount * 0.2, bloomAmount * 0.1); // Warm bloom
-                            }
-                        }
-                        
-                        return vec4<f32>(color, 1.0);
-                    }
-                `,
+            // 2. Snow Grid Buffer (Storage)
+            const snowGridSize = this.snowGridWidth * this.snowGridHeight * 4; // float32
+            this.snowGridBuffer = this.device.createBuffer({
+                size: snowGridSize,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
 
-            // Separate bind group layouts for background rendering and particle system
-            // Background render pipeline only needs uniforms (no storage buffers)
-            const backgroundBindGroupLayout = this.device.createBindGroupLayout({
-                entries: [
-                    { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
-                ],
-            });
+            // Initialize Snow Grid with zeros
+            this.device.queue.writeBuffer(this.snowGridBuffer, 0, new Float32Array(this.snowGridWidth * this.snowGridHeight));
 
-            // Create background bind group (only uniforms, no particles)
-            this.bindGroup = this.device.createBindGroup({
-                layout: backgroundBindGroupLayout,
-                entries: [
-                    { binding: 0, resource: { buffer: this.uniformBuffer } },
-                ],
-            });
-
-            // Create background pipeline layout
-            const backgroundPipelineLayout = this.device.createPipelineLayout({
-                bindGroupLayouts: [backgroundBindGroupLayout],
-            });
-
-            // Create render pipeline for background
-            this.renderPipeline = this.device.createRenderPipeline({
-                layout: backgroundPipelineLayout,
-                vertex: {
-                    module: shaderModule,
-                    entryPoint: 'vs_main',
-                },
-                fragment: {
-                    module: shaderModule,
-                    entryPoint: 'fs_main',
-                    targets: [
-                        {
-                            format: this.format,
-                        },
-                    ],
-                },
-                primitive: {
-                    topology: 'triangle-list',
-                },
-            });
-
-            const computeModule = this.device.createShaderModule({
-                code: `
-                    struct Uniforms {
-                        time: f32,
-                        resolutionX: f32,
-                        resolutionY: f32,
-                        bloomIntensity: f32,
-                        distortionEnabled: f32,
-                        lightingQuality: f32,
-                        cameraX: f32,
-                        cameraY: f32,
+            // 3. Snow Shader Modules (Split for Compute/Render)
+            const snowComputeSource = `
+                struct Uniforms {
+                    time: f32,
+                    resolutionX: f32,
+                    resolutionY: f32,
+                    bloomIntensity: f32,
+                    distortionEnabled: f32,
+                    lightingQuality: f32,
+                    cameraX: f32,
+                    cameraY: f32,
+                }
+                
+                @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+                @group(0) @binding(1) var<storage, read_write> snowGrid: array<f32>;
+                
+                @compute @workgroup_size(8, 8)
+                fn computeMain(@builtin(global_invocation_id) id: vec3<u32>) {
+                    let width = 128u;
+                    let height = 128u;
+                    
+                    if (id.x >= width || id.y >= height) { return; }
+                    
+                    let index = id.y * width + id.x;
+                    let seed = f32(index) * 0.1 + uniforms.time;
+                    
+                    let rnd = fract(sin(seed) * 43758.5453);
+                    
+                    // Accumulate snow (Slower rate: 0.04 -> 0.005, Frequency: 0.98 -> 0.999)
+                    if (rnd > 0.999) {
+                        snowGrid[index] = min(snowGrid[index] + 0.005, 1.0);
                     }
-                    struct Particle {
-                        pos: vec2<f32>,
-                        vel: vec2<f32>,
+                    
+                    // Melting (Slower decay: 0.0005 -> 0.0001)
+                    if (snowGrid[index] > 0.0) {
+                        snowGrid[index] = max(0.0, snowGrid[index] - 0.0001);
                     }
-                    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-                    @group(0) @binding(1) var<storage, read_write> particles: array<Particle>;
-                    @compute @workgroup_size(256)
-                    fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-                        let i = gid.x;
-                        if (i >= arrayLength(&particles)) { return; }
-                        var p = particles[i];
-                        let t = uniforms.time;
-                        
-                        // Floaty ash movement
-                        // Dampen velocity
-                        p.vel = p.vel * 0.95;
-                        
-                        // Add gentle drift
-                        let noise = sin(t * 0.5 + f32(i) * 0.1) * 0.0002;
-                        let gravity = 0.0001; // Slow falling
-                        
-                        p.vel += vec2<f32>(noise, gravity);
-                        
-                        p.pos += p.vel;
-                        let w = uniforms.resolutionX;
-                        let h = uniforms.resolutionY;
-                        if (p.pos.x < 0.0) { p.pos.x += w; }
-                        if (p.pos.y < 0.0) { p.pos.y += h; }
-                        if (p.pos.x > w) { p.pos.x -= w; }
-                        if (p.pos.y > h) { p.pos.y -= h; }
-                        particles[i] = p;
-                    }
-                `,
-            });
+                }
+            `;
 
-            // Particle system bind group layout (for compute and render)
-            // Compute needs read-write, vertex needs read-only
-            // Use separate layouts: compute can write, vertex can only read
-            this.particleComputeBindGroupLayout = this.device.createBindGroupLayout({
+            const snowRenderSource = `
+                struct Uniforms {
+                    time: f32,
+                    resolutionX: f32,
+                    resolutionY: f32,
+                    bloomIntensity: f32,
+                    distortionEnabled: f32,
+                    lightingQuality: f32,
+                    cameraX: f32,
+                    cameraY: f32,
+                }
+                
+                @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+                @group(0) @binding(1) var<storage, read> snowGrid: array<f32>; // READ-ONLY for render
+                
+                struct VertexOutput {
+                    @builtin(position) position: vec4<f32>,
+                    @location(0) uv: vec2<f32>,
+                }
+                
+                @vertex
+                fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
+                    var pos = array<vec2<f32>, 3>(
+                        vec2<f32>(-1.0, -1.0),
+                        vec2<f32>(3.0, -1.0),
+                        vec2<f32>(-1.0, 3.0)
+                    );
+                    var output: VertexOutput;
+                    output.position = vec4<f32>(pos[in_vertex_index], 0.0, 1.0);
+                    output.uv = pos[in_vertex_index] * 0.5 + 0.5;
+                    return output;
+                }
+                
+                @fragment
+                fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+                    let width = 128.0;
+                    let height = 128.0;
+                    let cameraOffset = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
+                    let resolution = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
+                    // Flip UV Y because WebGPU NDC Y is Up, but Game World Y is Down
+                    let screenUV = vec2<f32>(input.uv.x, 1.0 - input.uv.y);
+                    let worldPos = (screenUV * resolution) + cameraOffset;
+                    let gridSize = 1000.0;
+                    
+                    // Use fract() for robust tiling that handles negative coordinates correctly
+                    let gridUV = fract(worldPos / gridSize);
+                    
+                    let x = gridUV.x * width;
+                    let y = gridUV.y * height;
+                    
+                    let x0 = u32(floor(x)) % 128u;
+                    let x1 = (x0 + 1u) % 128u;
+                    let y0 = u32(floor(y)) % 128u;
+                    let y1 = (y0 + 1u) % 128u;
+                    
+                    let fx = fract(x);
+                    let fy = fract(y);
+                    
+                    let v00 = snowGrid[y0 * 128u + x0];
+                    let v10 = snowGrid[y0 * 128u + x1];
+                    let v01 = snowGrid[y1 * 128u + x0];
+                    let v11 = snowGrid[y1 * 128u + x1];
+                    
+                    let top = mix(v00, v10, fx);
+                    let bottom = mix(v01, v11, fx);
+                    let value = mix(top, bottom, fy);
+                    
+                    // Improved visibility: Lower threshold (0.1 -> 0.05) and softer edge (0.3 -> 0.5)
+                    let alpha = smoothstep(0.05, 0.5, value);
+                    return vec4<f32>(1.0, 1.0, 1.0, alpha * 0.9);
+                }
+            `;
+
+            const snowComputeModule = this.device.createShaderModule({ code: snowComputeSource });
+            const snowRenderModule = this.device.createShaderModule({ code: snowRenderSource });
+
+            // 4. Create Bind Group Layouts & Groups for Snow
+            // Compute needs writable storage
+            const snowComputeBindGroupLayout = this.device.createBindGroupLayout({
                 entries: [
                     { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
-                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // Read-write for compute
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // Writable
                 ],
             });
 
-            this.particleRenderBindGroupLayout = this.device.createBindGroupLayout({
+            // Render needs read-only storage
+            const snowRenderBindGroupLayout = this.device.createBindGroupLayout({
                 entries: [
                     { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
-                    { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }, // Read-only for vertex
+                    { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } }, // Read-only
                 ],
             });
 
-            // Create compute pipeline layout
-            const computePipelineLayout = this.device.createPipelineLayout({
-                bindGroupLayouts: [this.particleComputeBindGroupLayout]
+            this.snowComputeBindGroup = this.device.createBindGroup({
+                layout: snowComputeBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.uniformBuffer } },
+                    { binding: 1, resource: { buffer: this.snowGridBuffer } },
+                ],
             });
 
-            this.computePipeline = this.device.createComputePipeline({
-                layout: computePipelineLayout,
-                compute: { module: computeModule, entryPoint: 'main' },
+            this.snowRenderBindGroup = this.device.createBindGroup({
+                layout: snowRenderBindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.uniformBuffer } },
+                    { binding: 1, resource: { buffer: this.snowGridBuffer } },
+                ],
             });
 
-            const particleVertexModule = this.device.createShaderModule({
-                code: `
-                    struct Uniforms {
-                        time: f32,
-                        resolutionX: f32,
-                        resolutionY: f32,
-                        bloomIntensity: f32,
-                        distortionEnabled: f32,
-                        lightingQuality: f32,
-                        cameraX: f32,
-                        cameraY: f32,
-                    }
-                    struct Particle { pos: vec2<f32>, vel: vec2<f32> }
-                    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-                    @group(0) @binding(1) var<storage> particles: array<Particle>;
-                    
-                    struct VSOut { 
-                        @builtin(position) position: vec4<f32>,
-                        @location(0) random: f32,
-                        @location(1) uv: vec2<f32>
-                    };
-                    
-                    @vertex fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
-                        // Render as quads (2 triangles = 6 vertices)
-                        let i = vertexId / 6u;
-                        let quadVertex = vertexId % 6u;
-                        
-                        let p = particles[i].pos;
-                        
-                        // Apply camera offset for world-space feel (wrapping)
-                        let camPos = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
-                        let res = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
-                        
-                        // Calculate relative position with wrapping
-                        let relativePos = (p - camPos) % res;
-                        let wrappedPos = relativePos + select(vec2<f32>(0.0), res, relativePos < vec2<f32>(0.0));
-                        
-                        // Particle size (fixed small size for ash/snow)
-                        let size = 4.0; // 4px size
-                        
-                        // Quad expansion
-                        var offset = vec2<f32>(0.0, 0.0);
-                        var uv = vec2<f32>(0.0, 0.0);
-                        
-                        // Map 6 vertices to 4 corners
-                        // 0:TL, 1:BL, 2:TR, 3:TR, 4:BL, 5:BR
-                        var corner = 0u; // 0=TL, 1=BL, 2=TR, 3=BR
-                        if (quadVertex == 1u || quadVertex == 4u) { corner = 1u; }
-                        else if (quadVertex == 2u || quadVertex == 3u) { corner = 2u; }
-                        else if (quadVertex == 5u) { corner = 3u; }
-                        
-                        if (corner == 0u) { offset = vec2<f32>(-1.0, 1.0); uv = vec2<f32>(0.0, 0.0); }
-                        else if (corner == 1u) { offset = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); }
-                        else if (corner == 2u) { offset = vec2<f32>(1.0, 1.0); uv = vec2<f32>(1.0, 0.0); }
-                        else { offset = vec2<f32>(1.0, -1.0); uv = vec2<f32>(1.0, 1.0); }
-                        
-                        // Screen space position
-                        let x = (wrappedPos.x / uniforms.resolutionX) * 2.0 - 1.0;
-                        let y = (wrappedPos.y / uniforms.resolutionY) * -2.0 + 1.0;
-                        
-                        // Scale offset by resolution to keep size constant in pixels
-                        let scaleX = size / uniforms.resolutionX;
-                        let scaleY = size / uniforms.resolutionY;
-                        
-                        var out: VSOut;
-                        out.position = vec4<f32>(
-                            x + offset.x * scaleX,
-                            y + offset.y * scaleY,
-                            0.0, 
-                            1.0
-                        );
-                        
-                        // Generate stable random value based on index
-                        out.random = fract(sin(f32(i)) * 43758.5453);
-                        out.uv = uv;
-                        return out;
-                    }
-                    
-                    @fragment fn fs_main(in: VSOut) -> @location(0) vec4<f32> { 
-                        // Circle shaping
-                        let center = vec2<f32>(0.5, 0.5);
-                        let dist = distance(in.uv, center);
-                        let shapeAlpha = 1.0 - smoothstep(0.3, 0.5, dist);
-                        
-                        // Mix between Ash (grey) and Ember (orange)
-                        // 90% Ash, 10% Embers
-                        let isEmber = step(0.9, in.random);
-                        
-                        let ashColor = vec4<f32>(0.6, 0.6, 0.6, 0.5); // Slightly lighter grey
-                        let emberColor = vec4<f32>(1.0, 0.5, 0.2, 0.8); // Orange/Red
-                        
-                        let color = mix(ashColor, emberColor, isEmber);
-                        return vec4<f32>(color.rgb, color.a * shapeAlpha);
-                    }
-                `,
+            // 5. Create Pipelines
+            const snowComputePipelineLayout = this.device.createPipelineLayout({
+                bindGroupLayouts: [snowComputeBindGroupLayout],
+            });
+            const snowRenderPipelineLayout = this.device.createPipelineLayout({
+                bindGroupLayouts: [snowRenderBindGroupLayout],
             });
 
-            // Create particle render pipeline layout
-            const particleRenderPipelineLayout = this.device.createPipelineLayout({
-                bindGroupLayouts: [this.particleRenderBindGroupLayout],
+            this.snowComputePipeline = this.device.createComputePipeline({
+                layout: snowComputePipelineLayout,
+                compute: { module: snowComputeModule, entryPoint: 'computeMain' },
             });
 
-            this.particleRenderPipeline = this.device.createRenderPipeline({
-                layout: particleRenderPipelineLayout,
-                vertex: { module: particleVertexModule, entryPoint: 'vs_main' },
-                fragment: { module: particleVertexModule, entryPoint: 'fs_main', targets: [{ format: this.format }] },
+            this.snowRenderPipeline = this.device.createRenderPipeline({
+                layout: snowRenderPipelineLayout,
+                vertex: { module: snowRenderModule, entryPoint: 'vs_main' },
+                fragment: {
+                    module: snowRenderModule,
+                    entryPoint: 'fs_main',
+                    targets: [{
+                        format: this.format,
+                        blend: { // Alpha blending
+                            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+                        }
+                    }],
+                },
                 primitive: { topology: 'triangle-list' },
             });
 
-            // Create game particle shader (for explosions with color and radius)
-            // Data format: [x, y, r, g, b, a, radius, life] = 8 floats
-            // Render as billboarded quads (4 vertices per particle)
-            const gameParticleModule = this.device.createShaderModule({
+            // 6. Falling Snow Particles (Modified from Ash)
+            const particleComputeSource = `
+                struct Uniforms {
+                    time: f32,
+                    resolutionX: f32,
+                    resolutionY: f32,
+                    bloomIntensity: f32,
+                    distortionEnabled: f32,
+                    lightingQuality: f32,
+                    cameraX: f32,
+                    cameraY: f32,
+                }
+                struct Particle {
+                    pos: vec2<f32>,
+                    vel: vec2<f32>,
+                }
+                @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+                @group(0) @binding(1) var<storage, read_write> particles: array<Particle>;
+                
+                @compute @workgroup_size(256)
+                fn computeMain(@builtin(global_invocation_id) gid: vec3<u32>) {
+                    let i = gid.x;
+                    if (i >= arrayLength(&particles)) { return; }
+                    var p = particles[i];
+                    let t = uniforms.time;
+                    
+                    let wind = sin(t * 0.5 + p.pos.y * 0.01) * 0.5;
+                    p.vel = vec2<f32>(wind, 2.0); 
+                    
+                    p.pos += p.vel;
+                    let w = uniforms.resolutionX;
+                    let h = uniforms.resolutionY;
+                    
+                    if (p.pos.y > h) { 
+                        p.pos.y = 0.0; 
+                        p.pos.x = fract(sin(f32(i) * t) * 43758.5453) * w; 
+                    }
+                    if (p.pos.x < 0.0) { p.pos.x += w; }
+                    if (p.pos.x > w) { p.pos.x -= w; }
+                    
+                    particles[i] = p;
+                }
+            `;
+
+            const particleRenderSource = `
+                struct Uniforms {
+                    time: f32,
+                    resolutionX: f32,
+                    resolutionY: f32,
+                    bloomIntensity: f32,
+                    distortionEnabled: f32,
+                    lightingQuality: f32,
+                    cameraX: f32,
+                    cameraY: f32,
+                }
+                struct Particle {
+                    pos: vec2<f32>,
+                    vel: vec2<f32>,
+                }
+                @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+                @group(0) @binding(1) var<storage, read> particles: array<Particle>; // READ-ONLY
+                
+                struct VSOut { 
+                    @builtin(position) position: vec4<f32>,
+                    @location(0) uv: vec2<f32>
+                };
+                
+                @vertex fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
+                    let i = vertexId / 6u;
+                    let quadVertex = vertexId % 6u;
+                    let p = particles[i].pos;
+                    
+                    let camPos = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
+                    let res = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
+                    let size = 3.0;
+                    
+                    var offset = vec2<f32>(0.0, 0.0);
+                    var uv = vec2<f32>(0.0, 0.0);
+                    
+                    if (quadVertex == 1u || quadVertex == 4u) { offset = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); } 
+                    else if (quadVertex == 2u || quadVertex == 3u) { offset = vec2<f32>(1.0, 1.0); uv = vec2<f32>(1.0, 0.0); } 
+                    else if (quadVertex == 5u) { offset = vec2<f32>(1.0, -1.0); uv = vec2<f32>(1.0, 1.0); } 
+                    else { offset = vec2<f32>(-1.0, 1.0); uv = vec2<f32>(0.0, 0.0); } 
+                    
+                    // Decouple from camera:
+                    // Treat p.pos as an offset within a world-space tiling volume.
+                    // We want the particles to appear fixed in world space (relative to other world objects)
+                    // but they are updated in a wrapping screen-space box (0..res).
+                    
+                    // Logic:
+                    // World Position of particle = (p.pos + WorldOffset) % Res
+                    // Screen Position = World Position - Camera Position
+                    // To make them feel "in world", we can just subtract camera position from their "viewport relative" position
+                    // and wrap the result.
+                    
+                    // Calculate relative position with wrapping
+                    // This creates a tiling field of snow that the camera moves over
+                    let worldX = p.x - camPos.x;
+                    let worldY = p.y - camPos.y;
+                    
+                    // Wrap to viewport [0, res]
+                    let wrappedX = (worldX % res.x + res.x) % res.x;
+                    let wrappedY = (worldY % res.y + res.y) % res.y;
+                    
+                    let x = (wrappedX / res.x) * 2.0 - 1.0;
+                    let y = (wrappedY / res.y) * -2.0 + 1.0;
+                    
+                    let scaleX = size / res.x;
+                    let scaleY = size / res.y;
+                    
+                    var out: VSOut;
+                    out.position = vec4<f32>(x + offset.x * scaleX, y + offset.y * scaleY, 0.0, 1.0);
+                    out.uv = uv;
+                    return out;
+                }
+                
+                @fragment fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+                    let dist = distance(in.uv, vec2<f32>(0.5));
+                    let alpha = 1.0 - smoothstep(0.3, 0.5, dist);
+                    return vec4<f32>(1.0, 1.0, 1.0, alpha * 0.8);
+                }
+            `;
+
+            const particleComputeModule = this.device.createShaderModule({ code: particleComputeSource });
+            const particleRenderModule = this.device.createShaderModule({ code: particleRenderSource });
+
+            // Setup Particle Bind Groups (Reuse structure from previous code)
+            this.particleComputeBindGroupLayout = this.device.createBindGroupLayout({
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+                ],
+            });
+            this.particleRenderBindGroupLayout = this.device.createBindGroupLayout({
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+                    { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+                ],
+            });
+            
+            const computePipelineLayout = this.device.createPipelineLayout({ bindGroupLayouts: [this.particleComputeBindGroupLayout] });
+            this.computePipeline = this.device.createComputePipeline({
+                layout: computePipelineLayout,
+                compute: { module: particleComputeModule, entryPoint: 'computeMain' },
+            });
+            
+            const renderPipelineLayout = this.device.createPipelineLayout({ bindGroupLayouts: [this.particleRenderBindGroupLayout] });
+            this.particleRenderPipeline = this.device.createRenderPipeline({
+                layout: renderPipelineLayout,
+                vertex: { module: particleRenderModule, entryPoint: 'vs_main' },
+                fragment: { 
+                    module: particleRenderModule, 
+                    entryPoint: 'fs_main', 
+                    targets: [{ 
+                        format: this.format,
+                        blend: {
+                            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }
+                        }
+                    }] 
+                },
+                primitive: { topology: 'triangle-list' },
+            });
+
+            // 7. Game Particles (Explosions) - Keep existing logic
+             const gameParticleModule = this.device.createShaderModule({
                 code: `
                     struct Uniforms {
                         time: f32,
@@ -500,8 +502,6 @@ export class WebGPURenderer {
                     
                     @vertex
                     fn vs_main(@builtin(vertex_index) vertexId: u32) -> VSOut {
-                        // Each particle is rendered as a quad (2 triangles = 6 vertices)
-                        // vertexId: 0..5 = one quad
                         let particleIndex = vertexId / 6u;
                         let quadVertex = vertexId % 6u;
                         
@@ -514,43 +514,29 @@ export class WebGPURenderer {
                         let a = particleData[idx + 5u];
                         let radius = particleData[idx + 6u];
                         
-                        // Calculate size based on radius
                         let baseSize = radius * 2.0;
                         let size = select(10.0, baseSize, baseSize > 10.0);
                         
-                        // Map 6 vertices to 4 corners for Triangle List
-                        // Tri 1: TL, BL, TR
-                        // Tri 2: TR, BL, BR
                         var quadPos = vec2<f32>(0.0, 0.0);
                         var uv = vec2<f32>(0.0, 0.0);
                         
-                        // 0: TL, 1: BL, 2: TR, 3: TR, 4: BL, 5: BR
-                        // Map vertex index to corner type: 0=TL, 1=BL, 2=TR, 3=BR
-                        var cornerType = 0u;
-                        if (quadVertex == 0u) { cornerType = 0u; }      // TL
-                        else if (quadVertex == 1u) { cornerType = 1u; } // BL
-                        else if (quadVertex == 2u) { cornerType = 2u; } // TR
-                        else if (quadVertex == 3u) { cornerType = 2u; } // TR
-                        else if (quadVertex == 4u) { cornerType = 1u; } // BL
-                        else { cornerType = 3u; }                       // BR
-
-                        if (cornerType == 0u) { // Top-left
-                            quadPos = vec2<f32>(-1.0, 1.0);
-                            uv = vec2<f32>(0.0, 0.0);
-                        } else if (cornerType == 1u) { // Bottom-left
-                            quadPos = vec2<f32>(-1.0, -1.0);
-                            uv = vec2<f32>(0.0, 1.0);
-                        } else if (cornerType == 2u) { // Top-right
-                            quadPos = vec2<f32>(1.0, 1.0);
-                            uv = vec2<f32>(1.0, 0.0);
-                        } else { // Bottom-right
-                            quadPos = vec2<f32>(1.0, -1.0);
-                            uv = vec2<f32>(1.0, 1.0);
+                        // 0:TL, 1:BL, 2:TR, 3:TR, 4:BL, 5:BR
+                        if (quadVertex == 0u || quadVertex == 3u) { quadPos = vec2<f32>(-1.0, 1.0); uv = vec2<f32>(0.0, 0.0); } // TL
+                        else if (quadVertex == 1u || quadVertex == 4u) { quadPos = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); } // BL
+                        else { quadPos = vec2<f32>(1.0, -1.0); uv = vec2<f32>(1.0, 1.0); } // BR
+                        if (quadVertex == 2u || quadVertex == 5u) { // TR check fix (standard quad indices are tricky, explicit map is safer)
+                           // Fix: 
+                           // 0:TL, 1:BL, 2:TR
+                           // 3:TR, 4:BL, 5:BR
                         }
-                        
-                        // Convert particle position to NDC
-                        // Convert particle position to NDC (apply camera offset)
-                        // Game particles are in world space, so we subtract camera position directly
+                        // Explicit mapping
+                        if (quadVertex == 0u) { quadPos = vec2<f32>(-1.0, 1.0); uv = vec2<f32>(0.0, 0.0); } // TL
+                        else if (quadVertex == 1u) { quadPos = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); } // BL
+                        else if (quadVertex == 2u) { quadPos = vec2<f32>(1.0, 1.0); uv = vec2<f32>(1.0, 0.0); } // TR
+                        else if (quadVertex == 3u) { quadPos = vec2<f32>(1.0, 1.0); uv = vec2<f32>(1.0, 0.0); } // TR
+                        else if (quadVertex == 4u) { quadPos = vec2<f32>(-1.0, -1.0); uv = vec2<f32>(0.0, 1.0); } // BL
+                        else { quadPos = vec2<f32>(1.0, -1.0); uv = vec2<f32>(1.0, 1.0); } // BR
+
                         let camX = uniforms.cameraX;
                         let camY = uniforms.cameraY;
                         
@@ -560,7 +546,6 @@ export class WebGPURenderer {
                         let ndcX = (screenX / uniforms.resolutionX) * 2.0 - 1.0;
                         let ndcY = (screenY / uniforms.resolutionY) * -2.0 + 1.0;
                         
-                        // Scale quad by particle size (in NDC space)
                         let scaleX = (size / uniforms.resolutionX) * 2.0;
                         let scaleY = (size / uniforms.resolutionY) * 2.0;
                         
@@ -578,7 +563,6 @@ export class WebGPURenderer {
                     
                     @fragment
                     fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
-                        // Create circular particle with smooth edges
                         let center = vec2<f32>(0.5, 0.5);
                         let dist = distance(input.uv, center);
                         let alpha = input.color.a * (1.0 - smoothstep(0.3, 0.5, dist));
@@ -586,33 +570,22 @@ export class WebGPURenderer {
                     }
                 `,
             });
-
-            // Create bind group layout for game particles
+            
             this.gameParticleBindGroupLayout = this.device.createBindGroupLayout({
                 entries: [
                     { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
                     { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
                 ],
             });
-
-            const gameParticlePipelineLayout = this.device.createPipelineLayout({
-                bindGroupLayouts: [this.gameParticleBindGroupLayout],
-            });
-
+            const gameParticlePipelineLayout = this.device.createPipelineLayout({ bindGroupLayouts: [this.gameParticleBindGroupLayout] });
             this.gameParticleRenderPipeline = this.device.createRenderPipeline({
                 layout: gameParticlePipelineLayout,
                 vertex: { module: gameParticleModule, entryPoint: 'vs_main' },
                 fragment: {
                     module: gameParticleModule, entryPoint: 'fs_main', targets: [{
                         format: this.format, blend: {
-                            color: {
-                                srcFactor: 'src-alpha',
-                                dstFactor: 'one-minus-src-alpha',
-                            },
-                            alpha: {
-                                srcFactor: 'one',
-                                dstFactor: 'one-minus-src-alpha',
-                            },
+                            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' },
                         }
                     }]
                 },
@@ -629,8 +602,10 @@ export class WebGPURenderer {
                 }
             }
 
-            this.isInitialized = true;
+            // Initialize Flashlight
+            await this._initFlashlight();
 
+            this.isInitialized = true;
             return true;
         } catch (error) {
             console.error('Error initializing WebGPU:', error);
@@ -639,20 +614,20 @@ export class WebGPURenderer {
         }
     }
 
-    render(dt, camera = { x: 0, y: 0 }) {
+    render(dt, camera = { x: 0, y: 0 }, isGameplay = true) {
         if (!this.isInitialized || this.fallbackMode) {
             return;
         }
 
-        if (!this.context || !this.device || !this.renderPipeline) {
+        if (!this.context || !this.device) {
             return;
         }
 
         try {
             // Update time
-            this.time += dt / 1000; // Convert to seconds
+            this.time += dt / 1000;
 
-            // Check if uniforms need updating (dirty flag system)
+            // Check if uniforms need updating
             const resolutionChanged = gpuCanvas.width !== this.cachedResolutionX ||
                 gpuCanvas.height !== this.cachedResolutionY;
             const bloomChanged = this.bloomIntensity !== this.cachedBloomIntensity;
@@ -660,7 +635,6 @@ export class WebGPURenderer {
             const lightingChanged = this.lightingQuality !== this.cachedLightingQuality;
             const cameraChanged = camera.x !== this.cachedCameraX || camera.y !== this.cachedCameraY;
 
-            // Always update time, but only update buffer if something changed
             if (this.uniformsDirty || resolutionChanged || bloomChanged || distortionChanged || lightingChanged || cameraChanged) {
                 const uniformData = new Float32Array([
                     this.time,
@@ -688,13 +662,21 @@ export class WebGPURenderer {
 
             const encoder = this.device.createCommandEncoder();
 
-            // Update ZombobsFX compute pass BEFORE render pass starts
-            if (this.zombobsFXEnabled && this.zombobsFX && this.zombobsFX.isReady()) {
-                const deltaTime = dt || 0.016; // Use provided dt or default
-                this.zombobsFX.updateCompute(encoder, deltaTime / 1000); // Convert ms to seconds
+            // 1. Compute Passes
+            
+            // Snow Accumulation Compute - DISABLED (User request: "kill the smaller particles")
+            /*
+            if (this.snowEnabled) {
+                const snowComputePass = encoder.beginComputePass();
+                snowComputePass.setPipeline(this.snowComputePipeline);
+                snowComputePass.setBindGroup(0, this.snowComputeBindGroup);
+                snowComputePass.dispatchWorkgroups(16, 16); // 16x8 = 128, 16x8 = 128
+                snowComputePass.end();
             }
-
-            if (this.particleCount > 0 && this.particleBuffer && this.particleComputeBindGroup) {
+            */
+            
+            // Falling Snow Compute
+            if (this.snowEnabled && this.particleCount > 0 && this.particleBuffer && this.particleComputeBindGroup) {
                 const cPass = encoder.beginComputePass();
                 cPass.setPipeline(this.computePipeline);
                 cPass.setBindGroup(0, this.particleComputeBindGroup);
@@ -702,60 +684,70 @@ export class WebGPURenderer {
                 cPass.dispatchWorkgroups(groups);
                 cPass.end();
             }
+            
+            // ZombobsFX Compute
+            // Only update/render ZombobsFX if enabled AND in gameplay (unless we want it on menu, but user said 'all particles showing' as issue)
+            const showZombobsFX = this.zombobsFXEnabled && isGameplay;
+            if (showZombobsFX && this.zombobsFX && this.zombobsFX.isReady()) {
+                this.zombobsFX.updateCompute(encoder, dt / 1000);
+            }
 
+            // 2. Render Pass
             const pass = encoder.beginRenderPass({
                 colorAttachments: [
                     {
                         view: this.context.getCurrentTexture().createView(),
-                        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Transparent clear for particle layer
+                        clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Transparent clear
                         loadOp: 'clear',
                         storeOp: 'store',
                     },
                 ],
             });
 
-            // Set pipeline and bind group for background
-            pass.setPipeline(this.renderPipeline);
-            pass.setBindGroup(0, this.bindGroup); // Background uses separate bind group
-            pass.draw(3, 1, 0, 0);
-
-            // Render ZombobsFX spore cloud effect (above background, below game entities)
-            if (this.zombobsFXEnabled && this.zombobsFX && this.zombobsFX.isReady()) {
+            // Draw Snow Overlay
+            if (this.snowEnabled) {
+                pass.setPipeline(this.snowRenderPipeline);
+                pass.setBindGroup(0, this.snowRenderBindGroup);
+                pass.draw(3, 1, 0, 0); // Full screen quad
+            }
+            
+            // Draw Falling Snow Particles - DISABLED (User request: Prefer larger JS particles synced to WebGPU)
+            /*
+            if (this.snowEnabled && this.particleCount > 0 && this.particleBuffer && this.particleRenderBindGroup) {
+                pass.setPipeline(this.particleRenderPipeline);
+                pass.setBindGroup(0, this.particleRenderBindGroup);
+                pass.draw(this.particleCount * 6, 1, 0, 0); // 6 verts per particle
+            }
+            */
+            
+            // Draw ZombobsFX
+            if (showZombobsFX && this.zombobsFX && this.zombobsFX.isReady()) {
                 this.zombobsFX.render(pass);
             }
 
-            // Render background particles with separate bind group (read-only storage)
-            if (this.particleCount > 0 && this.particleBuffer && this.particleRenderBindGroup) {
-                pass.setPipeline(this.particleRenderPipeline);
-                pass.setBindGroup(0, this.particleRenderBindGroup);
-                pass.draw(this.particleCount, 1, 0, 0);
-            }
-
-            // Render game particles (explosions, etc.) if synced
-            // Each particle is rendered as a quad (4 vertices = triangle-strip with 2 triangles)
+            // Draw Game Particles (Explosions)
             if (this.gameParticleCount > 0 && this.gameParticleBuffer && this.gameParticleRenderBindGroup) {
                 pass.setPipeline(this.gameParticleRenderPipeline);
                 pass.setBindGroup(0, this.gameParticleRenderBindGroup);
-                // Draw 4 vertices per particle (quad), so total vertices = particleCount * 4
-                const vertexCount = this.gameParticleCount * 4;
+                const vertexCount = this.gameParticleCount * 6; // 6 verts per particle
                 pass.draw(vertexCount, 1, 0, 0);
-
-            } else {
-                if (this.gameParticleCount > 0) {
-
-                }
             }
+            
+            // Draw Flashlight Overlay
+            if (this.flashlightEnabled && this.flashlightPipeline && this.flashlightBindGroup) {
+                pass.setPipeline(this.flashlightPipeline);
+                pass.setBindGroup(0, this.flashlightBindGroup);
+                pass.draw(6, 1, 0, 0);
+            }
+
             pass.end();
 
-            // Submit commands
             this.device.queue.submit([encoder.finish()]);
         } catch (error) {
             console.error('Error rendering WebGPU frame:', error);
-            // Graceful fallback: disable WebGPU and fall back to Canvas 2D
             if (!this.fallbackMode) {
                 this.fallbackMode = true;
             }
-            // Don't throw, just log the error to prevent breaking the game loop
         }
     }
 
@@ -768,6 +760,19 @@ export class WebGPURenderer {
 
     isAvailable() {
         return this.isInitialized && !this.fallbackMode;
+    }
+
+    setSnowEnabled(enabled) {
+        this.snowEnabled = enabled;
+    }
+
+    resetSnow() {
+        // Reset the snow accumulation grid to 0
+        if (this.snowGridBuffer && this.device) {
+            // Create a zero-filled buffer
+            const zeroData = new Float32Array(this.snowGridWidth * this.snowGridHeight).fill(0);
+            this.device.queue.writeBuffer(this.snowGridBuffer, 0, zeroData);
+        }
     }
 
     setBloomEnabled(enabled) {
@@ -808,68 +813,57 @@ export class WebGPURenderer {
 
     setParticleCount(level) {
         let count = 0;
-        if (level === 'low') count = 200; // Minimal atmosphere
-        else if (level === 'medium') count = 1000; // Default
-        else if (level === 'high') count = 2500; // Reduced from 10000
-        else if (level === 'ultra') count = 5000; // Reduced from 50000
-        else count = 1000; // Fallback default
+        if (level === 'low') count = 200;
+        else if (level === 'medium') count = 1000;
+        else if (level === 'high') count = 2500;
+        else if (level === 'ultra') count = 5000;
+        else count = 1000;
         
         if (count === this.particleCount) return;
         this.particleCount = count;
         if (!this.device) return;
 
-        const stride = 16; // 4 floats * 4 bytes each
+        const stride = 16; // 4 floats
         const requiredSize = count * stride;
 
-        // Only recreate buffer if size changed significantly or doesn't exist
         if (!this.particleBuffer || this.particleBufferSize < requiredSize) {
-            // Destroy old buffer if exists
             if (this.particleBuffer) {
                 this.particleBuffer.destroy?.();
                 this.particleBuffer = null;
             }
 
             if (count > 0) {
-                // Create buffer with required size
                 this.particleBuffer = this.device.createBuffer({
                     size: requiredSize,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
                 this.particleBufferSize = requiredSize;
 
-                // Initialize particle data
                 const initData = new Float32Array(count * 4);
                 const w = gpuCanvas.width || 1920;
                 const h = gpuCanvas.height || 1080;
                 for (let i = 0; i < count; i++) {
                     initData[i * 4 + 0] = Math.random() * w;
                     initData[i * 4 + 1] = Math.random() * h;
-                    initData[i * 4 + 2] = (Math.random() - 0.5) * 0.5;
-                    initData[i * 4 + 3] = (Math.random() - 0.5) * 0.5;
+                    initData[i * 4 + 2] = 0;
+                    initData[i * 4 + 3] = 0;
                 }
                 this.device.queue.writeBuffer(this.particleBuffer, 0, initData.buffer);
 
-                // Recreate bind groups with new buffer
                 this._createParticleBindGroups();
             } else {
-                // No particles - cleanup
                 this.particleBufferSize = 0;
                 this.particleComputeBindGroup = null;
                 this.particleRenderBindGroup = null;
             }
         } else if (count > 0) {
-            // Buffer exists and is large enough, just recreate bind groups if needed
             this._createParticleBindGroups();
         } else {
-            // No particles - cleanup bind groups
             this.particleComputeBindGroup = null;
             this.particleRenderBindGroup = null;
         }
     }
 
-    /**
-     * Helper method to create particle bind groups (reused when buffer changes)
-     */
     _createParticleBindGroups() {
         if (!this.particleBuffer || !this.particleComputeBindGroupLayout || !this.particleRenderBindGroupLayout) {
             return;
@@ -879,7 +873,7 @@ export class WebGPURenderer {
             layout: this.particleComputeBindGroupLayout,
             entries: [
                 { binding: 0, resource: { buffer: this.uniformBuffer } },
-                { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-write for compute
+                { binding: 1, resource: { buffer: this.particleBuffer } },
             ],
         });
 
@@ -887,18 +881,13 @@ export class WebGPURenderer {
             layout: this.particleRenderBindGroupLayout,
             entries: [
                 { binding: 0, resource: { buffer: this.uniformBuffer } },
-                { binding: 1, resource: { buffer: this.particleBuffer } }, // Read-only for vertex shader
+                { binding: 1, resource: { buffer: this.particleBuffer } },
             ],
         });
     }
 
-    /**
-     * Sync game particles from gameState.particles to WebGPU buffer
-     * @param {Array} particles - Array of particle objects from gameState.particles
-     */
     syncGameParticles(particles) {
         if (!this.device || !this.isInitialized || this.fallbackMode) {
-
             return;
         }
 
@@ -908,13 +897,10 @@ export class WebGPURenderer {
             return;
         }
 
-
-
-        const count = Math.min(particles.length, 2000); // Limit to 2000 particles for performance
-        const stride = 32; // 8 floats * 4 bytes: pos(2) + color(4) + radius(1) + life(1) + maxLife(1) = 9, but we'll use 8 for alignment
+        const count = Math.min(particles.length, 2000);
+        const stride = 32;
         const requiredSize = count * stride;
 
-        // Recreate buffer if needed
         if (!this.gameParticleBuffer || this.gameParticleBufferSize < requiredSize) {
             if (this.gameParticleBuffer) {
                 this.gameParticleBuffer.destroy?.();
@@ -927,19 +913,15 @@ export class WebGPURenderer {
             this.gameParticleBufferSize = requiredSize;
         }
 
-        // Convert particles to WebGPU format
-        // Format: [x, y, r, g, b, a, radius, life, maxLife]
         const particleData = new Float32Array(count * 8);
 
         for (let i = 0; i < count; i++) {
             const p = particles[i];
             if (!p) continue;
 
-            // Parse color
             let r = 1.0, g = 1.0, b = 1.0, a = 1.0;
             if (p.color) {
                 if (p.color.startsWith('rgb')) {
-                    // Handle both rgb(...) and rgba(...) formats
                     const match = p.color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
                     if (match) {
                         r = parseFloat(match[1]) / 255;
@@ -957,7 +939,7 @@ export class WebGPURenderer {
 
             const maxLife = p.maxLife || p.life || 30;
             const lifeRatio = p.life / maxLife;
-            a *= Math.max(0, Math.min(1, lifeRatio)); // Apply life-based alpha
+            a *= Math.max(0, Math.min(1, lifeRatio));
 
             const idx = i * 8;
             particleData[idx + 0] = p.x || 0;
@@ -970,11 +952,8 @@ export class WebGPURenderer {
             particleData[idx + 7] = p.life || 0;
         }
 
-        // Write to buffer
         this.device.queue.writeBuffer(this.gameParticleBuffer, 0, particleData.buffer);
 
-
-        // Update count and create bind group if needed
         this.gameParticleCount = count;
 
         if (this.gameParticleBindGroupLayout && this.gameParticleBuffer) {
@@ -985,10 +964,267 @@ export class WebGPURenderer {
                     { binding: 1, resource: { buffer: this.gameParticleBuffer } },
                 ],
             });
-
-        } else {
-
         }
     }
-}
 
+    updateFlashlight(player, zombies) {
+        if (!this.flashlightEnabled || !this.isInitialized || this.fallbackMode) return;
+
+        const active = player && player.flashlight && player.flashlight.active;
+        const x = player ? player.x : 0;
+        const y = player ? player.y : 0;
+        const angle = player ? player.angle : 0;
+
+        // Update Flashlight Uniforms
+        const flashlightData = new Float32Array([
+            x, y,
+            angle,
+            active ? 1.0 : 0.0,
+        ]);
+        this.device.queue.writeBuffer(this.flashlightUniformBuffer, 0, flashlightData);
+
+        // Update Zombies
+        if (zombies) {
+            // Filter zombies within range of the player/flashlight to optimize
+            // and ensure closest zombies get lighting priority
+            const range = 800; // slightly larger than flashlight range + viewport
+            const rangeSq = range * range;
+            
+            let visibleZombies = [];
+            for (let i = 0; i < zombies.length; i++) {
+                const z = zombies[i];
+                const dx = z.x - x;
+                const dy = z.y - y;
+                const distSq = dx*dx + dy*dy;
+                
+                if (distSq < rangeSq) {
+                    visibleZombies.push({ z, distSq });
+                }
+            }
+            
+            // Sort by distance if we have too many
+            if (visibleZombies.length > this.maxZombies) {
+                visibleZombies.sort((a, b) => a.distSq - b.distSq);
+                visibleZombies = visibleZombies.slice(0, this.maxZombies);
+            }
+
+            const count = visibleZombies.length;
+            
+            // Prepare buffer: count (4 floats padded) + data
+            // data is vec4 aligned: pos(2), radius(1), padding(1)
+            const bufferData = new Float32Array(4 + count * 4);
+            bufferData[0] = count;
+            
+            for (let i = 0; i < count; i++) {
+                const z = visibleZombies[i].z;
+                const offset = 4 + i * 4;
+                bufferData[offset] = z.x;
+                bufferData[offset + 1] = z.y;
+                bufferData[offset + 2] = z.radius || 15;
+                bufferData[offset + 3] = 0; // Padding
+            }
+            
+            this.device.queue.writeBuffer(this.zombieBuffer, 0, bufferData);
+        } else {
+             const bufferData = new Float32Array(4);
+             bufferData[0] = 0;
+             this.device.queue.writeBuffer(this.zombieBuffer, 0, bufferData);
+        }
+    }
+
+    async _initFlashlight() {
+        if (this.fallbackMode) return;
+
+        // Flashlight Uniform Buffer
+        this.flashlightUniformBuffer = this.device.createBuffer({
+            size: 32, 
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        // Zombie Storage Buffer
+        const zombieBufferSize = 16 + (this.maxZombies * 16);
+        this.zombieBuffer = this.device.createBuffer({
+            size: zombieBufferSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+
+        const shaderCode = `
+        struct Uniforms {
+            time: f32,
+            resolutionX: f32,
+            resolutionY: f32,
+            bloomIntensity: f32,
+            distortionEnabled: f32,
+            lightingQuality: f32,
+            cameraX: f32,
+            cameraY: f32,
+        };
+
+        struct Flashlight {
+            pos: vec2<f32>,
+            angle: f32,
+            isActive: f32,
+        };
+
+        struct Zombie {
+            pos: vec2<f32>,
+            radius: f32,
+            padding: f32,
+        };
+
+        struct ZombieBuffer {
+            count: f32,
+            padding: vec3<f32>,
+            data: array<Zombie>,
+        };
+
+        @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+        @group(0) @binding(1) var<uniform> flashlight: Flashlight;
+        @group(0) @binding(2) var<storage, read> zombies: ZombieBuffer;
+
+        struct VSOut {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+            @location(1) worldPos: vec2<f32>,
+        };
+
+        @vertex
+        fn vs_main(@builtin(vertex_index) VertexIndex: u32) -> VSOut {
+            var pos = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(-1.0, 1.0),
+                vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0)
+            );
+            var xy = pos[VertexIndex];
+            var out: VSOut;
+            out.position = vec4<f32>(xy, 0.0, 1.0);
+        // Flip Y for UV to match Canvas 2D coordinate system (0,0 at top-left)
+        out.uv = vec2<f32>(xy.x * 0.5 + 0.5, 0.5 - xy.y * 0.5);
+        // Calculate world position
+            let camera = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
+            let resolution = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
+            out.worldPos = camera + (out.uv * resolution);
+            return out;
+        }
+
+        @fragment
+        fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+            if (flashlight.isActive < 0.5) {
+                discard;
+            }
+
+            let camera = vec2<f32>(uniforms.cameraX, uniforms.cameraY);
+            let resolution = vec2<f32>(uniforms.resolutionX, uniforms.resolutionY);
+            let worldPos = camera + (in.uv * resolution);
+            
+            // Light Calculations
+            let toLight = worldPos - flashlight.pos;
+            let dist = length(toLight);
+            let dir = normalize(toLight);
+            
+            // Flashlight Cone
+            let lightDir = vec2<f32>(cos(flashlight.angle), sin(flashlight.angle));
+            let angleCos = dot(dir, lightDir);
+            
+            // Cone Settings
+            let coneWidth = 0.8; 
+            let smoothWidth = 0.1;
+            
+            let cone = smoothstep(coneWidth, coneWidth + smoothWidth, angleCos);
+            
+            // Attenuation
+            let range = 450.0;
+            let falloff = 1.0 - smoothstep(0.0, range, dist);
+            
+            var intensity = cone * falloff;
+            
+            // Volumetric Noise (Simulated)
+            let noise = sin(worldPos.x * 0.02 + uniforms.time * 2.0) * sin(worldPos.y * 0.02 - uniforms.time) * 0.1 + 0.9;
+            intensity *= noise;
+
+            if (intensity <= 0.01) {
+                discard;
+            }
+
+            var color = vec3<f32>(1.0, 0.98, 0.9); // Warm-ish white
+            var alpha = intensity * 0.4; // Base light visibility
+            
+            // Zombie Specular Highlights
+            var specular = 0.0;
+            let numZombies = min(u32(zombies.count), 100u);
+            
+            for (var i = 0u; i < numZombies; i++) {
+                let z = zombies.data[i];
+                let toZombie = worldPos - z.pos;
+                let zDist = length(toZombie);
+                
+                if (zDist < z.radius) { 
+                    // Pixel is inside zombie radius
+                    
+                    // Fake Normal
+                    let zNormXY = toZombie / z.radius;
+                    let zHeight = sqrt(max(0.0, 1.0 - dot(zNormXY, zNormXY)));
+                    let normal = vec3<f32>(zNormXY.x, zNormXY.y, zHeight);
+                    
+                    // Light Direction 3D
+                    let lightDir3D = normalize(vec3<f32>(toLight.x, toLight.y, -30.0));
+                    let viewDir = vec3<f32>(0.0, 0.0, 1.0);
+                    
+                    let halfDir = normalize(lightDir3D + viewDir);
+                    let specAngle = max(dot(normal, halfDir), 0.0);
+                    let spec = pow(specAngle, 20.0);
+                    
+                    specular += spec * intensity * 3.0;
+                }
+            }
+            
+            // Add blue-ish tint to specular for "wet/cold" look
+            let specColor = vec3<f32>(0.8, 0.9, 1.0) * specular;
+
+            return vec4<f32>(color * alpha + specColor, alpha + specular);
+        }
+        `;
+
+        const module = this.device.createShaderModule({ code: shaderCode });
+
+        // Bind Group Layout
+        const bindGroupLayout = this.device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+                { binding: 1, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+                { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+            ],
+        });
+
+        // Pipeline Layout
+        const pipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+        });
+
+        // Pipeline
+        this.flashlightPipeline = this.device.createRenderPipeline({
+            layout: pipelineLayout,
+            vertex: { module, entryPoint: 'vs_main' },
+            fragment: {
+                module, entryPoint: 'fs_main',
+                targets: [{
+                    format: this.format,
+                    blend: {
+                        color: { srcFactor: 'one', dstFactor: 'one' }, // Additive blend (premultiplied in shader)
+                        alpha: { srcFactor: 'one', dstFactor: 'one' },
+                    }
+                }],
+            },
+            primitive: { topology: 'triangle-list' },
+        });
+
+        // Bind Group
+        this.flashlightBindGroup = this.device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.uniformBuffer } },
+                { binding: 1, resource: { buffer: this.flashlightUniformBuffer } },
+                { binding: 2, resource: { buffer: this.zombieBuffer } },
+            ],
+        });
+    }
+}

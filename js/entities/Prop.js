@@ -130,6 +130,19 @@ export class Prop {
                     });
                 }
                 break;
+            case 'trashCan':
+                this.width = 30 + Math.random() * 10; // 30-40px
+                this.height = 35 + Math.random() * 10; // 35-45px (slightly taller for cylindrical look)
+                this.color = '#2d5016'; // Dark green metal base
+                this.outlineColor = '#1a300a'; // Darker green outline
+                
+                // Initialize static visual details (lid position, dents) to prevent jittering
+                this.initTrashCanDetails();
+                
+                // Initialize fire particles for trash can
+                this.fireParticles = [];
+                this.initTrashCanFireParticles();
+                break;
             default:
                 this.width = 20;
                 this.height = 20;
@@ -244,10 +257,72 @@ export class Prop {
     }
 
     /**
-     * Update smoke and fire particles (only for burntCar)
+     * Initialize static details for trash can to prevent jittering
+     */
+    initTrashCanDetails() {
+        // Dents/scratches
+        this.dents = [];
+        const numDents = 2 + Math.floor(Math.random() * 2); // 2-3 dents
+        for (let i = 0; i < numDents; i++) {
+            this.dents.push({
+                x: (Math.random() - 0.5) * this.width * 0.6,
+                y: (Math.random() - 0.5) * this.height * 0.6,
+                radius: 2 + Math.random() * 3
+            });
+        }
+        
+        // Lid opening angle (slightly open for fire)
+        this.lidOpenAngle = 0.3 + Math.random() * 0.2; // 0.3-0.5 radians
+    }
+
+    /**
+     * Initialize fire particles for trash can
+     * Fire particles spawn from top center of trash can
+     */
+    initTrashCanFireParticles() {
+        const fireColors = ['#ff6600', '#ff8800', '#ffaa00', '#ffff00', '#ff4400', '#ff0000'];
+        const particleCount = 3 + Math.floor(Math.random() * 3); // 3-5 particles
+        
+        for (let i = 0; i < particleCount; i++) {
+            // Spawn from top center of trash can
+            const spawnX = (Math.random() - 0.5) * this.width * 0.3; // Small spread around center
+            const spawnY = -this.height * 0.4; // Top of trash can
+            
+            this.fireParticles.push({
+                x: spawnX,
+                y: spawnY,
+                vx: (Math.random() - 0.5) * 0.4, // Horizontal drift
+                vy: -0.8 - Math.random() * 0.4, // Rise speed (-0.8 to -1.2)
+                color: fireColors[Math.floor(Math.random() * fireColors.length)],
+                baseOpacity: 0.7 + Math.random() * 0.3, // 0.7-1.0
+                size: 4 + Math.random() * 4, // 4-8px
+                baseSize: 4 + Math.random() * 4, // Store base size for flickering
+                lifetime: 1000 + Math.random() * 1000, // 1-2 seconds
+                age: Math.random() * 500, // Random starting age
+                flickerPhase: Math.random() * Math.PI * 2, // Random phase for flickering
+                currentOpacity: 0.7 + Math.random() * 0.3,
+                currentSize: 4 + Math.random() * 4
+            });
+        }
+    }
+
+    /**
+     * Update smoke and fire particles (for burntCar and trashCan)
      */
     update() {
-        if (this.type !== 'burntCar' || !this.smokeParticles) return;
+        if (this.type === 'burntCar' && this.smokeParticles) {
+            this.updateBurntCarParticles();
+        } else if (this.type === 'trashCan' && this.fireParticles) {
+            this.updateTrashCanFireParticles();
+        } else {
+            return;
+        }
+    }
+
+    /**
+     * Update burnt car smoke and fire particles
+     */
+    updateBurntCarParticles() {
         
         const now = Date.now();
         if (!this.lastUpdateTime) {
@@ -336,6 +411,58 @@ export class Prop {
     }
 
     /**
+     * Update trash can fire particles
+     */
+    updateTrashCanFireParticles() {
+        const now = Date.now();
+        if (!this.lastUpdateTime) {
+            this.lastUpdateTime = now;
+            return;
+        }
+        
+        const deltaTime = Math.min(now - this.lastUpdateTime, 100); // Cap deltaTime to prevent large jumps
+        this.lastUpdateTime = now;
+        
+        // Update fire particles
+        if (this.fireParticles && this.fireParticles.length > 0) {
+            for (let i = 0; i < this.fireParticles.length; i++) {
+                const particle = this.fireParticles[i];
+                
+                // Update age
+                particle.age += deltaTime;
+                
+                // Respawn if expired (at top center of trash can)
+                if (particle.age >= particle.lifetime) {
+                    particle.x = (Math.random() - 0.5) * this.width * 0.3;
+                    particle.y = -this.height * 0.4;
+                    particle.age = 0;
+                    particle.baseOpacity = 0.7 + Math.random() * 0.3;
+                    particle.flickerPhase = Math.random() * Math.PI * 2;
+                } else {
+                    // Update position (relative to trash can)
+                    particle.x += particle.vx * (deltaTime / 16); // Normalize to 60fps
+                    particle.y += particle.vy * (deltaTime / 16);
+                    
+                    // Flickering effect using sine wave
+                    const flickerSpeed = 0.02; // Speed of flickering
+                    particle.flickerPhase += flickerSpeed * (deltaTime / 16);
+                    const flickerAmount = 0.3; // Amount of flicker variation
+                    const flicker = Math.sin(particle.flickerPhase) * flickerAmount;
+                    
+                    // Fade out over lifetime with flickering
+                    const lifeRatio = particle.age / particle.lifetime;
+                    const baseFade = 1 - lifeRatio;
+                    particle.currentOpacity = Math.max(0, particle.baseOpacity * baseFade * (1 + flicker));
+                    
+                    // Size variation for flickering
+                    const sizeFlicker = Math.sin(particle.flickerPhase * 1.3) * 0.2;
+                    particle.currentSize = particle.baseSize * (1 + sizeFlicker);
+                }
+            }
+        }
+    }
+
+    /**
      * Render the prop on the canvas
      */
     draw() {
@@ -364,6 +491,9 @@ export class Prop {
                 break;
             case 'zombieLegs':
                 this.drawZombieLegs();
+                break;
+            case 'trashCan':
+                this.drawTrashCan();
                 break;
         }
         
@@ -1193,6 +1323,256 @@ export class Prop {
             ctx.fill();
             
             ctx.restore(); // End Whole Leg
+        }
+    }
+
+    /**
+     * Draw trash can prop with fire effect (2.5D/3D perspective)
+     */
+    drawTrashCan() {
+        const halfWidth = this.width / 2;
+        const halfHeight = this.height / 2;
+        const radius = (halfWidth + halfHeight) / 2;
+        
+        // 3D Perspective: Top ellipse (wider than tall) and bottom ellipse (narrower)
+        // Top of cylinder (closer to viewer)
+        const topRadiusX = radius;
+        const topRadiusY = radius * 0.6; // Flattened ellipse for perspective
+        const topY = -radius * 0.7; // Position further above center (lengthened)
+        
+        // Bottom of cylinder (further from viewer)
+        const bottomRadiusX = radius * 0.85; // Slightly smaller (perspective)
+        const bottomRadiusY = radius * 0.5; // More flattened
+        const bottomY = radius * 1.0; // Position further below center (lengthened)
+        
+        // Shadow underneath (elliptical for 3D effect)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, bottomY + radius * 0.2, bottomRadiusX * 1.1, bottomRadiusY * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw fire particles BEFORE lid (so fire appears through gap)
+        if (this.fireParticles && this.fireParticles.length > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen'; // Additive blending for fire glow
+            
+            for (const particle of this.fireParticles) {
+                // Ensure particle has valid properties before rendering
+                if (!particle || particle.currentOpacity <= 0 || !particle.currentSize) continue;
+                
+                // Adjust fire position for 3D perspective (fire comes from top opening)
+                const fireX = particle.x;
+                const fireY = topY + particle.y; // Position relative to top of cylinder
+                
+                // Fire gradient (bright center, transparent edges)
+                const fireGradient = ctx.createRadialGradient(
+                    fireX, fireY, 0,
+                    fireX, fireY, particle.currentSize
+                );
+                
+                // Convert hex color to rgba for gradient
+                const colorMap = {
+                    '#ff6600': 'rgba(255, 102, 0,',
+                    '#ff8800': 'rgba(255, 136, 0,',
+                    '#ffaa00': 'rgba(255, 170, 0,',
+                    '#ffaa00': 'rgba(255, 170, 0,',
+                    '#ffff00': 'rgba(255, 255, 0,',
+                    '#ff4400': 'rgba(255, 68, 0,',
+                    '#ff0000': 'rgba(255, 0, 0,'
+                };
+                const baseColor = colorMap[particle.color] || 'rgba(255, 102, 0,';
+                
+                // Fix alpha values to be within 0-1 range
+                const alpha1 = Math.max(0, Math.min(1, particle.currentOpacity));
+                const alpha2 = Math.max(0, Math.min(1, particle.currentOpacity * 0.8));
+                const alpha3 = Math.max(0, Math.min(1, particle.currentOpacity * 0.4));
+                
+                fireGradient.addColorStop(0, `${baseColor}${alpha1})`);
+                fireGradient.addColorStop(0.3, `${baseColor}${alpha2})`);
+                fireGradient.addColorStop(0.6, `${baseColor}${alpha3})`);
+                fireGradient.addColorStop(1, `${baseColor}0)`);
+                
+                ctx.fillStyle = fireGradient;
+                ctx.beginPath();
+                ctx.arc(fireX, fireY, particle.currentSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // CYLINDRICAL BODY - 3D Perspective Drawing
+        
+        // Draw side walls of cylinder (connecting top and bottom ellipses)
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        // Left curve (from top left to bottom left)
+        ctx.moveTo(-topRadiusX * 0.9, topY);
+        ctx.lineTo(-bottomRadiusX * 0.9, bottomY);
+        // Bottom curve
+        ctx.ellipse(0, bottomY, bottomRadiusX, bottomRadiusY, 0, Math.PI, 0, true);
+        // Right curve (from bottom right to top right)
+        ctx.lineTo(topRadiusX * 0.9, topY);
+        // Top curve
+        ctx.ellipse(0, topY, topRadiusX, topRadiusY, 0, 0, Math.PI, true);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Side wall shading (darker on right, lighter on left)
+        const sideGradient = ctx.createLinearGradient(
+            -topRadiusX, 0,
+            topRadiusX, 0
+        );
+        sideGradient.addColorStop(0, 'rgba(74, 106, 47, 0.3)'); // Left highlight
+        sideGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0)'); // Center transparent
+        sideGradient.addColorStop(1, 'rgba(26, 48, 10, 0.6)'); // Right shadow
+        
+        ctx.fillStyle = sideGradient;
+        ctx.fill(); // Fill the same path with gradient overlay
+        
+        // Top ellipse (top of cylinder - visible opening)
+        const topGradient = ctx.createRadialGradient(
+            -topRadiusX * 0.3, topY - topRadiusY * 0.3, 0,
+            0, topY, topRadiusX
+        );
+        topGradient.addColorStop(0, '#4a6a2f'); // Highlight
+        topGradient.addColorStop(0.5, this.color); // Base
+        topGradient.addColorStop(1, '#1a300a'); // Shadow
+        
+        ctx.fillStyle = topGradient;
+        ctx.beginPath();
+        ctx.ellipse(0, topY, topRadiusX, topRadiusY, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Top rim (thick edge)
+        ctx.strokeStyle = '#4a6a2f';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(0, topY, topRadiusX * 0.95, topRadiusY * 0.95, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Top rim inner edge
+        ctx.strokeStyle = '#1a300a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, topY, topRadiusX * 0.88, topRadiusY * 0.88, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Bottom ellipse (base of cylinder) - only draw visible front portion
+        ctx.fillStyle = '#1a300a';
+        ctx.beginPath();
+        // Draw only the front half (visible from this angle) - from left to right
+        ctx.ellipse(0, bottomY, bottomRadiusX, bottomRadiusY, 0, -Math.PI * 0.5, Math.PI * 0.5);
+        ctx.lineTo(0, bottomY + bottomRadiusY * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Bottom rim - draw as wrapping around from behind (left) to front (right)
+        ctx.strokeStyle = '#4a6a2f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Draw rim starting from behind-left, curving around the bottom front
+        // Start from behind (left side at ~210 degrees), curve to front (right side at ~330 degrees)
+        ctx.ellipse(0, bottomY, bottomRadiusX * 0.95, bottomRadiusY * 0.95, 0, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+        
+        // Bottom rim inner edge (visible portion only - same arc)
+        ctx.strokeStyle = '#1a300a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, bottomY, bottomRadiusX * 0.88, bottomRadiusY * 0.88, 0, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+        
+        // Horizontal metal bands (elliptical rings with perspective)
+        ctx.strokeStyle = '#3a5a1f';
+        ctx.lineWidth = 1.5;
+        // Top band (near top)
+        const band1Y = topY + (bottomY - topY) * 0.3;
+        const band1RX = topRadiusX * 0.9 - (topRadiusX - bottomRadiusX) * 0.3;
+        const band1RY = topRadiusY * 0.9 - (topRadiusY - bottomRadiusY) * 0.3;
+        ctx.beginPath();
+        ctx.ellipse(0, band1Y, band1RX, band1RY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Middle band
+        const band2Y = topY + (bottomY - topY) * 0.5;
+        const band2RX = topRadiusX * 0.92 - (topRadiusX - bottomRadiusX) * 0.5;
+        const band2RY = topRadiusY * 0.92 - (topRadiusY - bottomRadiusY) * 0.5;
+        ctx.beginPath();
+        ctx.ellipse(0, band2Y, band2RX, band2RY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Bottom band (near bottom)
+        const band3Y = topY + (bottomY - topY) * 0.7;
+        const band3RX = topRadiusX * 0.9 - (topRadiusX - bottomRadiusX) * 0.7;
+        const band3RY = topRadiusY * 0.9 - (topRadiusY - bottomRadiusY) * 0.7;
+        ctx.beginPath();
+        ctx.ellipse(0, band3Y, band3RX, band3RY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Vertical highlight line (left side - brightest)
+        ctx.strokeStyle = 'rgba(74, 106, 47, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-topRadiusX * 0.85, topY);
+        ctx.lineTo(-bottomRadiusX * 0.85, bottomY);
+        ctx.stroke();
+        
+        // Vertical shadow line (right side - darkest)
+        ctx.strokeStyle = 'rgba(26, 48, 10, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(topRadiusX * 0.85, topY);
+        ctx.lineTo(bottomRadiusX * 0.85, bottomY);
+        ctx.stroke();
+        
+        // Outline (top and bottom ellipses)
+        ctx.strokeStyle = this.outlineColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, topY, topRadiusX, topRadiusY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Bottom outline - only visible front portion
+        ctx.beginPath();
+        ctx.ellipse(0, bottomY, bottomRadiusX, bottomRadiusY, 0, -Math.PI * 0.5, Math.PI * 0.5);
+        ctx.stroke();
+        
+        // Lid (slightly open arc at top - 3D perspective)
+        ctx.fillStyle = '#1a300a';
+        ctx.strokeStyle = '#2d5016';
+        ctx.lineWidth = 1.5;
+        
+        // Lid body (arc shape with perspective)
+        ctx.beginPath();
+        const lidStartAngle = Math.PI - this.lidOpenAngle;
+        const lidEndAngle = Math.PI + this.lidOpenAngle;
+        ctx.ellipse(0, topY, topRadiusX * 0.9, topRadiusY * 0.9, 0, lidStartAngle, lidEndAngle);
+        ctx.lineTo(0, topY - topRadiusY * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Lid handle/rim detail
+        ctx.strokeStyle = '#4a6a2f';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, topY, topRadiusX * 0.9, topRadiusY * 0.9, 0, lidStartAngle, lidEndAngle);
+        ctx.stroke();
+        
+        // Lid highlight (left side of lid)
+        ctx.strokeStyle = 'rgba(74, 106, 47, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-topRadiusX * 0.7, topY);
+        ctx.lineTo(-topRadiusX * 0.5, topY - topRadiusY * 0.1);
+        ctx.stroke();
+        
+        // Dents/scratches
+        if (this.dents) {
+            ctx.fillStyle = 'rgba(26, 48, 10, 0.6)';
+            for (const dent of this.dents) {
+                ctx.beginPath();
+                ctx.arc(dent.x, dent.y, dent.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 }

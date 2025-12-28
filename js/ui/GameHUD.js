@@ -25,7 +25,7 @@ import { initGroundPattern } from '../systems/GraphicsSystem.js';
 export class GameHUD {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
+        this.ctx = canvas.getContext('2d', { willReadFrequently: true });
         this.bossHealthBar = new BossHealthBar(canvas);
         this.rankDisplay = new RankDisplay(canvas);
         this.leaderboardDisplay = new LeaderboardDisplay(canvas);
@@ -1084,6 +1084,7 @@ export class GameHUD {
             const offset = (Math.random() - 0.5) * 20;
 
             // Capture the slice
+            // Use willReadFrequently to optimize readback
             const slice = this.ctx.getImageData(0, glitchY, this.canvas.width, glitchHeight);
 
             // Clear the area slightly to add artifacting feel

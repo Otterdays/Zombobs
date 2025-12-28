@@ -5,6 +5,8 @@ import { gameState } from './gameState.js';
 export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d', { willReadFrequently: true });
 export const gpuCanvas = document.getElementById('gpuCanvas');
+export const uiCanvas = document.getElementById('uiCanvas');
+export const uiCtx = uiCanvas ? uiCanvas.getContext('2d', { alpha: true }) : null;
 
 /**
  * Apply text rendering quality to a canvas context
@@ -29,6 +31,7 @@ export function applyTextRenderingQuality(context, quality) {
 export function applyTextRenderingQualityToAll() {
     const quality = settingsManager.getSetting('video', 'textRenderingQuality') || 'high';
     applyTextRenderingQuality(ctx, quality);
+    if (uiCtx) applyTextRenderingQuality(uiCtx, quality);
     
     // Apply to other contexts if they exist
     if (window.gameHUD) {
@@ -81,6 +84,13 @@ export function resizeCanvas(player) {
         // Visual size still fills the window
         gpuCanvas.style.width = displayWidth + 'px';
         gpuCanvas.style.height = displayHeight + 'px';
+    }
+
+    if (uiCanvas) {
+        uiCanvas.width = canvasWidth;
+        uiCanvas.height = canvasHeight;
+        uiCanvas.style.width = displayWidth + 'px';
+        uiCanvas.style.height = displayHeight + 'px';
     }
 
     // Visual size still fills the window
