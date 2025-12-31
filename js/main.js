@@ -1613,6 +1613,12 @@ window.addEventListener('mousemove', (e) => {
     mouse.x = pos.x;
     mouse.y = pos.y;
 
+    // Always update GameHUD mouse position so cursor works even when Settings Panel blocks normal updateMenuHover
+    if (gameHUD) {
+        gameHUD.mouseX = mouse.x;
+        gameHUD.mouseY = mouse.y;
+    }
+
     // Handle news ticker dragging
     if (gameHUD.newsTickerDragging) {
         gameHUD.updateNewsTickerDrag(mouse.x);

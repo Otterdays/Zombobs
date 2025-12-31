@@ -272,6 +272,7 @@ export class GameHUD {
         // Draw custom cursor when in menus or paused
         if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || 
             gameState.showAILobby || gameState.showAbout || gameState.showGallery || 
+            gameState.showSettingsPanel ||
             this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
             this.drawCursor();
         }
