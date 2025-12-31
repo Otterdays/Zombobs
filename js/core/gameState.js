@@ -93,6 +93,7 @@ export const gameState = {
     gameRunning: true,
     gamePaused: false,
     showMainMenu: true,
+    showCampaignIntro: false,
     showSettingsPanel: false,
     showLobby: false,
     isCoop: false,

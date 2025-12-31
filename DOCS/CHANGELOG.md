@@ -2,6 +2,25 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.3.0] - 2025-12-31
+
+### Added
+- **Campaign Mode Intro** - Cinematic intro sequence for Campaign Mode
+  - **Visuals**: "Fizzle" noise effect transitioning to black, typewriter text storytelling.
+  - **Narrative**: "Day 0... The Signal Was Lost." storyline setup.
+  - **Transition**: Seamless fade-in to gameplay.
+  - Location: `js/ui/CampaignIntroScreen.js`
+
+- **Cursor Fixes** - Improved cursor visibility in menus
+  - **Settings Menu**: Fixed invisible cursor by forcing draw order on top of settings panel.
+  - **Input Tracking**: Mouse coordinates now track correctly even when settings panel overlays the HUD.
+  - Location: `js/main.js`, `js/ui/GameHUD.js`
+
+### Changed
+- **Documentation** - Updated project docs
+  - Added `DOCS/CAMPAIGN_DESIGN.md` with storyline and map thesis.
+  - Updated `SCRATCHPAD.md` with recent tasks and backlog.
+
 ## [v0.8.2.2] - 2025-12-28
 
 ### Fixed

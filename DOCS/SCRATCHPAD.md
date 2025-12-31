@@ -1,58 +1,42 @@
 # SCRATCHPAD
 
 ## Active Tasks
-### Settings System Big Features [2025-12-22] ✅ COMPLETE
-- **Objective**: Add tooltips and color picker to Settings panel.
+### Campaign Mode Intro [2025-12-31] ✅ COMPLETE
+- **Objective**: Implement a cinematic intro sequence for the campaign mode.
 - **Changes**:
-  - ✅ **Tooltips on Hover**: Shows helpful description after 400ms hover delay.
-    - Added `TOOLTIPS` dictionary with 50+ setting descriptions.
-    - Smart positioning (flips left if would overflow right edge).
-    - Word-wrapped text with rounded tooltip box.
-    - Dark background with red accent border.
-  - ✅ **Crosshair Color Picker**: Opens color swatch modal when clicking color preview.
-    - 15 preset colors in a 5x3 grid.
-    - Current color preview with hex code.
-    - Click swatch to select, "DONE" to close.
-    - Clicking outside also closes picker.
+  - ✅ **Intro Screen**: Created `CampaignIntroScreen.js` with "fizzle" noise effect and typewriter text.
+  - ✅ **Transition**: Seamless fade from intro to gameplay.
+  - ✅ **Main Menu**: Hooked up "Campaign" button to trigger intro instead of immediate start.
+  - ✅ **Docs**: Created `CAMPAIGN_DESIGN.md` with storyline and map thesis.
 - **Files Modified**:
-  - `js/ui/SettingsPanel.js`: Added TOOLTIPS, drawTooltip(), drawColorPicker(), drawColorSwatch(), updateHoveredControl()
+  - `js/ui/CampaignIntroScreen.js`: New class for intro sequence.
+  - `js/ui/GameHUD.js`: Added intro screen to render loop.
+  - `js/main.js`: Updated button logic and render loop.
 - **Status**: ✅ COMPLETE
 
-### Settings System Quick Wins [2025-12-22] ✅ COMPLETE
-- **Objective**: Implement quick-win improvements to Settings system.
+### Cursor Visibility Fix [2025-12-31] ✅ COMPLETE
+- **Objective**: Fix invisible cursor in Settings menu.
 - **Changes**:
-  - ✅ **Reset to Defaults Button**: Added orange "RESET ALL" button in footer alongside "BACK".
-  - ✅ **Mute All Toggle**: Added at top of Audio settings tab for quick access.
-  - ✅ **Persist Control Mode**: Keyboard/Gamepad preference now saved to `ui.controlMode` setting.
-  - ✅ **Settings Version Tracking**: Added `_version` field and `SETTINGS_VERSION` constant.
-  - ✅ **Error Logging**: Replaced silent `catch` blocks with `console.warn()` logging.
+  - ✅ **Draw Order**: Explicitly called `drawCursor()` after `settingsPanel.draw()` in main loop.
+  - ✅ **Mouse Tracking**: Updated mousemove handler to track coordinates even when settings panel is open.
 - **Status**: ✅ COMPLETE
 
-### Performance Improvements Phase 2 [2025-12-22] ✅ COMPLETE
-- **Objective**: Optimize rendering and memory to support 60fps on WebGPU/Canvas.
-- **Changes**:
-  - ✅ **In-Place Array Compaction**: Replaced all `.filter()` calls in hot paths with `compactArray()` (swap-and-pop).
-  - ✅ **Double-Buffered Blood Simulation**: Implemented grid swapping for blood physics.
-  - ✅ **Batched Particle Rendering**: Grouped particles by color/size for Canvas 2D fallback.
-  - ❌ **Entity Sprite Caching**: REVERTED - Caused rendering issues (clipping, method binding).
-  - ✅ **Date.now() Caching**: Cached timestamp per frame in `main.js`.
+### Map Implementation (Next)
+- **Objective**: Build the first campaign map "The Railyard" based on `CAMPAIGN_DESIGN.md`.
+- **Tasks**:
+  - [ ] Create `MapLoader` system for static geometry.
+  - [ ] Define "The Crash Site" zone geometry (JSON).
+  - [ ] Implement collision for static map walls.
 
 ## Compacted History
-- WebGPU Screen Shake Sync [2025-12-23] - Fixed static background particles during screen shake
-  - Synced shake offset between Canvas 2D and WebGPU renderers
-  - Particles now move with the camera during explosions
-- HUD Refinement [2025-12-23] - Fixed Multiplier UI overlap
-  - Moved multiplier indicator below compass to prevent overlap
-  - Standardized positioning for single-player and co-op
-- WebGPU White Particle Boxes Fix [2025-12-23] - Fixed color parsing bug causing white rectangular artifacts
-  - Changed `startsWith('rgba')` to `startsWith('rgb')` in WebGPU particle sync
-  - Fixed Shell.js color parsing to use regex instead of hardcoded substrings
-- Main Menu Polish [2025-12-22] - Added glowing zombie eyes, explosion effects, ground texture buttons
-- Version Update [2025-12-22] - Bumped to V0.8.2.0 ALPHA
+- **Campaign Intro [2025-12-31]**: Added cinematic intro with noise effects and story text.
+- **Cursor Fix [2025-12-31]**: Fixed invisible cursor in settings menu.
+- **Settings System Big Features [2025-12-22]**: Added tooltips and color picker to Settings panel.
+- **Settings System Quick Wins [2025-12-22]**: Reset to Defaults, Mute All, Persist Control Mode.
+- **Performance Improvements Phase 2 [2025-12-22]**: In-Place Array Compaction, Double-Buffered Blood.
+- **WebGPU Screen Shake Sync [2025-12-23]**: Synced shake offset between Canvas 2D and WebGPU renderers.
 
 ## Backlog
-- [ ] Add sound effects for UI interactions
 - [ ] Implement "Boss Rush" mode
 - [ ] Add more weapon types (Flamethrower, Laser)
-- [ ] Add tooltips to Settings controls
-- [ ] Add crosshair color picker to Settings
+- [ ] Add sound effects for UI interactions

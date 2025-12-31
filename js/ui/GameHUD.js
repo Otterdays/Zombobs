@@ -20,6 +20,7 @@ import { PauseMenuScreen } from './PauseMenuScreen.js';
 import { AboutScreen } from './AboutScreen.js';
 import { GalleryScreen } from './GalleryScreen.js';
 import { LevelUpScreen } from './LevelUpScreen.js';
+import { CampaignIntroScreen } from './CampaignIntroScreen.js';
 import { initGroundPattern } from '../systems/GraphicsSystem.js';
 
 export class GameHUD {
@@ -39,6 +40,7 @@ export class GameHUD {
         this.aboutScreen = new AboutScreen(canvas, this.ctx, this);
         this.galleryScreen = new GalleryScreen(canvas, this.ctx, this);
         this.levelUpScreen = new LevelUpScreen(canvas, this.ctx, this);
+        this.campaignIntroScreen = new CampaignIntroScreen(canvas, this.ctx);
         this.basePadding = 15;
         this.baseItemSpacing = 12;
         this.baseFontSize = 16;
@@ -225,6 +227,13 @@ export class GameHUD {
     }
 
     draw() {
+        if (gameState.showCampaignIntro) {
+            // Update and draw the intro screen
+            this.campaignIntroScreen.update();
+            this.campaignIntroScreen.draw();
+            return;
+        }
+
         if (gameState.showGallery) {
             this.galleryScreen.draw();
         } else if (gameState.showAbout) {
@@ -995,6 +1004,7 @@ export class GameHUD {
     hideGameOver() { this.gameOver = false; this.finalScore = ''; }
 
     drawCreepyBackground() {
+        // Use willReadFrequently to optimize readback for glitch effects
         const time = Date.now();
         const mouseX = this.mouseX || this.canvas.width / 2;
         const mouseY = this.mouseY || this.canvas.height / 2;
@@ -1086,6 +1096,7 @@ export class GameHUD {
 
             // Capture the slice
             // Use willReadFrequently to optimize readback
+            // Note: Context was initialized with willReadFrequently: true in constructor
             const slice = this.ctx.getImageData(0, glitchY, this.canvas.width, glitchHeight);
 
             // Clear the area slightly to add artifacting feel

@@ -13,7 +13,7 @@ import { compactArray, compactArrayWithUpdate } from './utils/arrayUtils.js';
 import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
-import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic } from './systems/AudioSystem.js';
+import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, isAudioInitialized } from './systems/AudioSystem.js';
 import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
 import { isInViewport, getViewportBounds, shouldUpdateEntity, isVisibleOnScreen } from './utils/gameUtils.js';
@@ -719,6 +719,24 @@ function drawGame() {
     if (gameState.showSettingsPanel) {
         uiCanvas.style.cursor = 'none';
         settingsPanel.draw(mouse);
+        // Draw cursor on top of settings panel
+        gameHUD.drawCursor();
+        return;
+    }
+
+    if (gameState.showCampaignIntro) {
+        uiCanvas.style.cursor = 'none';
+        
+        // During 'fizzle' phase, we want to see the main menu behind the effect
+        // So we temporarily force showMainMenu to true for GameHUD to render it
+        if (gameHUD.campaignIntroScreen && gameHUD.campaignIntroScreen.phase === 'fizzle') {
+            // Draw Main Menu background first
+            gameHUD.mainMenu = true;
+            gameHUD.mainMenuScreen.draw(); // Manually draw menu content
+            gameHUD.mainMenu = false; // Reset
+        }
+        
+        gameHUD.draw(); // This will draw the intro screen overlay on top
         return;
     }
 
@@ -1695,7 +1713,15 @@ window.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
-            startGame(); // TODO: Implement campaign mode
+            
+            // Start campaign intro
+            gameState.showCampaignIntro = true;
+            // Stop menu music
+            if (isAudioInitialized()) {
+                stopMenuMusic();
+            }
+            // Pass startGame as callback to run when text finishes
+            gameHUD.campaignIntroScreen.start(() => startGame());
         } else if (clickedButton === 'local_coop') {
             gameState.showMainMenu = false;
             gameState.showCoopLobby = true;
