@@ -6,7 +6,7 @@ export const canvas = document.getElementById('gameCanvas');
 export const ctx = canvas.getContext('2d', { willReadFrequently: true });
 export const gpuCanvas = document.getElementById('gpuCanvas');
 export const uiCanvas = document.getElementById('uiCanvas');
-export const uiCtx = uiCanvas ? uiCanvas.getContext('2d', { alpha: true }) : null;
+export const uiCtx = uiCanvas ? uiCanvas.getContext('2d', { alpha: true, willReadFrequently: true }) : null;
 
 /**
  * Apply text rendering quality to a canvas context
@@ -15,7 +15,7 @@ export const uiCtx = uiCanvas ? uiCanvas.getContext('2d', { alpha: true }) : nul
  */
 export function applyTextRenderingQuality(context, quality) {
     if (!context) return;
-    
+
     if (quality === 'low') {
         context.imageSmoothingEnabled = false;
     } else {
@@ -32,7 +32,7 @@ export function applyTextRenderingQualityToAll() {
     const quality = settingsManager.getSetting('video', 'textRenderingQuality') || 'high';
     applyTextRenderingQuality(ctx, quality);
     if (uiCtx) applyTextRenderingQuality(uiCtx, quality);
-    
+
     // Apply to other contexts if they exist
     if (window.gameHUD) {
         if (window.gameHUD.ctx) {
@@ -68,16 +68,16 @@ export function resizeCanvas(player) {
 
     // Get resolution scale from settings (default 1.0 = 100%)
     const resolutionScale = settingsManager.getSetting('video', 'resolutionScale') ?? 1.0;
-    
+
     // Internal canvas resolution (scaled down for performance, multiplied by resolution scale)
     const effectiveScale = RENDER_SCALE * resolutionScale;
     const canvasWidth = Math.floor(displayWidth * effectiveScale);
     const canvasHeight = Math.floor(displayHeight * effectiveScale);
-    
+
     // Resize both canvases synchronously
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
-    
+
     if (gpuCanvas) {
         gpuCanvas.width = canvasWidth;
         gpuCanvas.height = canvasHeight;
@@ -96,7 +96,7 @@ export function resizeCanvas(player) {
     // Visual size still fills the window
     canvas.style.width = displayWidth + 'px';
     canvas.style.height = displayHeight + 'px';
-    
+
     // Update player position to center if player exists
     if (player) {
         // v0.8.1.2: In single player arcade mode, preserve world position (camera handles centering)
@@ -104,7 +104,7 @@ export function resizeCanvas(player) {
         if (!isSinglePlayerArcade) {
             player.x = canvas.width / 2;
             player.y = canvas.height / 2;
-            
+
             // Keep player within bounds (only for non-arcade modes)
             player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
             player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));

@@ -30,7 +30,7 @@ Since Itch.io hosts static files, we need to zip only the files the browser need
     *   Check **"Mobile Friendly"** (optional, but good practice).
 6.  **Details:** Fill in description, genre (Shooter/Survival), and tags.
     *   **Recommended Description:** Include this disclaimer at the top:
-        > ⚠️ **Early Production**: This game is currently in active development (V0.8.1.7 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+        > ⚠️ **Early Production**: This game is currently in active development (V0.8.3.3 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 7.  **Visibility:** Set to **Draft** (to test) or **Public** (to release).
 8.  Click **Save & View Page**.
 
@@ -43,7 +43,7 @@ Your multiplayer features rely on a backend server (`server.js`). Since Itch.io 
 If you see `Failed to load resource: the server responded with a status of 403` errors for CSS or JS files:
 - **Cause:** Itch.io's CDN can be strict about relative paths with `./` prefix
 - **Solution:** Ensure all resource paths in `zombie-game.html` use clean relative paths (e.g., `js/main.js` instead of `./js/main.js`)
-- This has been fixed in v0.8.1.7, but if you're using an older version, update your paths manually
+- This has been fixed in v0.8.3.3, but if you're using an older version, update your paths manually
 
 ### Console Warnings
 You may see warnings like "Unrecognized feature: 'monetization'" or "'xr'" in the browser console:

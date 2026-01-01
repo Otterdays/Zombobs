@@ -1118,17 +1118,13 @@ export class GameHUD {
             const glitchY = Math.random() * (this.canvas.height - glitchHeight);
             const offset = (Math.random() - 0.5) * 20;
 
-            // Capture the slice
-            // Use willReadFrequently to optimize readback
-            // Note: Context was initialized with willReadFrequently: true in constructor
-            const slice = this.ctx.getImageData(0, glitchY, this.canvas.width, glitchHeight);
-
-            // Clear the area slightly to add artifacting feel
-            this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            this.ctx.fillRect(0, glitchY, this.canvas.width, glitchHeight);
-
-            // Put it back offset
-            this.ctx.putImageData(slice, offset, glitchY);
+            // Capture and re-draw the slice with an offset using drawImage (GPU-accelerated)
+            // This is much faster than getImageData/putImageData and avoids readback penalties
+            this.ctx.drawImage(
+                this.canvas,
+                0, glitchY, this.canvas.width, glitchHeight,
+                offset, glitchY, this.canvas.width, glitchHeight
+            );
 
             // Add chromatic aberration line
             this.ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 255, 0.3)';

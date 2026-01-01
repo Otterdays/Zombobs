@@ -7,6 +7,7 @@ import { createBloodSplatter, createParticles } from '../systems/ParticleSystem.
 import { triggerExplosion } from '../utils/combatUtils.js';
 import { skillSystem } from './SkillSystem.js';
 import { rankSystem } from './RankSystem.js';
+import { playerProfileSystem } from './PlayerProfileSystem.js';
 import { GameEngine } from '../core/GameEngine.js';
 
 /**

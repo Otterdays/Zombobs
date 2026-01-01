@@ -4,22 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <!-- Base URL for itch.io path resolution - must be before any resource links -->
-    <base href="./">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ZOMBOBS - Zombie Apocalypse with Friends - Top-down survival shooter">
-    <meta name="theme-color" content="#ff1744">
-    <!-- Permissions Policy - Only include recognized features to avoid console warnings -->
-    <meta http-equiv="Permissions-Policy"
-        content="geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()">
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap"
         rel="stylesheet">
-    <!-- Use absolute paths from root to avoid Itch.io path issues -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/ui-overlay.css">
+    <!-- Relative paths with ./ for robust Itch.io and CDN path resolution -->
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/ui-overlay.css">
     <script>
         // Suppress console warnings from Itch.io iframe Permissions Policy
         (function () {
@@ -29,8 +23,10 @@
                 // Suppress Permissions Policy warnings from Itch.io iframe
                 if (message.includes('Unrecognized feature') ||
                     message.includes('monetization') ||
+                    message.includes('xr-spatial-tracking') ||
                     message.includes('xr') ||
                     message.includes('allowfullscreen') ||
+                    message.includes('allow') ||
                     message.includes('Permissions-Policy')) {
                     return; // Silently ignore
                 }
@@ -48,8 +44,8 @@
     <canvas id="uiCanvas"></canvas>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- Use absolute paths from root to avoid Itch.io path issues -->
-    <script type="module" src="js/main.js"></script>
+    <!-- Use explicit relative path for module entry point -->
+    <script type="module" src="./js/main.js"></script>
 </body>
 
 </html>

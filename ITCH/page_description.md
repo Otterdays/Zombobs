@@ -12,89 +12,73 @@
 
 #### **🔫 Arsenal of Destruction**
 
-*   **4 Distinct Weapons:** Master the Pistol (reliable), Shotgun (crowd control), Rifle (rapid fire), and Flamethrower (short-range DoT devastation).
+**8 Weapons:** Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG, Laser Gun
 
-*   **Grenades:** Clear the screen with satisfying AOE explosions (3 per game, 2s cooldown).
+*   Grenades (3 per game, 2s cooldown)
+*   Melee combat
+*   Background reloading
+*   Weapon persistence (each weapon maintains its own ammo count)
+*   Weapon switching (1-8 keys or scroll wheel)
 
-*   **Melee Combat:** Close-range swipe attack for when ammo runs dry.
+#### **🧟 Enemy Variety**
 
-*   **Background Reloading:** Weapons auto-reload when holstered—switch tactically during downtime.
+**8 Zombie Types:** Normal, Fast Runners, Exploding Boomers, Armored Tanks, Ghost, Spitter, Flying, Crawler
 
-*   **Weapon Persistence:** Each weapon maintains its own ammo count—no progress lost when switching.
+*   Boss waves (every 5 waves)
+*   Day/Night cycle (zombies 20% faster at night)
+*   Environmental hazards (acid pools)
+*   Crowd control (bullets slow zombies)
+*   Progressive difficulty scaling
+*   8 Normal zombie visual variants with animated movement
 
-#### **🧟 Intelligent Enemies**
+#### **💪 Power-Ups & Systems**
 
-*   **6 Zombie Variants:** Face off against Normal, Fast Runners, Armored Tanks, Exploding Boomers, spectral Ghosts, and ranged Spitters.
+**Power-Ups:** Double Damage, Nuke, Speed Boost, Rapid Fire, Shield, Health Pickup, Ammo Pickup
 
-*   **Boss Waves:** Every 5 waves, a massive boss zombie spawns with devastating attacks.
-
-*   **Day/Night Cycle:** Dynamic 2-minute cycle where zombies move 20% faster at night. Survive the darkness.
-
-*   **Environmental Hazards:** Acid pools from Spitter attacks create dangerous zones that damage players over time.
-
-*   **Crowd Control:** Bullets slow zombies on hit, allowing strategic kiting.
-
-*   **Progressive Difficulty:** Waves get harder, faster, and more chaotic.
-
-#### **💪 Power-Up System**
-
-*   **Double Damage Buff:** Purple pickup that doubles weapon damage for 10 seconds.
-
-*   **Nuke Pickup:** Rare yellow/black radiation symbol that instantly clears all zombies.
-
-*   **Speed Boost:** Temporary movement speed increase.
-
-*   **Rapid Fire:** Increased fire rate for all weapons (10 seconds).
-
-*   **Shield Pickup:** Temporary overshield that absorbs damage before health.
-
-*   **Real-Time HUD Timers:** All active power-ups display countdown timers.
+*   Real-time HUD timers for active power-ups
+*   Kill streak combos with visual feedback
+*   Sprint system with stamina management
+*   16-skills progression system with 3-choice level-ups
+*   XP gain from zombie kills with kill streak multipliers
 
 #### **👥 Multiplayer & Co-op**
 
-*   **Local Co-op:** Full 4-player shared-screen mode with grid HUD, distinct player colors, and smart input detection.
+*   Local co-op (4-player shared-screen)
+*   Online multiplayer lobby (cloud-hosted server)
+*   AI Squad Mode (up to 3 AI companions)
+*   Controller support (Xbox/gamepad with analog sticks)
+*   Lobby chat system
+*   Rank progression system
+*   Global leaderboards
 
-*   **Multiplayer Lobby:** Modern glassmorphism lobby with animated background, live player list, custom usernames, and cloud-hosted server on Hugging Face Spaces.
+#### **🎨 Visual & Audio**
 
-*   **AI Squad Mode:** Play with AI companions! Add up to 3 AI bots to your squad for cooperative survival.
+**Graphics:**
+*   WebGPU rendering with Canvas 2D fallback
+*   GPU-accelerated shaders and bloom post-processing
+*   Screen shake, particle effects, blood splatter
+*   Muzzle flashes, bullet trails, shell ejection
+*   Floating damage numbers, critical hit indicators
+*   Hit markers, spawn indicators, off-screen indicators
+*   Reload progress bars, modern "Glass Tech" HUD
+*   Horror atmosphere with animated backgrounds
 
-*   **Controller Support:** Full Xbox/gamepad support with analog sticks, automatic input detection, and virtual crosshair.
+**Audio:**
+*   Procedural dynamic arcade soundtrack (Web Audio API)
+*   Procedurally generated sound effects
+*   Granular audio mixer (Master, Music, SFX, Footsteps, Gunshots, Hit Markers, Multiplier)
+*   UI interaction sounds (hover tick, click pip)
+*   Multi-layered impact sounds and kill feedback
 
-#### **🎨 Visual & Audio Feast**
+#### **⚙️ Gameplay Systems**
 
-*   **WebGPU Rendering:** GPU-accelerated background shaders, bloom post-processing, and procedural "Void" effects. Automatic Canvas 2D fallback for compatibility.
-
-*   **Juicy Combat:** Screen shake, particle blood splatters, muzzle flashes, bullet trails, shell ejection, and directional blood splatter.
-
-*   **Dynamic Audio:** Procedurally generated sound effects using Web Audio API + atmospheric menu music.
-
-*   **Horror Atmosphere:** Animated menu backgrounds with pulsing effects, scanlines, and dynamic blood splatters.
-
-*   **Floating Damage Numbers:** See your damage output in real-time with style options.
-
-*   **Critical Hits:** 10% chance for critical hits dealing 2x damage with distinctive yellow/red gradient numbers and "CRIT!" notifications.
-
-*   **Hit Markers:** Visual "X" indicator appears on crosshair when shots connect.
-
-*   **Spawn Indicators:** Pulsing red glow appears 1 second before zombies spawn.
-
-*   **Off-Screen Indicators:** Arrows at screen edges point toward nearby off-screen zombies, color-coded by distance.
-
-*   **Reload Progress Bar:** Visual progress bar shows reload completion percentage.
-
-#### **⚡ Advanced Gameplay Systems**
-
-*   **Sprint System:** Stamina-based movement with tactical management. Sprint drains stamina, regenerates when idle.
-
-*   **Kill Streak Combos:** Chain kills within 1.5s for combo notifications ("RAMPAGE!", "UNSTOPPABLE!").
-
-*   **Damage Indicators:** Red screen flash and directional feedback when taking damage.
-
-*   **Comprehensive Settings:** Tabbed settings panel (Video, Audio, Gameplay, Controls) with 10+ customization options including WebGPU toggle, bloom intensity, particle count modes, lighting quality, screen shake multiplier, crosshair customization, auto-reload toggle, and spatial audio.
-
-*   **UI Scaling System:** 50-150% UI scale slider for accessibility with preset buttons (Small 70%, Medium 100%, Large 130%).
-
-*   **Fully Customizable Controls:** Complete key rebinding support for both keyboard and controller.
+*   Campaign Mode with cinematic intro
+*   Flashlight system (F key toggle)
+*   Comprehensive settings panel (Video, Audio, Gameplay, Controls)
+*   UI scaling system (50-150% accessibility)
+*   Fully customizable controls (keyboard and controller rebinding)
+*   Gallery screen (showcase zombies, weapons, pickups)
+*   Profile system (achievements, badges, battlepass, ranks)
 
 ---
 
@@ -102,46 +86,29 @@
 
 **Keyboard & Mouse**
 
-*   **WASD** or **Arrow Keys**: Move
-
+*   **WASD** / **Arrow Keys**: Move
 *   **Mouse**: Aim
-
 *   **Left Click**: Shoot (hold for continuous)
-
 *   **R**: Reload
-
 *   **G**: Grenade
-
 *   **V**: Melee
-
-*   **1/2/3/4**: Switch Weapon
-
+*   **1-8**: Switch Weapon
 *   **Scroll Wheel**: Cycle Weapons (toggleable)
-
 *   **Shift**: Sprint
-
+*   **F**: Flashlight
 *   **ESC**: Pause
 
 **Gamepad (Xbox/Controller)**
 
 *   **Left Stick**: Move (analog)
-
 *   **Right Stick**: Aim (analog)
-
 *   **RT**: Shoot (hold for continuous)
-
 *   **RB**: Grenade
-
 *   **X**: Reload
-
 *   **Y**: Next Weapon
-
 *   **LB**: Previous Weapon
-
 *   **R3**: Melee
-
 *   **L3**: Sprint
-
 *   **Start**: Pause
 
 *All controls are fully customizable in the Settings menu*
@@ -152,54 +119,16 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.5.3 (Vanilla JS + HTML5 Canvas)
-
+*   **Engine:** ZOMBS-XFX-NGIN V0.8.3.3 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
-
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
-
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
-
 *   **Performance:** Quadtree spatial partitioning, object pooling, viewport culling, delta compression
-
 *   **Networking:** Socket.io for multiplayer (cloud-hosted on Hugging Face Spaces)
-
 *   **Architecture:** ES6 Modules, zero runtime dependencies
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.8.2.2 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.8.3.3 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*
-
----
-
-This version includes:
-
-- All 4 weapons (including Flamethrower)
-
-- All 6 zombie variants (including Spitter)
-
-- 4-player local co-op (not just 2)
-
-- Multiplayer lobby system
-
-- AI Squad mode
-
-- WebGPU rendering
-
-- Day/Night cycle
-
-- Sprint system
-
-- Boss waves
-
-- Complete power-up system (5 types)
-
-- Advanced visual features (critical hits, hit markers, spawn indicators, etc.)
-
-- Comprehensive settings system
-
-- UI scaling for accessibility
-
-- And more!
