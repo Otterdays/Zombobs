@@ -20,12 +20,14 @@ try {
     $nodeVersion = node --version 2>$null
     if ($LASTEXITCODE -eq 0) {
         Write-Info "[+] Node.js $nodeVersion" "Green"
-    } else {
+    }
+    else {
         Write-Info "[-] Node.js not found. Install from: https://nodejs.org/" "Red"
         Read-Host "Press Enter to exit"
         exit 1
     }
-} catch {
+}
+catch {
     Write-Info "[-] Node.js not found. Install from: https://nodejs.org/" "Red"
     Read-Host "Press Enter to exit"
     exit 1
@@ -55,13 +57,14 @@ if (-not (Test-Path "LOCAL_SERVER\node_modules")) {
     }
     Pop-Location
     Write-Info "[+] Dependencies installed" "Green"
-} else {
+}
+else {
     Write-Info "[+] Dependencies ready" "Green"
 }
 
 # Show server info
 Write-Host ""
-$localIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Ethernet*","Wi-Fi*","Local Area Connection*" -ErrorAction SilentlyContinue | 
+$localIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Ethernet*", "Wi-Fi*", "Local Area Connection*" -ErrorAction SilentlyContinue | 
     Where-Object { $_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*" } | 
     Select-Object -First 1 -ExpandProperty IPAddress)
 Write-Info "Local: http://localhost:$SERVER_PORT" "Cyan"
@@ -72,13 +75,18 @@ Write-Host ""
 Write-Info "Starting server... (Press Ctrl+C to stop)" "Yellow"
 Write-Host ""
 
+# Open browser to landing page after small delay
+Start-Process cmd -ArgumentList "/c timeout 2 & start http://localhost:$SERVER_PORT/landing.html" -WindowStyle Hidden
+
 # Start server and show all output
 Push-Location LOCAL_SERVER
 try {
     & npm start
-} catch {
+}
+catch {
     Write-Info "[-] Server error: $($_.Exception.Message)" "Red"
-} finally {
+}
+finally {
     Pop-Location
 }
 

@@ -20,9 +20,10 @@ if (Test-Path $zipFile) {
 # Create build directory
 New-Item -ItemType Directory -Path $buildDir | Out-Null
 
-# Copy required files (rename zombie-game.html to index.html for itch.io)
+# Copy required files
 Write-Host "Copying files..." -ForegroundColor Cyan
-Copy-Item "zombie-game.html" -Destination "$buildDir\index.html"
+Copy-Item "index.html" -Destination "$buildDir\index.html"
+Copy-Item "landing.html" -Destination "$buildDir\landing.html"
 Copy-Item "assets" -Destination $buildDir -Recurse
 Copy-Item "css" -Destination $buildDir -Recurse
 Copy-Item "js" -Destination $buildDir -Recurse

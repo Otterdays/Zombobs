@@ -142,12 +142,15 @@ const PORT = process.env.PORT || 3000;
 // Use path.resolve to get an absolute path
 const parentDir = path.resolve(__dirname, '..');
 console.log(`📁 Serving static files from: ${parentDir}`);
-app.use(express.static(parentDir));
 
-// Root endpoint - serve index.html (fallback if static doesn't catch it)
+// Root endpoint - serve landing.html (Landing Page) BEFORE static middleware
+// This ensures the landing page is served instead of auto-serving index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.resolve(parentDir, 'index.html'));
+  res.sendFile(path.resolve(parentDir, 'landing.html'));
 });
+
+// Serve static files (but index.html won't auto-serve since we handled / above)
+app.use(express.static(parentDir, { index: false }));
 
 // Dashboard endpoint to view connected users
 app.get('/dashboard', (req, res) => {

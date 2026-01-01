@@ -2,6 +2,29 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.3.8] - 2026-01-01
+
+### Fixed
+- **Local Server Routing** - Fixed `launch.bat` serving the game instead of the landing page.
+  - Corrected `server.js` root route (`/`) to point to `landing.html` instead of `index.html`.
+  - Local users now correctly see the Landing Page on startup, while file structure remains optimized for Itch.io.
+
+## [v0.8.3.7] - 2026-01-01
+
+### Changed
+- **File Structure** - Restructured entry points for intuitive deployment.
+  - **Renaming**: `index.html` → `landing.html`, `zombie-game.html` → `index.html`.
+  - **Local Launch**: Updated `launch.bat` (via `launch.ps1`) to automatically open `landing.html` on startup.
+  - **Itch.io**: The game now loads directly (`index.html`) on Itch.io, while local users get the Landing experience first.
+
+## [v0.8.3.6] - 2026-01-01
+
+### Fixed
+- **Itch.io Deployment** - Resolved "403 Forbidden" errors for game assets.
+  - **Asset Paths**: Updated all resource links in `zombie-game.html` to use explicit relative paths (`./`) instead of implicit ones.
+  - **CORS Config**: Removed `crossorigin="anonymous"` from CSS and JS tags to prevent policy mismatches on Itch.io's CDN.
+  - **Build Verification**: Validated zip structure creation in `build-itch.ps1`.
+
 ## [v0.8.3.5] - 2025-12-31
 
 ### Fixed

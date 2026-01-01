@@ -10,6 +10,15 @@
 - **Current Status**: ⏳ Planning
 
 ## Compacted History
+- **v0.8.3.8 - Local Server Fix (2026-01-01) ✅ COMPLETE**
+  - **Routing Bug Fix**: Corrected `server.js` root route (`/`) to serve `landing.html`. It was accidentally pointing to `index.html` (the Game) after the file restructure.
+- **v0.8.3.7 - File Restructure (2026-01-01) ✅ COMPLETE**
+  - **Renaming**: Renamed `index.html` → `landing.html` and `zombie-game.html` → `index.html`.
+  - **Linking**: Updated "Play Now" button in `landing.html` to point to `index.html`.
+  - **Build Script**: Updated `build-itch.ps1` to simply copy the now correctly-named `index.html`.
+- **v0.8.3.6 - Itch.io Deployment Fix (2026-01-01) ✅ COMPLETE**
+  - **Deployment Config**: Updated `zombie-game.html` to use explicit relative paths (`./`) and removed `crossorigin="anonymous"` from CSS/JS links.
+  - **Verification**: Validated `build-itch.ps1` output structure for proper Itch.io hosting (Index at root, relative assets).
 - **v0.8.3.5 - Battlepass Fix & Headshot Detection (2025-12-31) ✅ COMPLETE**
   - **Headshot System**: Enhanced `checkZombieCollision` (in `gameUtils.js`) to distinguish between upper-body (Head/Torso) and lower-body hits. Killing a zombie with an upper-body hit now grants a "Headshot".
   - **Pickup Tracking**: Implemented session-level tracking for all collected powerups (Health, Ammo, Nuke, etc.) to satisfy "Collect X Pickups" quests.
