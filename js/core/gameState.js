@@ -132,6 +132,8 @@ export const gameState = {
     score: 0,
     wave: 1,
     zombiesKilled: 0,
+    pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
+    headshots: 0, // v0.8.3.5: Tracks headshots in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
     highScore: 0,
@@ -231,7 +233,7 @@ export const gameState = {
     lastAmmoPickupSpawnTime: 0,
     lastPowerupSpawnTime: 0,
     lastZombieUpdateBroadcast: 0, // For multiplayer zombie sync throttling
-    
+
     // Multiplayer sync state
     lastZombieState: new Map(), // For delta compression - tracks last sent state per zombie
     zombieUpdateInterval: 100, // Adaptive update interval (ms)
@@ -276,6 +278,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.score = 0;
     gameState.wave = 1;
     gameState.zombiesKilled = 0;
+    gameState.pickupsCollected = 0;
+    gameState.headshots = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;

@@ -7,10 +7,20 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
 ✅ **Explosion Effects** - Grenade and rocket explosions with particle trails (Fixed 2025-11-24)
-✅ **Audio System** - Gunshots, damage sounds, footsteps, restart sounds, menu music (Web Audio API + HTMLAudioElement)
-✅ **Weapon System** - 4 weapons (Pistol, Shotgun, Rifle, Flamethrower) with unique stats
+✅ **Audio System** - Advanced Web Audio API implementation
+  - **Procedural Music**: Dynamic 4-layer Arcade soundtrack (808 Bass, Pads, Arpeggio, Percussion)
+  - **Granular Mixer**: Independent volume controls for Master, Music, SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
+  - **High-Fidelity SFX**: Multi-layered visceral impacts, noise-based "ticks", crystal shimmer multipliers, and **Laser "Zaps"**
+  - **UI Sound**: Procedural "Pip" (click) and "Tick" (hover) sounds for full menu feedback
+  - **Interactive**: Fully adjustable via the in-game Settings Panel
+✅ **Responsive HUD** - High-fidelity "Glass Tech" interface
+  - **Stacked Design**: High-density info boxes separating labels from values (no text overlap)
+  - **Visual Dynamics**: Vertical color-coded accent bars and glowing status indicators
+  - **Consistent Layout**: Unified 50px height for all bottom-UI elements (XP, Stats, Weapons)
+✅ **Homepage Theme** - Landing page now defaults to **Dark Mode** with optimized early loading (anti-FOUC)
+✅ **Weapon System** - 8 weapon slots (Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG, **Laser**)
 ✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts, persistent ammo tracking
-✅ **Weapon Controls** - Keyboard switching (1/2/3/4) and scroll wheel cycling (toggleable)
+✅ **Weapon Controls** - Keyboard switching (1-8) and scroll wheel cycling (toggleable)
 ✅ **Background Reload** - Weapons auto-reload when holstered long enough
 ✅ **Auto-Reload** - Automatic reload when ammo reaches 0
 ✅ **UI Systems** - In-game HUD component with pause menu and game over screens
@@ -332,6 +342,20 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Damage multiplier and buff timers
 - Kill streak counter and timing
 - Game running/paused states
+
+## Recent Updates (v0.8.3.1)
+- **Audio Overhaul**: Replaced tonal SFX with visceral synthesized textures (meaty impacts, mechanical ticks).
+- **Procedural Music**: Dynamic background music system that scales intensity with gameplay.
+- **Zombie Visual Diversity**: 8 unique variants with clothing, accessories, and bone exposure.
+- **Animated Entities**: Added procedural walking and swaying animations to Normal Zombies.
+- **Cohesive Model Design**: Implemented long sleeves and visible hands for zombie variants.
+- **Audio Mixer Expansion**: Granular volume control for hit markers, gunshots, and multipliers.
+- **Battlepass Progress Fix (v0.8.3.5)**: Implemented headshot and pickup tracking to resolve stalled quest progression.
+- **Headshot Detection (v0.8.3.5)**: Enhanced dual-hitbox collision logic in `gameUtils.js` to distinguish between head/torso and lower-body hits.
+- **UI Overlay Fixes (v0.8.3.4)**: Fixed cursor layering, input blocking, and HUD isolation for all HTML screens.
+- **Responsive HUD Redesign (v0.8.3.3)**: Unified 50px "Glass Tech" status bar with high-density informational boxes.
+- **UI Sound Integration (v0.8.3.3)**: Procedural hover and click sounds for all menu elements.
+- **Armory Expansion (v0.8.3.2)**: Integrated the Laser Gun (Slot 8) with instant-hit raycast logic.
 
 ## Recent Updates (Unreleased)
 - **Bug Fix**: Fixed stuck "GO!" screen when returning to lobby from dead multiplayer game

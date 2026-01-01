@@ -14,14 +14,16 @@ export function checkCollision(obj1, obj2) {
  * Check collision between a bullet and a zombie, including secondary lower body hitbox
  * @param {Object} bullet - Bullet object with x, y, radius properties
  * @param {Object} zombie - Zombie object with x, y, radius, and lowerBodyHitbox properties
- * @returns {boolean} True if bullet collides with either hitbox
+ * @returns {Object} Result with hit (boolean) and isHeadshot (boolean)
  */
 export function checkZombieCollision(bullet, zombie) {
     // Check main hitbox (head/center)
     if (checkCollision(bullet, zombie)) {
-        return true;
+        // v0.8.3.5: If it hits the main hitbox but NOT the lower body, it's definitely a head/torso hit.
+        // For simplicity in this engine, the main upper circle is considered "Headshot" territory.
+        return { hit: true, isHeadshot: true };
     }
-    
+
     // Check secondary lower body hitbox if it exists
     if (zombie.lowerBodyHitbox) {
         const dx = bullet.x - zombie.lowerBodyHitbox.x;
@@ -29,11 +31,11 @@ export function checkZombieCollision(bullet, zombie) {
         const radiusSum = bullet.radius + zombie.lowerBodyHitbox.radius;
         const distSquared = dx * dx + dy * dy;
         if (distSquared < radiusSum * radiusSum) {
-            return true;
+            return { hit: true, isHeadshot: false };
         }
     }
-    
-    return false;
+
+    return { hit: false, isHeadshot: false };
 }
 
 /**
@@ -48,11 +50,11 @@ export function checkZombieCollision(bullet, zombie) {
 export function isInViewport(entity, viewportLeft, viewportTop, viewportRight, viewportBottom) {
     const margin = RENDERING.CULL_MARGIN;
     const radius = entity.radius || 0;
-    
+
     return entity.x + radius >= viewportLeft - margin &&
-           entity.x - radius <= viewportRight + margin &&
-           entity.y + radius >= viewportTop - margin &&
-           entity.y - radius <= viewportBottom + margin;
+        entity.x - radius <= viewportRight + margin &&
+        entity.y + radius >= viewportTop - margin &&
+        entity.y - radius <= viewportBottom + margin;
 }
 
 /**
@@ -82,11 +84,11 @@ export function getViewportBounds(canvas) {
 export function shouldUpdateEntity(entity, viewportLeft, viewportTop, viewportRight, viewportBottom) {
     const margin = RENDERING.UPDATE_MARGIN;
     const radius = entity.radius || 0;
-    
+
     return entity.x + radius >= viewportLeft - margin &&
-           entity.x - radius <= viewportRight + margin &&
-           entity.y + radius >= viewportTop - margin &&
-           entity.y - radius <= viewportBottom + margin;
+        entity.x - radius <= viewportRight + margin &&
+        entity.y + radius >= viewportTop - margin &&
+        entity.y - radius <= viewportBottom + margin;
 }
 
 /**
@@ -98,7 +100,7 @@ export function shouldUpdateEntity(entity, viewportLeft, viewportTop, viewportRi
  */
 export function isVisibleOnScreen(entity, entityRadius = null) {
     const radius = entityRadius !== null ? entityRadius : (entity.radius || 0);
-    
+
     // Simple check: skip entities with very small radius
     // This catches tiny shells, very distant bullets, etc.
     // For now, we use 0.5 world pixels as threshold - entities smaller than this are too tiny to see
@@ -106,7 +108,7 @@ export function isVisibleOnScreen(entity, entityRadius = null) {
     if (radius < 0.5) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -282,7 +284,7 @@ export function saveScoreboardEntry(entry) {
                 username = (savedUsername !== null && savedUsername.trim() !== '') ? savedUsername.trim() : 'Survivor';
             }
         }
-        
+
         const fullEntry = {
             score: entry.score || 0,
             wave: entry.wave || 0,
@@ -296,27 +298,27 @@ export function saveScoreboardEntry(entry) {
 
         // Save to recent runs list
         saveToRecentRuns(fullEntry);
-        
+
         const scoreboard = loadScoreboard();
-        
+
         // Add new entry for high score check
         scoreboard.push(fullEntry);
-        
+
         // Sort by score descending
         scoreboard.sort((a, b) => b.score - a.score);
-        
+
         // Keep only top 10
         const top10 = scoreboard.slice(0, 10);
-        
+
         // Check if new entry made it into top 10
-        const entryQualified = top10.some(e => 
-            e.score === fullEntry.score && 
+        const entryQualified = top10.some(e =>
+            e.score === fullEntry.score &&
             e.dateTime === fullEntry.dateTime
         );
-        
+
         // Save to localStorage
         localStorage.setItem('zombobs_scoreboard', JSON.stringify(top10));
-        
+
         return entryQualified;
     } catch (error) {
         return false;
@@ -365,11 +367,11 @@ export function formatTime(seconds) {
     if (typeof seconds !== 'number' || seconds < 0) {
         return '0s';
     }
-    
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     const parts = [];
     if (hours > 0) {
         parts.push(`${hours}h`);
@@ -380,7 +382,7 @@ export function formatTime(seconds) {
     if (secs > 0 || parts.length === 0) {
         parts.push(`${secs}s`);
     }
-    
+
     return parts.join(' ');
 }
 

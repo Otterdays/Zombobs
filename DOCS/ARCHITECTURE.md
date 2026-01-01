@@ -209,6 +209,8 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - `showAchievements` - Achievement screen visibility flag
 - `showBattlepass` - Battlepass screen visibility flag
     - `showBadges` - Badge screen visibility flag
+- `pickupsCollected` - Total pickups gathered in the current session (v0.8.3.5)
+- `headshots` - Total headshots (upper-body hits) in the current session (v0.8.3.5)
 - `achievementNotifications[]` - Array of achievement notifications to display
     - `sessionResults` - Session results from profile system (rank XP, achievements, badges, battlepass progress)
 
@@ -304,7 +306,17 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 **Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `CrawlerZombie`
 
 **Zombie Variants**:
-- **NormalZombie**: Default enemy type
+- **NormalZombie**: Default enemy type with **8 randomized visual variants**:
+  - **Classic**: Standard green zombie (original look)
+  - **Decayed**: Darker rotted appearance with exposed bone and scars
+  - **Freshly Turned**: Human-like coloring with bloody t-shirt
+  - **Office Worker**: Corporate zombie with torn suit, tie, and broken glasses
+  - **Punk**: Edgy zombie with vest, metal studs, and mohawk
+  - **Nurse**: Hospital zombie with scrubs, nurse cap with red cross, and blood stains
+  - **Construction Worker**: Hardhat, orange safety vest with reflective stripes
+  - **Soldier**: Military fatigues with camo pattern and army helmet
+  - Each variant has unique: skin colors, clothing, accessories, scars, and blood stains.
+  - **Animations (v0.8.3.1)**: Procedural sinusoidal walking feet, dual swaying arms, and cohesive colored sleeves matching the outfit (visible hands).
 - **FastZombie**: 1.6x speed, 60% health, smaller hitbox, reddish/orange visuals
 - **ExplodingZombie**: Explodes on death, AOE damage, orange/yellow pulsing glow
 - **ArmoredZombie**: Slower, heavily armored, absorbs damage before health
@@ -1603,7 +1615,10 @@ This hybrid approach provides:
 **Purpose**: General game utilities
 
 **Exports**:
-- `checkCollision(obj1, obj2)` - Circle collision detection
+- `checkCollision(obj1, obj2)` - Standard circle collision detection
+- `checkZombieCollision(bullet, zombie)` - Dual-hitbox collision detection (v0.8.3.5)
+  - Distinguishes between upper-body (Head/Torso) and lower-body hitboxes.
+  - Returns `isHeadshot: true` if ONLY the main upper hitbox is hit.
 - `isInViewport(entity, viewportLeft, viewportTop, viewportRight, viewportBottom)` - Viewport culling check
 - `getViewportBounds(canvas)` - Get viewport bounds for culling
 - `triggerDamageIndicator()` - Show damage flash
@@ -2333,3 +2348,21 @@ Server-side global highscore leaderboard system that tracks top 10 scores across
 - **Request Throttling**: Frontend enforces 30-second cooldown to prevent 429 errors
 - **Error Recovery**: Proper state management prevents infinite retry loops
 - **Graceful Fallback**: Server continues operating with in-memory cache if MongoDB unavailable
+
+---
+
+## UI/UX & Audio System Refinement
+
+### Responsive "Glass Tech" HUD (`js/ui/GameHUD.js`)
+The HUD utilizes a modular, high-contrast design system optimized for readability and visual wow-factor.
+- **Stacked Layout**: Data is organized vertically within boxes (e.g., Weapon Name on top, Ammo Count on bottom). This prevents text overlap with long weapon names like "FLAMETHROWER".
+- **Vertical Accent Bars**: Each HUD box features a 4px colored bar on the far-left edge that corresponds to the stat theme (Orange = Ammo, Gold = Score, Green = XP, Red = Health).
+- **Glassmorphism**: 85% opacity dark backgrounds (`rgba(10, 12, 16, 0.85)`) with procedural ground-pattern textures for a visceral, grounded feel.
+- **Unified Dimensions**: All bottom-of-screen UI elements (XP bar, score/zombie boxes, weapon/grenade boxes) are locked to a **50px height** for a perfectly aligned, clean layout.
+- **Dynamic Glow**: Prominent stats use `shadowBlur` and `shadowColor` based on the stat value and urgency (e.g., red pulse for low health).
+
+### UI Interaction Audio (`js/systems/AudioSystem.js`)
+Menu interactions feature subtle, non-intrusive procedural audio feedback to enhance the tactical feel of the interface.
+- **Menu Click ("Pip")**: A short, high-pitch sine wave sweep (800Hz to 1200Hz over 30ms). Triggered on button clicks, tab switches, and toggle changes.
+- **Menu Hover ("Tick")**: A very subtle, low-pitch sine wave tick (300Hz to 150Hz over 0.02s). Triggered whenever the mouse enters a new interactive control area.
+- **Procedural Generation**: All UI sounds are generated live using `OscillatorNode` and `GainNode`, ensuring zero asset-load overhead and perfect timing.

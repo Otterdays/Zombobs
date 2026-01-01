@@ -1,0 +1,64 @@
+# Version Update Checklist
+
+When pushing a new version update, update these files to maintain consistency across the project:
+
+## Required Updates
+
+### 1. Version Display Files
+- **[js/ui/MainMenuScreen.js](js/ui/MainMenuScreen.js)**
+  - Update `drawVersionBox()` version string (line ~808)
+  - Update `drawTechnologyBranding()` version text width calculation (line ~878)
+
+- **[js/ui/AboutScreen.js](js/ui/AboutScreen.js)**
+  - Update version display text (line ~46)
+  - Update engine version display text (line ~49)
+
+### 2. Landing Page (index.html)
+- **Tagline badge** (line ~868): Update version in `<span class="tagline">`
+- **Engine info badge** (line ~870): Update engine version in `<span class="engine-name">`
+- **Technical Specs** (line ~1344): Update engine version in stats section
+- **Version Info Bubbles** (starting ~1419): Add new section for current version with recent features
+
+### 3. News Reel Content
+- **[js/core/constants.js](js/core/constants.js)**
+  - Update `NEWS_UPDATES` constant (line ~109)
+  - Include highlights from most recent versions
+  - Keep format: "NEW: [Version]: [Feature] | [Feature] | ..."
+  - Clean up older entries to keep it concise
+
+### 4. Documentation Files (Optional but Recommended)
+- **[DOCS/CHANGELOG.md](DOCS/CHANGELOG.md)**: Add entry for new version
+- **[DOCS/SCRATCHPAD.md](DOCS/SCRATCHPAD.md)**: Update with completed tasks
+- **[DOCS/SUMMARY.md](DOCS/SUMMARY.md)**: Update "Recent Updates" section if major changes
+
+### 5. Server Files (if applicable)
+- **[launch.ps1](launch.ps1)**: Update `$SERVER_VERSION` variable
+- **[LOCAL_SERVER/package.json](LOCAL_SERVER/package.json)**: Update version field
+- **[huggingface-space-SERVER/package.json](huggingface-space-SERVER/package.json)**: Update version field
+
+## Version Format
+
+Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)
+
+Example: `V0.8.3.3 ALPHA`
+
+## Quick Reference
+
+**Files that need version updates:**
+1. `js/ui/MainMenuScreen.js` - Main menu version box
+2. `js/ui/AboutScreen.js` - About screen version display
+3. `index.html` - Landing page (4 locations)
+4. `js/core/constants.js` - News reel content
+5. `launch.ps1` - Server version (if server exists)
+
+**Version info bubble format (index.html):**
+```html
+<div>
+    <div class="side-heading">V0.X.Y.Z ALPHA</div>
+    <ul class="mini-list">
+        <li><span>🎵</span> <strong>Feature Name</strong>: Description text</li>
+        <!-- More features... -->
+    </ul>
+</div>
+```
+

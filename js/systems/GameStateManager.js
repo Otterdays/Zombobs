@@ -2,6 +2,7 @@ import { gameState, resetGameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
 import { PLAYER_MAX_HEALTH, PLAYER_STAMINA_MAX, SERVER_URL } from '../core/constants.js';
 import { playRestartSound, playMenuMusic, stopMenuMusic } from '../systems/AudioSystem.js';
+import { startArcadeMusic, stopArcadeMusic, setMusicIntensity } from '../systems/ArcadeMusicSystem.js';
 import { saveHighScore, saveMultiplierStats, saveScoreboardEntry } from '../utils/gameUtils.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
@@ -23,6 +24,7 @@ export class GameStateManager {
      */
     gameOver() {
         gameState.gameRunning = false;
+        stopArcadeMusic(); // Stop procedural arcade music
         saveHighScore();
 
         // Update and save multiplier stats
@@ -64,6 +66,8 @@ export class GameStateManager {
                 sessionWave: gameState.wave,
                 sessionTime: timeSurvived,
                 sessionCombo: gameState.killStreak,
+                pickupsCollected: gameState.pickupsCollected,
+                headshots: gameState.headshots,
                 coopWin: gameState.isCoop && gameState.wave > 1 // Consider it a win if survived past wave 1
             };
 
@@ -102,6 +106,7 @@ export class GameStateManager {
      */
     restartGame() {
         playRestartSound();
+        stopArcadeMusic(); // Stop arcade music when returning to menu
         if (!gameState.menuMusicMuted) {
             playMenuMusic();
         }
@@ -122,6 +127,7 @@ export class GameStateManager {
      */
     startGame() {
         stopMenuMusic();
+        startArcadeMusic(); // Start procedural arcade music
         gameState.gameRunning = true;
         gameState.gamePaused = false;
         gameState.showLobby = false;

@@ -1,5 +1,5 @@
         @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@400;700&display=swap');
-        
+
         body {
             margin: 0;
             padding: 0;
@@ -12,42 +12,47 @@
             color: #fff;
             overflow: hidden;
         }
+
         #gameContainer {
             text-align: center;
             position: relative;
         }
+
         canvas {
             display: block;
             margin: 0 auto;
-            cursor: none; /* Hide system cursor so custom crosshair takes precedence */
+            cursor: none;
+            /* Hide system cursor so custom crosshair takes precedence */
         }
+
         #gpuCanvas {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 2; /* Overlay layer (snow, rain, fog) - renders on top of gameplay */
+            z-index: 2;
+            /* Overlay layer (snow, rain, fog) - renders on top of gameplay */
             background: transparent;
-            pointer-events: none; /* Let clicks pass through to game canvas */
+            pointer-events: none;
+            /* Let clicks pass through to game canvas */
             /* Hidden by default, will be shown when WebGPU is active */
             display: none;
         }
+
         #uiCanvas {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 3; /* UI layer - renders on top of everything (blood, fog, etc.) */
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: none;
+            z-index: 2000;
+            /* UI layer - renders on top of everything, including HTML overlays (z-index 1000) */
             background: transparent;
-            pointer-events: none; /* Default to pass-through, enable for menus via JS */
+            pointer-events: none;
+            /* Default to pass-through, enable for menus via JS */
         }
+
         #gameCanvas {
             position: relative;
-            z-index: 1; /* Gameplay/UI/Interaction layer */
+            z-index: 1;
+            /* Gameplay/UI/Interaction layer */
         }
-
-
-
-
-
-

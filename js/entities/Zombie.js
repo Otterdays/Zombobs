@@ -100,7 +100,7 @@ export class Zombie {
         // Calculate velocity before movement
         const moveX = (dx / dist) * this.speed;
         const moveY = (dy / dist) * this.speed;
-        
+
         // Update position
         this.x += moveX;
         this.y += moveY;
@@ -204,7 +204,7 @@ export class Zombie {
             const pulse = Math.sin(Date.now() / RENDERING.ZOMBIE_PULSE_PERIOD) * 0.4 + 0.6;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.4 * auraQuality.opacity;
-            
+
             if (auraQuality.hasMultiLayer) {
                 // Multi-layer aura for high/ultra quality
                 const outerAura = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
@@ -217,7 +217,7 @@ export class Zombie {
                 context.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
                 context.fill();
             }
-            
+
             const auraGradient = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
             auraGradient.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${baseOpacity * 0.5 * pulse})`);
@@ -352,11 +352,541 @@ export class Zombie {
     }
 }
 
-// Normal zombie - current default enemy type
+// Normal zombie visual variant definitions
+const NORMAL_ZOMBIE_VARIANTS = [
+    {
+        id: 'classic',
+        name: 'Classic',
+        // Standard green zombie
+        skinColors: { primary: '#9acd32', secondary: '#7cb342', tertiary: '#558b2f', outline: '#33691e' },
+        eyeColor: '#ff0000',
+        hasClothing: false,
+        hasScar: false,
+        hasAccessory: false
+    },
+    {
+        id: 'decayed',
+        name: 'Decayed',
+        // Darker, more rotted appearance with exposed bone
+        skinColors: { primary: '#6b8e23', secondary: '#556b2f', tertiary: '#3d4f21', outline: '#2d3a18' },
+        eyeColor: '#ffff00',
+        hasClothing: false,
+        hasScar: true,
+        scarColor: '#3d2817',
+        hasAccessory: false,
+        hasBoneExposure: true
+    },
+    {
+        id: 'fresh',
+        name: 'Freshly Turned',
+        // More human-like coloring, recently infected
+        skinColors: { primary: '#c9b896', secondary: '#a89f7c', tertiary: '#7a8a5e', outline: '#5a6a3e' },
+        eyeColor: '#ff4444',
+        hasClothing: true,
+        clothingType: 'tshirt',
+        clothingColor: '#8b0000',
+        hasScar: false,
+        hasAccessory: false,
+        hasBloodStains: true
+    },
+    {
+        id: 'office',
+        name: 'Office Worker',
+        // Corporate zombie with torn suit
+        skinColors: { primary: '#8fbc8f', secondary: '#6b9b6b', tertiary: '#4a7a4a', outline: '#2f5a2f' },
+        eyeColor: '#ff6666',
+        hasClothing: true,
+        clothingType: 'suit',
+        clothingColor: '#2f2f4f',
+        tieColor: '#8b0000',
+        hasScar: false,
+        hasAccessory: true,
+        accessoryType: 'glasses'
+    },
+    {
+        id: 'punk',
+        name: 'Punk',
+        // Edgy zombie with mohawk
+        skinColors: { primary: '#98fb98', secondary: '#66cd66', tertiary: '#44aa44', outline: '#228b22' },
+        eyeColor: '#ff00ff',
+        hasClothing: true,
+        clothingType: 'vest',
+        clothingColor: '#1a1a1a',
+        hasScar: true,
+        scarColor: '#2d1818',
+        hasAccessory: true,
+        accessoryType: 'mohawk',
+        mohawkColor: '#ff1493'
+    },
+    {
+        id: 'nurse',
+        name: 'Nurse',
+        // Hospital nurse with bloody scrubs
+        skinColors: { primary: '#a8d5a2', secondary: '#88b582', tertiary: '#689562', outline: '#487542' },
+        eyeColor: '#ff3333',
+        hasClothing: true,
+        clothingType: 'scrubs',
+        clothingColor: '#4a90a4',
+        hasScar: false,
+        hasAccessory: true,
+        accessoryType: 'cap',
+        capColor: '#4a90a4',
+        hasBloodStains: true
+    },
+    {
+        id: 'construction',
+        name: 'Construction Worker',
+        // Construction worker with hardhat and safety vest
+        skinColors: { primary: '#b5c99a', secondary: '#95a97a', tertiary: '#75895a', outline: '#556940' },
+        eyeColor: '#ffaa00',
+        hasClothing: true,
+        clothingType: 'safetyVest',
+        clothingColor: '#ff6600',
+        hasScar: true,
+        scarColor: '#4a3020',
+        hasAccessory: true,
+        accessoryType: 'hardhat',
+        hardhatColor: '#ffcc00'
+    },
+    {
+        id: 'soldier',
+        name: 'Soldier',
+        // Military zombie with camo and helmet
+        skinColors: { primary: '#7d8c6e', secondary: '#5d6c4e', tertiary: '#4d5c3e', outline: '#3d4c2e' },
+        eyeColor: '#ff0000',
+        hasClothing: true,
+        clothingType: 'military',
+        clothingColor: '#4b5320',
+        hasScar: true,
+        scarColor: '#2a1a0a',
+        hasAccessory: true,
+        accessoryType: 'helmet',
+        helmetColor: '#4b5320',
+        hasBoneExposure: false
+    }
+];
+
+// Normal zombie - current default enemy type with visual variants
 export class NormalZombie extends Zombie {
     constructor(canvasWidth, canvasHeight) {
         super(canvasWidth, canvasHeight);
         this.type = 'normal';
+
+        // Randomly select a visual variant
+        this.visualVariant = NORMAL_ZOMBIE_VARIANTS[Math.floor(Math.random() * NORMAL_ZOMBIE_VARIANTS.length)];
+    }
+
+    drawStaticBody(ctx, x, y, radius) {
+        const variant = this.visualVariant;
+        const colors = variant.skinColors;
+
+        // Body gradient using variant colors
+        const bodyGradient = ctx.createRadialGradient(x - 4, y - 4, 0, x, y, radius);
+        bodyGradient.addColorStop(0, colors.primary);
+        bodyGradient.addColorStop(0.4, colors.secondary);
+        bodyGradient.addColorStop(0.7, colors.tertiary);
+        bodyGradient.addColorStop(1, colors.outline);
+
+        // Draw clothing if variant has it (behind body)
+        if (variant.hasClothing) {
+            this.drawClothing(ctx, x, y, radius, variant);
+        }
+
+        // Zombie torso
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 15, radius * 1.2, radius * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // -- ANIMATED FEET (Added v0.8.4.1) --
+        // Simple walking animation using time-based sine wave
+        const walkCycle = Math.sin(Date.now() / 150);
+        const footOffset = 4; // Distance feet move back and forth
+
+        ctx.fillStyle = '#1a1a1a'; // Dark shoes/feet base
+
+        // Left Foot
+        ctx.beginPath();
+        // Positioned lower (y + 38) and drawn in front of body
+        ctx.ellipse(x - 6, y + 38 + (walkCycle * footOffset), 4, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right Foot (Opposite phase)
+        ctx.beginPath();
+        ctx.ellipse(x + 6, y + 38 - (walkCycle * footOffset), 4, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // -- ANIMATED ARMS (Replaced static arm v0.8.4.1) --
+        // Arms sway slightly as the zombie shuffles
+        const armSway = Math.sin(Date.now() / 250) * 2;
+
+        // Determine arm color (Sleeves vs Bare)
+        // Punk vest is sleeveless. Others get cohesive colored sleeves as requested.
+        let armColor = colors.outline;
+        if (variant.hasClothing && variant.clothingType !== 'vest') {
+            armColor = variant.clothingColor;
+        }
+
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+
+        // Helper function to draw an arm with a hand
+        const drawArm = (startX, startY, controlX, controlY, endX, endY) => {
+            // Draw Arm/Sleeve
+            ctx.strokeStyle = armColor;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo(controlX, controlY, endX, endY);
+            ctx.stroke();
+
+            // Draw Hand (Skin colored tip)
+            ctx.fillStyle = colors.primary; // Skin color
+            ctx.beginPath();
+            ctx.arc(endX, endY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        // Left Arm (Reaching forward/down)
+        drawArm(x - 14, y + 8, x - 22 - armSway, y + 18, x - 12 - armSway, y + 32);
+
+        // Right Arm (Reaching forward/down)
+        drawArm(x + 14, y + 8, x + 22 - armSway, y + 18, x + 12 - armSway, y + 32);
+
+        // Head
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Zombie skin texture (darker patches)
+        ctx.fillStyle = 'rgba(30, 60, 10, 0.3)';
+        ctx.beginPath();
+        ctx.arc(x + 4, y - 2, 3, 0, Math.PI * 2);
+        ctx.arc(x - 3, y + 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bone exposure for decayed variant
+        if (variant.hasBoneExposure) {
+            ctx.fillStyle = '#e8e0d0';
+            ctx.beginPath();
+            ctx.ellipse(x + 6, y + 2, 3, 2, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8b7355';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+
+        // Scar for variants that have it
+        if (variant.hasScar) {
+            ctx.strokeStyle = variant.scarColor || '#3d2817';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x - 2, y - 5);
+            ctx.lineTo(x + 4, y + 3);
+            ctx.stroke();
+        }
+
+        // Blood stains for fresh variant
+        if (variant.hasBloodStains) {
+            ctx.fillStyle = 'rgba(139, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.arc(x + 8, y + 12, 4, 0, Math.PI * 2);
+            ctx.arc(x - 5, y + 18, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Body outline (rough edges)
+        ctx.strokeStyle = colors.outline;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([2, 1]);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Eye sockets
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(x - 5, y - 3, 4, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 5, y - 3, 4, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Jagged mouth
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - 6, y + 5);
+        ctx.quadraticCurveTo(x - 3, y + 8, x, y + 7);
+        ctx.quadraticCurveTo(x + 3, y + 8, x + 6, y + 5);
+        ctx.stroke();
+
+        // Teeth
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y + 5);
+        ctx.lineTo(x - 4, y + 7);
+        ctx.moveTo(x - 1, y + 6);
+        ctx.lineTo(x - 1, y + 8);
+        ctx.moveTo(x + 2, y + 6);
+        ctx.lineTo(x + 2, y + 8);
+        ctx.moveTo(x + 4, y + 5);
+        ctx.lineTo(x + 4, y + 7);
+        ctx.stroke();
+
+        // Draw accessories (on top of head)
+        if (variant.hasAccessory) {
+            this.drawAccessory(ctx, x, y, radius, variant);
+        }
+    }
+
+    drawClothing(ctx, x, y, radius, variant) {
+        ctx.save();
+
+        switch (variant.clothingType) {
+            case 'tshirt':
+                // Torn t-shirt
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.3, y + 8);
+                ctx.lineTo(x - radius * 0.8, y + 22);
+                ctx.lineTo(x + radius * 0.8, y + 22);
+                ctx.lineTo(x + radius * 1.3, y + 8);
+                ctx.closePath();
+                ctx.fill();
+                // Tear marks
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x + 5, y + 12);
+                ctx.lineTo(x + 8, y + 18);
+                ctx.stroke();
+                break;
+
+            case 'suit':
+                // Torn suit jacket
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.4, y + 6);
+                ctx.lineTo(x - radius * 1.0, y + 24);
+                ctx.lineTo(x + radius * 1.0, y + 24);
+                ctx.lineTo(x + radius * 1.4, y + 6);
+                ctx.closePath();
+                ctx.fill();
+                // Tie
+                if (variant.tieColor) {
+                    ctx.fillStyle = variant.tieColor;
+                    ctx.beginPath();
+                    ctx.moveTo(x - 2, y + 8);
+                    ctx.lineTo(x + 2, y + 8);
+                    ctx.lineTo(x + 3, y + 22);
+                    ctx.lineTo(x, y + 24);
+                    ctx.lineTo(x - 3, y + 22);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                break;
+
+            case 'vest':
+                // Punk vest
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.2, y + 8);
+                ctx.lineTo(x - radius * 0.9, y + 20);
+                ctx.lineTo(x + radius * 0.9, y + 20);
+                ctx.lineTo(x + radius * 1.2, y + 8);
+                ctx.closePath();
+                ctx.fill();
+                // Metal studs
+                ctx.fillStyle = '#c0c0c0';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(x - radius * 0.9 + i * 4, y + 12, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+
+            case 'scrubs':
+                // Hospital scrubs (v-neck top)
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.3, y + 6);
+                ctx.lineTo(x - radius * 1.0, y + 24);
+                ctx.lineTo(x + radius * 1.0, y + 24);
+                ctx.lineTo(x + radius * 1.3, y + 6);
+                ctx.closePath();
+                ctx.fill();
+                // V-neck detail
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x - 4, y + 6);
+                ctx.lineTo(x, y + 12);
+                ctx.lineTo(x + 4, y + 6);
+                ctx.stroke();
+                // Blood splatter on scrubs
+                ctx.fillStyle = 'rgba(139, 0, 0, 0.6)';
+                ctx.beginPath();
+                ctx.arc(x - 6, y + 14, 3, 0, Math.PI * 2);
+                ctx.arc(x + 8, y + 10, 2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'safetyVest':
+                // High-vis safety vest
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.3, y + 6);
+                ctx.lineTo(x - radius * 1.0, y + 22);
+                ctx.lineTo(x + radius * 1.0, y + 22);
+                ctx.lineTo(x + radius * 1.3, y + 6);
+                ctx.closePath();
+                ctx.fill();
+                // Reflective stripes
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fillRect(x - radius * 1.1, y + 10, radius * 2.2, 2);
+                ctx.fillRect(x - radius * 1.1, y + 16, radius * 2.2, 2);
+                // Dirt/damage
+                ctx.fillStyle = 'rgba(50, 40, 30, 0.4)';
+                ctx.beginPath();
+                ctx.arc(x + 5, y + 13, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'military':
+                // Military fatigues/jacket
+                ctx.fillStyle = variant.clothingColor;
+                ctx.beginPath();
+                ctx.moveTo(x - radius * 1.4, y + 5);
+                ctx.lineTo(x - radius * 1.1, y + 25);
+                ctx.lineTo(x + radius * 1.1, y + 25);
+                ctx.lineTo(x + radius * 1.4, y + 5);
+                ctx.closePath();
+                ctx.fill();
+                // Camo pattern (dark patches)
+                ctx.fillStyle = 'rgba(30, 40, 20, 0.5)';
+                ctx.beginPath();
+                ctx.arc(x - 5, y + 12, 3, 0, Math.PI * 2);
+                ctx.arc(x + 7, y + 16, 4, 0, Math.PI * 2);
+                ctx.arc(x - 2, y + 20, 3, 0, Math.PI * 2);
+                ctx.fill();
+                // Pocket
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x - 8, y + 14, 6, 5);
+                break;
+        }
+
+        ctx.restore();
+    }
+
+    drawAccessory(ctx, x, y, radius, variant) {
+        ctx.save();
+
+        switch (variant.accessoryType) {
+            case 'glasses':
+                // Broken glasses
+                ctx.strokeStyle = '#333333';
+                ctx.lineWidth = 1.5;
+                // Left lens (broken)
+                ctx.beginPath();
+                ctx.arc(x - 5, y - 3, 4, 0, Math.PI * 1.5);
+                ctx.stroke();
+                // Right lens
+                ctx.beginPath();
+                ctx.arc(x + 5, y - 3, 4, 0, Math.PI * 2);
+                ctx.stroke();
+                // Bridge
+                ctx.beginPath();
+                ctx.moveTo(x - 1, y - 3);
+                ctx.lineTo(x + 1, y - 3);
+                ctx.stroke();
+                break;
+
+            case 'mohawk':
+                // Punk mohawk
+                ctx.fillStyle = variant.mohawkColor || '#ff1493';
+                const spikes = 5;
+                for (let i = 0; i < spikes; i++) {
+                    const spikeX = x - 6 + i * 3;
+                    const spikeHeight = 8 + Math.sin(i) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(spikeX - 2, y - radius + 2);
+                    ctx.lineTo(spikeX, y - radius - spikeHeight);
+                    ctx.lineTo(spikeX + 2, y - radius + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                break;
+
+            case 'cap':
+                // Nurse cap
+                ctx.fillStyle = variant.capColor || '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(x - 8, y - radius + 4);
+                ctx.lineTo(x - 6, y - radius - 4);
+                ctx.lineTo(x + 6, y - radius - 4);
+                ctx.lineTo(x + 8, y - radius + 4);
+                ctx.closePath();
+                ctx.fill();
+                // Red cross on cap
+                ctx.fillStyle = '#cc0000';
+                ctx.fillRect(x - 1, y - radius - 2, 2, 5);
+                ctx.fillRect(x - 2, y - radius, 4, 2);
+                break;
+
+            case 'hardhat':
+                // Construction hardhat
+                ctx.fillStyle = variant.hardhatColor || '#ffcc00';
+                // Helmet dome
+                ctx.beginPath();
+                ctx.arc(x, y - radius + 2, radius * 1.1, Math.PI, 0, false);
+                ctx.closePath();
+                ctx.fill();
+                // Brim
+                ctx.fillRect(x - radius * 1.3, y - radius + 2, radius * 2.6, 3);
+                // Highlight
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.arc(x - 3, y - radius - 2, 4, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'helmet':
+                // Military helmet
+                ctx.fillStyle = variant.helmetColor || '#4b5320';
+                // Helmet dome
+                ctx.beginPath();
+                ctx.arc(x, y - radius + 3, radius * 1.15, Math.PI, 0, false);
+                ctx.closePath();
+                ctx.fill();
+                // Brim shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x, y - radius + 5, radius * 1.2, 3, 0, 0, Math.PI);
+                ctx.fill();
+                // Camo detail on helmet
+                ctx.fillStyle = 'rgba(30, 40, 20, 0.4)';
+                ctx.beginPath();
+                ctx.arc(x - 5, y - radius - 3, 3, 0, Math.PI * 2);
+                ctx.arc(x + 4, y - radius - 1, 2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+        }
+
+        ctx.restore();
+    }
+
+    draw(context = ctx) {
+        // Use variant-specific eye color for the glow
+        const originalShadowColor = context.shadowColor;
+
+        // Call parent draw which handles shadow, aura, body, eyes, health bar
+        super.draw(context);
+
+        // The parent uses red eyes by default, but we can override the eye rendering
+        // by setting variant-specific eye glow (handled in parent via quality system)
     }
 }
 
@@ -407,7 +937,7 @@ export class ArmoredZombie extends Zombie {
 
     // Use default Zombie.draw() which calls drawStaticBody()
     // Armor will be cached as part of the body sprite
-    
+
     takeDamage(bulletDamage) {
         // Armor absorbs most of the damage first; some always leaks through
         const armorLeakThrough = 0.35; // 35% of damage bypasses armor
@@ -479,7 +1009,7 @@ export class FastZombie extends Zombie {
             const pulse = Math.sin(Date.now() / 150) * 0.4 + 0.6;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.5 * auraQuality.opacity;
-            
+
             if (auraQuality.hasMultiLayer) {
                 const outerAura = context.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 2.2);
                 outerAura.addColorStop(0, `rgba(255, 100, 0, ${baseOpacity * pulse * pulseMultiplier})`);
@@ -491,7 +1021,7 @@ export class FastZombie extends Zombie {
                 context.arc(this.x, this.y, this.radius * 2.2, 0, Math.PI * 2);
                 context.fill();
             }
-            
+
             const auraGradient = context.createRadialGradient(this.x, this.y, this.radius * 0.4, this.x, this.y, this.radius * 1.8);
             auraGradient.addColorStop(0, `rgba(255, 100, 0, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(0.5, `rgba(255, 150, 50, ${baseOpacity * 0.6 * pulse})`);
@@ -615,7 +1145,7 @@ export class ExplodingZombie extends Zombie {
             const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.6 * auraQuality.opacity;
-            
+
             if (auraQuality.hasMultiLayer) {
                 const outerAura = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 3);
                 outerAura.addColorStop(0, `rgba(255, 150, 0, ${baseOpacity * pulse * pulseMultiplier})`);
@@ -627,7 +1157,7 @@ export class ExplodingZombie extends Zombie {
                 context.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
                 context.fill();
             }
-            
+
             const auraGradient = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
             auraGradient.addColorStop(0, `rgba(255, 150, 0, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(0.5, `rgba(255, 200, 50, ${baseOpacity * 0.7 * pulse})`);
@@ -727,7 +1257,7 @@ export class GhostZombie extends Zombie {
             const pulse = Math.sin(Date.now() / 300) * 0.4 + 0.6;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.6 * auraQuality.opacity;
-            
+
             if (auraQuality.hasMultiLayer) {
                 const outerAura = context.createRadialGradient(drawX, this.y, this.radius * 0.5, drawX, this.y, this.radius * 2.5);
                 outerAura.addColorStop(0, `rgba(150, 200, 255, ${baseOpacity * pulse * pulseMultiplier})`);
@@ -738,7 +1268,7 @@ export class GhostZombie extends Zombie {
                 context.arc(drawX, this.y, this.radius * 2.5, 0, Math.PI * 2);
                 context.fill();
             }
-            
+
             const auraGradient = context.createRadialGradient(drawX, this.y, this.radius * 0.5, drawX, this.y, this.radius * 2);
             auraGradient.addColorStop(0, `rgba(150, 200, 255, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -879,7 +1409,7 @@ export class SpitterZombie extends Zombie {
             const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.5 * auraQuality.opacity;
-            
+
             if (auraQuality.hasMultiLayer) {
                 const outerAura = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.5);
                 outerAura.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse * pulseMultiplier})`);
@@ -891,7 +1421,7 @@ export class SpitterZombie extends Zombie {
                 context.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
                 context.fill();
             }
-            
+
             const auraGradient = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2);
             auraGradient.addColorStop(0, `rgba(0, 255, 0, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(0.5, `rgba(50, 255, 50, ${baseOpacity * 0.6 * pulse})`);
@@ -981,7 +1511,7 @@ export class FlyingZombie extends Zombie {
         this.health = Math.floor(this.health * 0.7); // 70% health
         this.radius *= 0.9; // 90% radius (smaller hitbox)
         this.floatOffset = Math.random() * 1000; // Unique animation timing
-        
+
     }
 
     draw() {
@@ -995,20 +1525,20 @@ export class FlyingZombie extends Zombie {
             // Daytime: darker shadow (0.8 alpha), Nighttime: lighter shadow (0.4 alpha)
             const shadowAlpha = gameState.isNight ? RENDERING.SHADOW_ALPHA * 0.4 : RENDERING.SHADOW_ALPHA * 0.8;
             const shadowOffset = elevationHeight * 0.5; // Shadow offset based on elevation
-            
+
             // Draw darker, more prominent shadow on ground (below the zombie)
             ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
             ctx.beginPath();
             // Shadow is larger and more offset to show height
             ctx.ellipse(
-                this.x + 3, 
+                this.x + 3,
                 this.y + this.radius + 3 + shadowOffset, // Shadow further down due to elevation
                 this.radius * 1.4, // Larger shadow
                 this.radius * 0.5, // More elliptical
                 0, 0, Math.PI * 2
             );
             ctx.fill();
-            
+
             // Additional soft shadow layer for depth (daytime only)
             if (!gameState.isNight) {
                 ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha * 0.5})`;
@@ -1030,7 +1560,7 @@ export class FlyingZombie extends Zombie {
             const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.5 * auraQuality.opacity; // Darker than normal zombies
-            
+
             if (auraQuality.hasMultiLayer) {
                 // Outer dark purple/black aura
                 const outerAura = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.5);
@@ -1043,7 +1573,7 @@ export class FlyingZombie extends Zombie {
                 ctx.arc(this.x, drawY, this.radius * 2.5, 0, Math.PI * 2);
                 ctx.fill();
             }
-            
+
             // Inner darker aura
             const auraGradient = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.0);
             auraGradient.addColorStop(0, `rgba(100, 50, 120, ${baseOpacity * pulse})`);
@@ -1064,7 +1594,7 @@ export class FlyingZombie extends Zombie {
         const wingAngle = Math.sin((Date.now() + this.floatOffset) / wingFlapSpeed) * 0.4; // More pronounced wing animation
         const wingColor = '#1a1a2e'; // Dark purple/black bat-like color
         const wingAccent = '#2d1b4e'; // Dark purple accent
-        
+
         // Left wing (LARGER - 12px x 6px instead of 6px x 3px)
         ctx.save();
         ctx.translate(-12, -4); // Further out and up
@@ -1159,7 +1689,7 @@ export class FlyingZombie extends Zombie {
         ctx.arc(this.x + 4, drawY - 2, 3, 0, Math.PI * 2);
         ctx.arc(this.x - 3, drawY + 5, 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Additional dark patches for bat-like appearance
         ctx.fillStyle = 'rgba(10, 5, 15, 0.4)';
         ctx.beginPath();
@@ -1341,7 +1871,7 @@ export class CrawlerZombie extends Zombie {
             const pulse = Math.sin(Date.now() / 350) * 0.3 + 0.7;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.4 * auraQuality.opacity; // Darker than normal zombies
-            
+
             if (auraQuality.hasMultiLayer) {
                 const outerAura = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 2.0);
                 outerAura.addColorStop(0, `rgba(60, 40, 40, ${baseOpacity * pulse * pulseMultiplier})`);
@@ -1353,7 +1883,7 @@ export class CrawlerZombie extends Zombie {
                 ctx.arc(this.x, drawY, this.radius * 2.0, 0, Math.PI * 2);
                 ctx.fill();
             }
-            
+
             const auraGradient = ctx.createRadialGradient(this.x, drawY, this.radius * 0.5, this.x, drawY, this.radius * 1.6);
             auraGradient.addColorStop(0, `rgba(70, 50, 50, ${baseOpacity * pulse})`);
             auraGradient.addColorStop(0.5, `rgba(60, 40, 40, ${baseOpacity * 0.6 * pulse})`);
@@ -1371,7 +1901,7 @@ export class CrawlerZombie extends Zombie {
         bodyGradient.addColorStop(0.7, '#1a0a0a'); // Dark brown-gray
         bodyGradient.addColorStop(1, '#0a0000'); // Very dark
         ctx.fillStyle = bodyGradient;
-        
+
         // Elongated horizontal body (wider, flatter)
         ctx.beginPath();
         ctx.ellipse(this.x, drawY + 5, this.radius * 1.4, this.radius * 0.7, 0, 0, Math.PI * 2);
@@ -1381,25 +1911,25 @@ export class CrawlerZombie extends Zombie {
         ctx.strokeStyle = '#1a0a0a';
         ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
-        
+
         // Left arm (crawling position)
         ctx.beginPath();
         ctx.moveTo(this.x - 10, drawY + 3);
         ctx.lineTo(this.x - 18, drawY + 10);
         ctx.stroke();
-        
+
         // Right arm (crawling position)
         ctx.beginPath();
         ctx.moveTo(this.x + 10, drawY + 3);
         ctx.lineTo(this.x + 18, drawY + 10);
         ctx.stroke();
-        
+
         // Left leg (crawling position)
         ctx.beginPath();
         ctx.moveTo(this.x - 8, drawY + 8);
         ctx.lineTo(this.x - 14, drawY + 15);
         ctx.stroke();
-        
+
         // Right leg (crawling position)
         ctx.beginPath();
         ctx.moveTo(this.x + 8, drawY + 8);

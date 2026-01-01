@@ -61,7 +61,7 @@ export const RENDERING = {
     VIGNETTE_ALPHA: 0.6,
     DAMAGE_INDICATOR_ALPHA: 0.3,
     SHADOW_ALPHA: 0.4,
-    
+
     // Timing constants (ms)
     ZOMBIE_PULSE_PERIOD: 250,
     ZOMBIE_EYE_PULSE_PERIOD: 167,
@@ -69,16 +69,16 @@ export const RENDERING = {
     EXPLODING_ZOMBIE_PULSE_PERIOD: 150,
     GHOST_ZOMBIE_PULSE_PERIOD: 300,
     BURN_TICK_INTERVAL: 200,
-    
+
     // Viewport culling margin (pixels beyond viewport to still render)
     CULL_MARGIN: 100,
-    
+
     // Update culling margin (larger than render margin - entities further away still update for AI/pathfinding)
     UPDATE_MARGIN: 300,
-    
+
     // Small feature culling - skip rendering entities smaller than this (screen pixels)
     MIN_VISIBLE_SIZE: 1.0,
-    
+
     // Gradient cache invalidation thresholds
     CANVAS_SIZE_CHANGE_THRESHOLD: 10, // pixels
     PLAYER_POSITION_CHANGE_THRESHOLD: 50, // pixels
@@ -106,7 +106,7 @@ export const MAX_LOCAL_PLAYERS = 4;
 export const SERVER_URL = "https://ottertondays-zombs.hf.space";
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.2.1 ALPHA: WebGPU Screen Shake Sync! 🫨 | Particle Sync Fix 🎨 | HUD Refinements 🖥️ | V0.8.2.0 ALPHA: Visual Polish Update! ✨ | Glowing Zombie Eyes 👀 | Particle Explosions 💥 | Textured Buttons 🎨 | V0.8.1.7 ALPHA: Zombie Health Increase! 💪 | 1.25x HP Boost | Boss Min 1000 HP | Car Fire Effects 🔥 | Enhanced Skull Design 💀 | V0.8.1.6: WebGPU Explosions! 💥 | Particle Overhaul 🎨 | 8x Radius Support | V0.8.1.5: Particle Parallax 🌐 | Camera-Relative Movement | V0.8.1.3: Prop Enhancements 🚗 | Animated Smoke Effects | V0.8.1.2: Living World 🌍 | Camera System | V0.8.0: Major Refactor! 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun Weapon ⚡ | Menu Click Sounds 🎵 | V0.8.3.1 ALPHA: Arcade Music System 🎵 | Normal Zombie Variants with Animated Arms 👕 | Doubled Spawn Rate 💀 | V0.8.3.0 ALPHA: Campaign Mode Intro 🎬 | Flashlight System 🔦 | Audio Mixer 🎚️ | Improved Impact SFX 💥 | V0.8.2.1 ALPHA: WebGPU Screen Shake Sync 🫨 | Particle Sync Fix 🎨 | V0.8.2.0 ALPHA: Visual Polish Update ✨ | V0.8.0: Major Refactor 🚀 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {
@@ -190,5 +190,15 @@ export const WEAPONS = {
         type: 'rocket',
         explosionRadius: 150,
         explosionDamage: 120 // Doubled from 60
+    },
+    laser: {
+        name: "Laser Gun",
+        damage: 5,
+        fireRate: 60, // Very fast
+        ammo: 60,
+        maxAmmo: 60,
+        reloadTime: 1500,
+        range: 800,
+        type: 'laser'
     }
 };

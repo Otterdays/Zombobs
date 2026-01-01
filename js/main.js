@@ -14,6 +14,7 @@ import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderi
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
 import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, isAudioInitialized } from './systems/AudioSystem.js';
+import { setMusicIntensity, pauseArcadeMusic, resumeArcadeMusic } from './systems/ArcadeMusicSystem.js';
 import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
 import { isInViewport, getViewportBounds, shouldUpdateEntity, isVisibleOnScreen } from './utils/gameUtils.js';
@@ -339,6 +340,7 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
+    pauseArcadeMusic(); // Pause background music
 
     // Track pause for badge
     playerProfileSystem.trackGamePause();
@@ -352,6 +354,7 @@ function pauseGame() {
 function resumeGame() {
     gameState.gamePaused = false;
     gameHUD.hidePauseMenu();
+    resumeArcadeMusic(); // Resume background music
 
     // Notify server
     if (gameState.multiplayer.active && gameState.multiplayer.socket) {
@@ -549,7 +552,7 @@ function updateGame() {
 
     // Update particles
     updateParticles();
-    
+
     // Update snow effect
     updateSnowSystem(viewport);
 
@@ -682,34 +685,71 @@ function updateGame() {
             spawnZombies(gameState.zombiesPerWave);
         }
     }
+
+    // Update music intensity based on game state
+    // Base intensity increases with wave number (0.0 to 0.5 over 20 waves)
+    let targetIntensity = Math.min(gameState.wave / 20, 0.5);
+
+    // Add intensity based on zombie count (tension rises with horde size)
+    // 0.0 to 0.5 over 50 zombies
+    targetIntensity += Math.min(gameState.zombies.length / 50, 0.5);
+
+    // Max intensity during boss battles
+    if (gameState.bossActive) {
+        targetIntensity = 1.0;
+    }
+
+    // Increase intensity if local player has low health (< 30%)
+    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+    if (localPlayer && localPlayer.health < localPlayer.maxHealth * 0.3) {
+        targetIntensity = Math.max(targetIntensity, 0.8);
+    }
+
+    setMusicIntensity(targetIntensity);
 }
 
 function drawGame() {
     // Clear UI canvas
     if (uiCtx) {
         uiCtx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
-        
+
         // Manage pointer events for UI canvas
         // Enable pointer events if any UI screen is active or game over
-        const isUIActive = gameState.showSettingsPanel || 
-                           gameState.showMainMenu || 
-                           gameState.showLobby || 
-                           gameState.showCoopLobby || 
-                           gameState.showAILobby || 
-                           gameState.showGallery || 
-                           gameState.showAbout || 
-                           gameState.showProfile || 
-                           gameState.showAchievements || 
-                           gameState.showBattlepass || 
-                           gameState.showBadges || 
-                           gameState.showLevelUp ||
-                           gameHUD.gameOver ||
-                           gameState.gamePaused;
-                           
-        if (isUIActive) {
+        const isUIActive = gameState.showSettingsPanel ||
+            gameState.showMainMenu ||
+            gameState.showLobby ||
+            gameState.showCoopLobby ||
+            gameState.showAILobby ||
+            gameState.showGallery ||
+            gameState.showAbout ||
+            gameState.showProfile ||
+            gameState.showAchievements ||
+            gameState.showBattlepass ||
+            gameState.showBadges ||
+            gameState.showLevelUp ||
+            gameState.showUsernameModal ||
+            gameHUD.gameOver ||
+            gameState.gamePaused;
+
+        // v0.8.3.3: Exclude HTML-based overlays from auto pointer-events
+        // These screens need clicks to fall through to the DOM, 
+        // while the uiCanvas (at Z-index 2000) draws the custom cursor on top.
+        const isHTMLOverlayActive = gameState.showProfile ||
+            gameState.showAchievements ||
+            gameState.showBattlepass ||
+            gameState.showBadges;
+
+        if (isUIActive && !isHTMLOverlayActive) {
             uiCanvas.style.pointerEvents = 'auto';
         } else {
             uiCanvas.style.pointerEvents = 'none';
+        }
+
+        // Hide system cursor globally when any UI that draws a custom cursor is active
+        if (isUIActive) {
+            uiCanvas.style.cursor = 'none';
+        } else {
+            uiCanvas.style.cursor = 'none'; // Keep hidden in-game too (crosshair is handled elsewhere)
         }
     }
 
@@ -726,7 +766,7 @@ function drawGame() {
 
     if (gameState.showCampaignIntro) {
         uiCanvas.style.cursor = 'none';
-        
+
         // During 'fizzle' phase, we want to see the main menu behind the effect
         // So we temporarily force showMainMenu to true for GameHUD to render it
         if (gameHUD.campaignIntroScreen && gameHUD.campaignIntroScreen.phase === 'fizzle') {
@@ -735,7 +775,7 @@ function drawGame() {
             gameHUD.mainMenuScreen.draw(); // Manually draw menu content
             gameHUD.mainMenu = false; // Reset
         }
-        
+
         gameHUD.draw(); // This will draw the intro screen overlay on top
         return;
     }
@@ -783,37 +823,20 @@ function drawGame() {
     }
 
     if (gameState.showAbout) {
-        gameHUD.mainMenu = false;
         uiCanvas.style.cursor = 'none';
         gameHUD.draw();
         return;
     }
 
-    if (gameState.showProfile) {
-        gameHUD.mainMenu = false;
-        uiCanvas.style.cursor = 'none';
-        profileScreen.draw();
-        return;
-    }
+    // v0.8.3.4: Always update/draw HTML overlays (they handle their own mount/unmount based on gameState)
+    if (profileScreen) profileScreen.draw();
+    if (achievementScreen) achievementScreen.draw();
+    if (battlepassScreen) battlepassScreen.draw();
+    if (badgeScreen) badgeScreen.draw();
 
-    if (gameState.showAchievements) {
-        gameHUD.mainMenu = false;
-        uiCanvas.style.cursor = 'none';
-        achievementScreen.draw();
-        return;
-    }
-
-    if (gameState.showBattlepass) {
-        gameHUD.mainMenu = false;
-        uiCanvas.style.cursor = 'none';
-        battlepassScreen.draw();
-        return;
-    }
-
-    if (gameState.showBadges) {
-        gameHUD.mainMenu = false;
-        uiCanvas.style.cursor = 'none';
-        badgeScreen.draw();
+    if (gameState.showProfile || gameState.showAchievements || gameState.showBattlepass || gameState.showBadges) {
+        uiCanvas.style.cursor = 'none'; // Custom cursor drawn by gameHUD.draw()
+        gameHUD.draw();
         return;
     }
 
@@ -903,11 +926,11 @@ function drawGame() {
     if (gameState.shakeAmount > 0.1) {
         const shakeX = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
         const shakeY = (Math.random() - 0.5) * gameState.shakeAmount * shakeIntensity;
-        
+
         // Store current shake for WebGPU renderer
         gameState.currentShakeX = shakeX;
         gameState.currentShakeY = shakeY;
-        
+
         ctx.translate(shakeX, shakeY);
         gameState.shakeAmount *= gameState.shakeDecay;
     } else {
@@ -1394,7 +1417,7 @@ gameEngine.draw = () => {
         const dt = gameEngine.timeStep || 16.67; // Use engine timestep or default to ~60fps
         // Pass camera position for parallax
         const cameraPos = cameraSystem.getPosition();
-        
+
         // Apply screen shake to WebGPU camera (inverse of translation)
         // If ctx.translate(dx, dy) moves world right, we want background to move right too.
         // In shader: pos = worldPos - cameraPos.
@@ -1402,18 +1425,18 @@ gameEngine.draw = () => {
         // So cameraPos - shakeOffset.
         const shakeX = gameState.currentShakeX || 0;
         const shakeY = gameState.currentShakeY || 0;
-        
+
         const shakeCamera = {
             x: cameraPos.x - shakeX,
             y: cameraPos.y - shakeY
         };
-        
+
         // Disable snow rendering on main menu and other non-gameplay screens
         // Also restrict snow to single player arcade mode as requested
         const isMenu = gameState.showMainMenu || gameState.showLobby || gameState.showAILobby || gameState.showCoopLobby || gameState.showGallery || gameState.showAbout;
         const isArcade = !gameState.isCoop && !gameState.multiplayer.active && (!gameState.gameMode || gameState.gameMode === 'arcade');
         const isGameplay = gameState.gameRunning && !gameState.gamePaused && !isMenu;
-        
+
         if (webgpuRenderer.setSnowEnabled) {
             // Only enable snow in gameplay, and specifically for arcade mode if requested (user said "should be rendering in arcade")
             // Assuming they want it ONLY in arcade, or at least definitely NOT in menus.
@@ -1438,22 +1461,22 @@ gameEngine.draw = () => {
             // We need a temporary toggle or pass it to render().
             // Let's modify render() to accept an options object or flags, OR add a 'setMenuMode' to renderer.
             // OR, just update render() in WebGPURenderer to check a new 'renderingEnabled' flag for specific layers.
-            
+
             // Simpler: Just don't call render() for these layers in WebGPURenderer if we pass a flag.
             // I'll update WebGPURenderer to handle this cleaner in a moment.
             // For now, let's pass a 'renderEffects' flag to render().
         }
-        
+
         // Actually, let's just pass 'isGameplay' to render() and handle it there?
         // Or better, let's update WebGPURenderer to have 'setGameplayEffectsEnabled'.
-        
+
         // User said "all webgpu particle are showing".
         // Snow is handled.
         // Spore Cloud (ZombobsFX) needs handling.
         // Game Particles (Explosions) needs handling.
-        
+
         // If I update WebGPURenderer.js to respect 'isGameplay' state, that's cleanest.
-        
+
         webgpuRenderer.render(dt, shakeCamera, isGameplay);
     }
 };
@@ -1543,6 +1566,12 @@ document.addEventListener('keydown', (e) => {
             settingsPanel.close();
             return;
         }
+
+        // Handle HTML overlays closing via Escape
+        if (gameState.showProfile) { gameState.showProfile = false; return; }
+        if (gameState.showAchievements) { gameState.showAchievements = false; return; }
+        if (gameState.showBattlepass) { gameState.showBattlepass = false; return; }
+        if (gameState.showBadges) { gameState.showBadges = false; return; }
     }
 
     if (gameState.showSettingsPanel) {
@@ -1564,6 +1593,7 @@ document.addEventListener('keydown', (e) => {
 
     if (gameState.showMainMenu) return;
     if (gameState.showSettingsPanel) return;
+    if (gameState.showProfile || gameState.showAchievements || gameState.showBattlepass || gameState.showBadges) return;
 
     const key = e.key.toLowerCase();
     keys[key] = true;
@@ -1583,6 +1613,7 @@ document.addEventListener('keydown', (e) => {
     if (keys[controls.weapon5] && localPlayer) switchWeapon(WEAPONS.smg, localPlayer);
     if (keys[controls.weapon6] && localPlayer) switchWeapon(WEAPONS.sniper, localPlayer);
     if (keys[controls.weapon7] && localPlayer) switchWeapon(WEAPONS.rocketLauncher, localPlayer);
+    if (keys[controls.weapon8] && localPlayer) switchWeapon(WEAPONS.laser, localPlayer);
 
     // Actions
     if (key === controls.grenade && localPlayer) {
@@ -1654,7 +1685,7 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mousedown', (e) => {
     // Check if click is within canvas bounds
     const rect = canvas.getBoundingClientRect();
-    if (e.clientX < rect.left || e.clientX > rect.right || 
+    if (e.clientX < rect.left || e.clientX > rect.right ||
         e.clientY < rect.top || e.clientY > rect.bottom) {
         return;
     }
@@ -1713,7 +1744,7 @@ window.addEventListener('mousedown', (e) => {
         } else if (clickedButton === 'campaign') {
             gameState.isCoop = false;
             gameState.multiplayer.active = false; // Ensure multiplayer is disabled for arcade mode
-            
+
             // Start campaign intro
             gameState.showCampaignIntro = true;
             // Stop menu music

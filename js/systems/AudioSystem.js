@@ -58,7 +58,7 @@ export function updateAudioSettings() {
 
     // Check if audio is muted
     const isMuted = settingsManager.getSetting('audio', 'muted') === true;
-    
+
     const masterVol = isMuted ? 0 : (settingsManager.getSetting('audio', 'masterVolume') ?? 1.0);
     if (masterGainNode) {
         masterGainNode.gain.value = masterVol;
@@ -170,6 +170,8 @@ export function playGunshotSound() {
         playSniperSound();
     } else if (player.currentWeapon === WEAPONS.rocketLauncher) {
         playRocketLaunchSound();
+    } else if (player.currentWeapon === WEAPONS.laser) {
+        playLaserSound();
     } else {
         playPistolSound();
     }
@@ -180,7 +182,8 @@ function playPistolSound() {
         const source = audioContext.createBufferSource();
         source.buffer = gunshotBuffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.4;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.4 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -193,7 +196,8 @@ function playShotgunSound() {
         source.buffer = gunshotBuffer;
         source.playbackRate.value = 0.8;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.5;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.5 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -206,7 +210,8 @@ function playRifleSound() {
         source.buffer = gunshotBuffer;
         source.playbackRate.value = 1.2;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.35;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.35 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -219,7 +224,8 @@ function playFlamethrowerSound() {
         source.buffer = gunshotBuffer;
         source.playbackRate.value = 0.2;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.1;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.1 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -232,7 +238,8 @@ function playSMGSound() {
         source.buffer = gunshotBuffer;
         source.playbackRate.value = 1.4;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.25;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.25 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -245,7 +252,8 @@ function playSniperSound() {
         source.buffer = gunshotBuffer;
         source.playbackRate.value = 0.6;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.6;
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.6 * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -262,7 +270,8 @@ function playRocketLaunchSound() {
     osc.frequency.setValueAtTime(200, t);
     osc.frequency.exponentialRampToValueAtTime(50, t + 0.5);
 
-    gain.gain.setValueAtTime(0.3, t);
+    const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+    gain.gain.setValueAtTime(0.3 * specificVol, t);
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
 
     osc.connect(gain);
@@ -270,6 +279,83 @@ function playRocketLaunchSound() {
 
     osc.start(t);
     osc.stop(t + 0.5);
+
+}
+
+function playLaserSound() {
+    if (!audioContext) return;
+    const t = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    // Laser Zap: High frequency sweep
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(2000, t);
+    osc.frequency.exponentialRampToValueAtTime(500, t + 0.1);
+
+    const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+    gain.gain.setValueAtTime(0.15 * specificVol, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+
+    // Filter to remove harshness
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(3000, t);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.1);
+}
+
+export function playMenuClickSound() {
+    if (!audioContext) return; // Silent if no audio context
+    try {
+        const t = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        // High pitch "pip"
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, t);
+        osc.frequency.linearRampToValueAtTime(1200, t + 0.03);
+
+        const sfxVol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
+        gain.gain.setValueAtTime(0.05 * sfxVol, t); // Quiet
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+        osc.connect(gain);
+        gain.connect(masterGainNode || audioContext.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.05);
+    } catch (e) { }
+}
+
+export function playMenuHoverSound() {
+    if (!audioContext) return;
+    try {
+        const t = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        // Subtle low-pitch "tick"
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(150, t + 0.02);
+
+        const sfxVol = settingsManager.getSetting('audio', 'sfxVolume') ?? 1.0;
+        gain.gain.setValueAtTime(0.02 * sfxVol, t); // Very subtle
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+
+        osc.connect(gain);
+        gain.connect(masterGainNode || audioContext.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.02);
+    } catch (e) { }
 }
 
 // Generate damage/hurt sound using Web Audio API
@@ -286,23 +372,29 @@ export function playDamageSound() {
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
 
-        // Generate damage waveform (grunt-like with impact)
+        // Generate damage waveform (meatier impact)
+        // Combine low thud (sine) with high frequency noise (crunch/splatter)
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
-            // Low frequency grunt/hurt sound (vowel-like)
             let sample = 0;
-            // Fundamental frequency (human-like grunt around 150-200Hz)
-            sample += Math.sin(t * 175 * 2 * Math.PI) * 0.6;
-            // Add harmonics for more body
-            sample += Math.sin(t * 175 * 4 * Math.PI) * 0.3;
-            sample += Math.sin(t * 175 * 6 * Math.PI) * 0.1;
-            // Add slight noise for impact texture
-            sample += (Math.random() * 2 - 1) * 0.2;
-            // Envelope: quick attack, slower decay (like a grunt)
-            const attack = Math.min(1, t / 0.02); // 20ms attack
-            const decay = Math.max(0, 1 - (t - 0.02) / (duration - 0.02));
-            const envelope = attack * decay;
-            data[i] = sample * envelope * 0.25; // Volume
+
+            // 1. Low frequency body (thud)
+            // Rapid pitch drop 150Hz -> 50Hz for weight
+            const freq = 150 - (t * 600);
+            if (freq > 0) sample += Math.sin(t * freq * 2 * Math.PI) * 0.5;
+
+            // 2. High frequency texture (crunch/splatter)
+            const noise = Math.random() * 2 - 1;
+            // Simple high-pass-like effect by ignoring low changes? No, let's just mix it.
+            // Decay noise faster than the thud
+            sample += noise * 0.4 * Math.exp(-t * 25);
+
+            // 3. Mid-range resonance (gross factor)
+            sample += Math.sin(t * 300 * 2 * Math.PI) * 0.2 * Math.exp(-t * 15);
+
+            // Envelope: Immediate attack, natural decay
+            const envelope = 1 - (t / duration);
+            data[i] = sample * envelope * 0.4; // Slightly louder volume
         }
 
         // Play the sound
@@ -345,24 +437,33 @@ export function playKillSound(zombieType = 'normal') {
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
 
-        // Generate kill sound waveform (satisfying pop/thud)
+        // Generate kill sound waveform (visceral squelch/splat - removing the "boop")
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
             let sample = 0;
-            // Higher frequency pop (around 300-400Hz) for satisfying "pop" feel
-            // Apply pitch multiplier to all frequencies
-            sample += Math.sin(t * 350 * pitchMultiplier * 2 * Math.PI) * 0.5;
-            // Add lower frequency thud (around 100Hz) for impact
-            sample += Math.sin(t * 100 * pitchMultiplier * 2 * Math.PI) * 0.4;
-            // Add higher harmonics for crispness
-            sample += Math.sin(t * 700 * pitchMultiplier * 2 * Math.PI) * 0.2;
-            // Add slight noise burst for texture
-            sample += (Math.random() * 2 - 1) * 0.15;
-            // Envelope: very quick attack, fast decay (punchy)
-            const attack = Math.min(1, t / 0.01); // 10ms attack - very quick
-            const decay = Math.max(0, 1 - (t - 0.01) / (duration - 0.01));
-            const envelope = attack * decay;
-            data[i] = sample * envelope * 0.3; // Slightly louder than damage sound
+
+            // 1. Wet Squelch (Middle Freq Noise with "wobble" texture)
+            // Modulate noise amplitude with a low sine to simulate liquid movement
+            const texture = Math.sin(t * 80 * Math.PI); // Wobble texture
+            const noise = (Math.random() * 2 - 1);
+            // Squelch envelope - slower than a tick, faster than a moan
+            const squelchEnv = Math.exp(-t * 25);
+            sample += noise * texture * squelchEnv * 0.7;
+
+            // 2. Low Frequency Thud (Body weight)
+            // Pitch drop for weight: 120Hz -> 40Hz
+            const dropFreq = (120 * pitchMultiplier) - (t * 400);
+            if (dropFreq > 0) {
+                sample += Math.sin(t * dropFreq * 2 * Math.PI) * 0.5 * Math.exp(-t * 20);
+            }
+
+            // 3. Crack/Snap (Initial bone break transient)
+            // Short, high frequency burst
+            const snapEnv = Math.exp(-t * 150);
+            const highNoise = (Math.random() * 2 - 1);
+            sample += highNoise * snapEnv * 0.4;
+
+            data[i] = sample * 0.35; // Master volume for this sound
         }
 
         // Play the sound
@@ -425,7 +526,8 @@ export function playFootstepSound(isSprinting = false) {
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
         // Sprinting footsteps are louder (50% increase vs normal)
-        gainNode.gain.value = isSprinting ? 0.5625 : 0.375; // 0.375 * 1.5 = 0.5625
+        const specificVol = settingsManager.getSetting('audio', 'walkingVolume') ?? 1.0;
+        gainNode.gain.value = (isSprinting ? 0.5625 : 0.375) * specificVol;
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -493,20 +595,20 @@ export function playRocketFireSound() {
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
             let sample = 0;
-            
+
             // Low frequency rumble (80-120Hz) - deeper than gunshot
             sample += Math.sin(t * 100 * 2 * Math.PI) * 0.5;
             sample += Math.sin(t * 80 * 2 * Math.PI) * 0.3;
-            
+
             // Sharp crack/click (800-1000Hz) - distinctive launch sound
             sample += Math.sin(t * 900 * 2 * Math.PI) * 0.3 * Math.exp(-t * 8);
-            
+
             // Whoosh/thump component (200-300Hz)
             sample += Math.sin(t * 250 * 2 * Math.PI) * 0.2 * Math.exp(-t * 3);
-            
+
             // Add slight noise for texture
             sample += (Math.random() * 2 - 1) * 0.1;
-            
+
             // Envelope: quick attack, medium decay
             const attack = Math.min(1, t / 0.02); // 20ms attack
             const decay = Math.max(0, 1 - (t - 0.02) / (duration - 0.02));
@@ -517,7 +619,8 @@ export function playRocketFireSound() {
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.5; // Louder than regular gunshot
+        const specificVol = settingsManager.getSetting('audio', 'gunshotVolume') ?? 1.0;
+        gainNode.gain.value = 0.5 * specificVol; // Louder than regular gunshot
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -583,28 +686,40 @@ export function playHitSound() {
         const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
         const data = buffer.getChannelData(0);
 
-        // Generate hit sound waveform (sharp tick)
+        // Generate hit sound waveform (sharp mechanical tick/thwack - removing the "boop")
         for (let i = 0; i < buffer.length; i++) {
             const t = i / sampleRate;
             let sample = 0;
-            // High frequency tick (around 1000Hz) for sharpness
-            sample += Math.sin(t * 1000 * 2 * Math.PI) * 0.4;
-            // Add higher harmonics for crispness
-            sample += Math.sin(t * 2000 * 2 * Math.PI) * 0.2;
-            // Add slight noise burst for texture
-            sample += (Math.random() * 2 - 1) * 0.1;
-            // Very quick envelope: fast attack, fast decay
-            const attack = Math.min(1, t / 0.005); // 5ms attack - very quick
-            const decay = Math.max(0, 1 - (t - 0.005) / (duration - 0.005));
-            const envelope = attack * decay;
-            data[i] = sample * envelope * 0.25; // Volume
+
+            // 1. High frequency noise burst (The "Tick")
+            // Filtered white noise (poor man's high pass via rapid decay of low freq components? No, just noise)
+            const noise = Math.random() * 2 - 1;
+
+            // Envelope: Extremely fast attack and decay
+            const tickEnv = Math.exp(-t * 200); // Very sharp
+
+            sample += noise * tickEnv * 0.4;
+
+            // 2. Subtle impact body (The "Thwack") - Non-tonal
+            // Low sine that drops pitch rapidly to avoid "tone" feel, acting more like a kick drum
+            const thudFreq = 200 - (t * 2000);
+            if (thudFreq > 0) {
+                sample += Math.sin(t * thudFreq * 2 * Math.PI) * 0.3 * Math.exp(-t * 50);
+            }
+
+            // 3. Crisp shine (High freq sine sweep, very subtle - 4kHz)
+            // Increases perceived sharpness without "beeping"
+            sample += Math.sin(t * 4000 * 2 * Math.PI) * 0.1 * tickEnv;
+
+            data[i] = sample * 0.3; // Volume scaling
         }
 
         // Play the sound
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.35; // Volume level
+        const specificVol = settingsManager.getSetting('audio', 'hitSoundVolume') ?? 1.0;
+        gainNode.gain.value = 0.35 * specificVol; // Volume level
         source.connect(gainNode);
         gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
         source.start(0);
@@ -626,22 +741,51 @@ export function playMultiplierUpSound(tier) {
     }
     if (!audioContext) return;
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    // Generate a "Crystal Shimmer" effect (dual oscillator for richness)
+    // Oscillator 1: Main tone (Sine)
+    const osc1 = audioContext.createOscillator();
+    const gain1 = audioContext.createGain();
 
-    // Higher pitch for higher tiers
-    const baseFreq = 400;
-    oscillator.frequency.value = baseFreq + (tier * 100);
-    oscillator.type = 'sine';
+    // Oscillator 2: Overtone (Sine, +1 Octave, detuned slightly)
+    const osc2 = audioContext.createOscillator();
+    const gain2 = audioContext.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+    // Base pitch (higher/glassier than before)
+    const pitch = 500 + (tier * 150);
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(pitch, audioContext.currentTime);
 
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.3);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(pitch * 2 + 5, audioContext.currentTime); // +5Hz detune for "shimmer"
+
+    // Connections
+    const multVol = settingsManager.getSetting('audio', 'multiplierVolume') ?? 1.0;
+    osc1.connect(gain1);
+    gain1.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    osc2.connect(gain2);
+    gain2.connect(sfxGainNode || masterGainNode || audioContext.destination);
+
+    const now = audioContext.currentTime;
+    const duration = 0.3;
+
+    // Envelopes (Bell-like: Soft attack, shorter decay)
+    // Main Tone
+    gain1.gain.setValueAtTime(0, now);
+    gain1.gain.linearRampToValueAtTime(0.15 * multVol, now + 0.03);
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+    // Overtone (Quiet but adds high-end sheen)
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.10 * multVol, now + 0.03);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + (duration * 0.7));
+
+    // Play
+    osc1.start(now);
+    osc1.stop(now + duration + 0.1);
+    osc2.start(now);
+    osc2.stop(now + duration + 0.1);
 }
 
 /**
@@ -655,7 +799,7 @@ export function playMultiplierMaxSound() {
 
     // Create a fanfare with multiple tones
     const frequencies = [523, 659, 784, 1047]; // C, E, G, C (major chord)
-    
+
     frequencies.forEach((freq, index) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();

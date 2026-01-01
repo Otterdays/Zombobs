@@ -11,7 +11,7 @@ import {
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
 import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombieCollision, triggerWaveNotification } from './gameUtils.js';
-import { Bullet, FlameBullet, PiercingBullet, Rocket } from '../entities/Bullet.js';
+import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
@@ -122,6 +122,57 @@ export function shootBullet(target, canvas, player) {
         rocket.maxDistance *= rangeMultiplier; // Apply range multiplier
         rocket.player = player; // Track which player fired this bullet
         gameState.bullets.push(rocket);
+
+    } else if (player.currentWeapon === WEAPONS.laser) {
+        // Laser Logic (Instant Raycast)
+        const range = player.currentWeapon.range || 800;
+        const rayDirX = Math.cos(angle);
+        const rayDirY = Math.sin(angle);
+
+        let endX = gunX + rayDirX * range;
+        let endY = gunY + rayDirY * range;
+        let hitZombie = null;
+        let minDist = range;
+
+        // Check all zombies for ray intersection
+        for (const zombie of gameState.zombies) {
+            if (zombie.health <= 0) continue;
+
+            const dx = zombie.x - gunX;
+            const dy = zombie.y - gunY;
+            const t = dx * rayDirX + dy * rayDirY;
+
+            if (t <= 0 || t > range) continue;
+
+            const projX = gunX + rayDirX * t;
+            const projY = gunY + rayDirY * t;
+            const distSq = (zombie.x - projX) ** 2 + (zombie.y - projY) ** 2;
+            const hitRadius = zombie.radius + 10;
+
+            if (distSq < hitRadius * hitRadius) {
+                if (t < minDist) {
+                    minDist = t;
+                    hitZombie = zombie;
+                }
+            }
+        }
+
+        if (hitZombie) {
+            endX = gunX + rayDirX * minDist;
+            endY = gunY + rayDirY * minDist;
+
+            // Create an invisible bullet at the hit point to trigger standard logic
+            const logicBullet = new Bullet(hitZombie.x, hitZombie.y, angle, player.currentWeapon);
+            logicBullet.type = 'laser_hit';
+            logicBullet.damage *= damageMult;
+            logicBullet.player = player;
+            logicBullet.radius = hitZombie.radius + 5; // Ensure it overlaps
+            gameState.bullets.push(logicBullet);
+        }
+
+        // Create visual beam
+        const beam = new LaserBeam(gunX, gunY, angle, player.currentWeapon, endX, endY);
+        gameState.bullets.push(beam);
 
     } else {
         // Pistol and rifle fire single bullet
@@ -533,6 +584,10 @@ export function handleBulletZombieCollisions() {
 
     for (let bulletIndex = 0; bulletIndex < gameState.bullets.length; bulletIndex++) {
         const bullet = gameState.bullets[bulletIndex];
+
+        // Skip visual-only laser beams
+        if (bullet.type === 'laser_visual') continue;
+
         // Reuse query range object (update properties instead of creating new object)
         queryRange.x = bullet.x - 20; // Arbitrary padding around bullet
         queryRange.y = bullet.y - 20;
@@ -566,7 +621,10 @@ export function handleBulletZombieCollisions() {
             const zombieIndex = gameState.zombies.indexOf(zombie);
             if (zombieIndex === -1) return; // Already removed
 
-            if (checkZombieCollision(bullet, zombie)) {
+            const collisionResult = checkZombieCollision(bullet, zombie);
+            if (collisionResult.hit) {
+                // v0.8.3.5 Store headshot status for the kill reward
+                const isHeadshot = collisionResult.isHeadshot;
                 // Handle Rocket collisions FIRST (before marking as hit)
                 if (bullet.type === 'rocket') {
 
@@ -595,6 +653,8 @@ export function handleBulletZombieCollisions() {
                     zombie.burnDamage = bullet.damage * 2; // Double damage over time
                     // Also apply instant damage
                     if (zombie.takeDamage(bullet.damage)) {
+                        // v0.8.3.5 Track headshot
+                        if (isHeadshot) gameState.headshots++;
                         // Zombie dies from flame hit
                         // const zombieX = zombie.x; // Already stored
                         // const zombieY = zombie.y;
@@ -1094,6 +1154,7 @@ export function handlePickupCollisions() {
                         gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${HEALTH_PICKUP_HEAL_AMOUNT} HP`, false, '#ff1744'));
                     }
                     collected = true;
+                    gameState.pickupsCollected++;
                     break; // Only one player picks it up
                 }
             }
@@ -1116,6 +1177,7 @@ export function handlePickupCollisions() {
                         gameState.damageNumbers.push(new DamageNumber(pickup.x, pickup.y - 20, `+${AMMO_PICKUP_AMOUNT} AMMO`, false, '#00ffff'));
                     }
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1133,6 +1195,7 @@ export function handlePickupCollisions() {
                     gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "DOUBLE DAMAGE!"));
                     createParticles(pickup.x, pickup.y, '#9c27b0', 12);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1149,6 +1212,7 @@ export function handlePickupCollisions() {
                     triggerNuke(pickup.x, pickup.y);
                     createParticles(pickup.x, pickup.y, '#ffeb3b', 20);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1166,6 +1230,7 @@ export function handlePickupCollisions() {
                     gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "SPEED BOOST!"));
                     createParticles(pickup.x, pickup.y, '#00bcd4', 12);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1183,6 +1248,7 @@ export function handlePickupCollisions() {
                     gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 40, "RAPID FIRE!"));
                     createParticles(pickup.x, pickup.y, '#ff9800', 12);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1203,6 +1269,7 @@ export function handlePickupCollisions() {
                     }
                     createParticles(pickup.x, pickup.y, '#03a9f4', 12);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }
@@ -1226,6 +1293,7 @@ export function handlePickupCollisions() {
                     }
                     createParticles(pickup.x, pickup.y, '#4caf50', 15);
                     collected = true;
+                    gameState.pickupsCollected++;
                     break;
                 }
             }

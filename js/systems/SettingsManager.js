@@ -11,7 +11,12 @@ export class SettingsManager {
                 musicVolume: 0.5,
                 sfxVolume: 1.0,
                 spatialAudio: false, // Stereo panning based on position
-                muted: false // Master mute toggle
+                muted: false, // Master mute toggle
+                // Granular volume controls
+                walkingVolume: 1.0,
+                gunshotVolume: 1.0,
+                hitSoundVolume: 1.0,
+                multiplierVolume: 1.0
             },
             video: {
                 // WebGPU Settings
@@ -80,6 +85,7 @@ export class SettingsManager {
                 weapon5: '5',
                 weapon6: '6',
                 weapon7: '7',
+                weapon8: '8',
                 scrollWheelSwitch: true,
                 flashlight: 'f'
             },
@@ -106,12 +112,12 @@ export class SettingsManager {
             const saved = localStorage.getItem('zombobs_settings');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                
+
                 // Check for version mismatch - may need migrations in future
                 if (parsed._version !== SETTINGS_VERSION) {
                     console.log(`[Settings] Migrating from v${parsed._version || 1} to v${SETTINGS_VERSION}`);
                 }
-                
+
                 // Merge with defaults to ensure all keys exist
                 return this.mergeSettings(this.defaultSettings, parsed);
             }
@@ -176,7 +182,7 @@ export class SettingsManager {
     resetToDefaults() {
         this.settings = JSON.parse(JSON.stringify(this.defaultSettings));
         this.saveSettings();
-        
+
         // Notify all callbacks about the reset
         for (const category in this.settings) {
             if (category === '_version') continue;
@@ -184,7 +190,7 @@ export class SettingsManager {
                 this.callbacks.forEach(cb => cb(category, key, this.settings[category][key]));
             }
         }
-        
+
         console.log('[Settings] Reset to defaults');
         return true;
     }
@@ -198,15 +204,15 @@ export class SettingsManager {
             console.warn(`[Settings] Unknown category: ${category}`);
             return false;
         }
-        
+
         this.settings[category] = JSON.parse(JSON.stringify(this.defaultSettings[category]));
         this.saveSettings();
-        
+
         // Notify callbacks
         for (const key in this.settings[category]) {
             this.callbacks.forEach(cb => cb(category, key, this.settings[category][key]));
         }
-        
+
         console.log(`[Settings] Reset category: ${category}`);
         return true;
     }
@@ -244,7 +250,7 @@ export class SettingsManager {
 
         // Notify callbacks
         this.callbacks.forEach(callback => callback(category, key, value));
-        
+
         // If VSync was enabled, also notify about fpsLimit change
         if (category === 'video' && key === 'vsync' && value === true) {
             this.callbacks.forEach(callback => callback('video', 'fpsLimit', 0));

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +9,15 @@
     <link rel="icon" type="image/png" href="assets/icons/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <script>
+        // High-priority theme initialization to prevent flash of light mode
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
     <style>
         :root {
             --bg-start: #02040a;
@@ -76,7 +85,7 @@
             pointer-events: none;
             z-index: 0;
             opacity: 0.22;
-            background: 
+            background:
                 linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
                 linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
             background-size: 100% 3px, 4px 100%;
@@ -86,7 +95,7 @@
 
         :root[data-theme="light"] .noise-overlay {
             opacity: 0.12;
-            background: 
+            background:
                 linear-gradient(rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.15) 50%),
                 linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
         }
@@ -106,6 +115,7 @@
             .page {
                 grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.6fr);
             }
+
             .scoreboard-card {
                 grid-column: 1 / -1;
                 max-width: 600px;
@@ -115,7 +125,7 @@
 
         @media (max-width: 1400px) {
             .page {
-                 grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+                grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
             }
         }
 
@@ -126,8 +136,17 @@
         }
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
-            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+                filter: blur(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
         }
 
         .hero-card {
@@ -212,7 +231,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
             transform: rotate(45deg) translateY(-100%);
             transition: transform 0.5s;
         }
@@ -446,8 +465,15 @@
         }
 
         @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.6), 0 0 22px rgba(255, 23, 68, 0.45); }
-            50% { box-shadow: 0 0 0 6px rgba(255, 23, 68, 0), 0 0 35px rgba(255, 23, 68, 0.6); }
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.6), 0 0 22px rgba(255, 23, 68, 0.45);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(255, 23, 68, 0), 0 0 35px rgba(255, 23, 68, 0.6);
+            }
         }
 
         .btn-primary {
@@ -482,7 +508,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
             transform: rotate(45deg) translateY(-100%);
             transition: transform 0.5s;
         }
@@ -523,7 +549,7 @@
             -webkit-backdrop-filter: blur(16px) saturate(120%);
             border-radius: 16px;
             border: 1px solid var(--card-border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             gap: 18px;
@@ -532,7 +558,7 @@
         }
 
         :root[data-theme="light"] .side-card {
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .scoreboard-card {
@@ -542,7 +568,7 @@
             -webkit-backdrop-filter: blur(16px) saturate(120%);
             border-radius: 16px;
             border: 1px solid var(--card-border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             gap: 18px;
@@ -571,7 +597,7 @@
         }
 
         :root[data-theme="light"] .scoreboard-card {
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .scoreboard-entry {
@@ -824,6 +850,7 @@
         }
     </style>
 </head>
+
 <body>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
         <span class="theme-toggle-icon sun">☀️</span>
@@ -833,690 +860,848 @@
     <div class="noise-overlay"></div>
     <div class="content-wrapper">
         <main class="page">
-        <section class="hero-card">
-            <div class="hero-card-inner">
-                <div class="title-row">
-                    <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
-                    <div class="badge-row">
-                        <span class="tagline">V0.8.2.1 ALPHA</span>
-                        <div class="engine-info">
-                            <span class="engine-name">ZOMBS-XFX-NGIN V0.8.2.1 ALPHA</span>
+            <section class="hero-card">
+                <div class="hero-card-inner">
+                    <div class="title-row">
+                        <h1 class="title">ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</h1>
+                        <div class="badge-row">
+                            <span class="tagline">V0.8.3.3 ALPHA</span>
+                            <div class="engine-info">
+                                <span class="engine-name">ZOMBS-XFX-NGIN V0.8.3.3 ALPHA</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="top-play-button-container">
-                    <a href="zombie-game.html" class="top-play-button">
-                        <span>▶</span>
-                        <span>Play Now</span>
-                    </a>
-                </div>
+                    <div class="top-play-button-container">
+                        <a href="zombie-game.html" class="top-play-button">
+                            <span>▶</span>
+                            <span>Play Now</span>
+                        </a>
+                    </div>
 
-                <div class="pill-row">
-                    <span class="pill pill--accent">Top‑down arena</span>
-                    <span class="pill">Wave‑based</span>
-                    <span class="pill">Guns &amp; zombies</span>
-                    <span class="pill">Socket.io Multiplayer</span>
-                </div>
+                    <div class="pill-row">
+                        <span class="pill pill--accent">Top‑down arena</span>
+                        <span class="pill">Wave‑based</span>
+                        <span class="pill">Guns &amp; zombies</span>
+                        <span class="pill">Socket.io Multiplayer</span>
+                    </div>
 
-                <div class="hero-text">
-                    <p>
-                        Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 7 unique weapons including 
-                        the devastating Flamethrower, SMG, Sniper, and RPG. Throw grenades, collect health and ammo pickups, and face off against 
-                        8 zombie variants including Ghost, Exploding, Armored, Spitter, Flying, Crawler, and massive Boss zombies.
+                    <div class="hero-text">
+                        <p>
+                            Survive endless waves of zombies in this fast-paced top-down arena shooter. Fight with 7
+                            unique weapons including
+                            the devastating Flamethrower, SMG, Sniper, and RPG. Throw grenades, collect health and ammo
+                            pickups, and face off against
+                            8 zombie variants including Ghost, Exploding, Armored, Spitter, Flying, Crawler, and massive
+                            Boss zombies.
+                        </p>
+                        <p>
+                            Master the skill system with 16 upgradeable skills, progress through 9 permanent ranks with
+                            achievements and seasonal battlepass rewards.
+                            Play solo, team up in local co-op with up to 4 players, or join the multiplayer lobby for
+                            coordinated survival. Features include
+                            kill streak combos, comprehensive power-ups, boss waves, day/night cycle with dynamic
+                            difficulty, sprint system with stamina management,
+                            and a fully functional multiplayer lobby system.
+                        </p>
+                        <p>
+                            Enhanced with critical hits, hit markers, spawn indicators, off-screen threat warnings,
+                            reload progress bars, floating damage numbers,
+                            bullet trails, shell casings, screen shake, directional blood splatter, menu music, and
+                            horror atmosphere effects. Built with pure
+                            HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
+                        </p>
+                    </div>
+
+                    <div class="feature-grid">
+                        <div class="feature">
+                            <div class="feature-icon">🔫</div>
+                            <div>
+                                <div class="feature-label">7 Distinct Weapons</div>
+                                <div>Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG. Scroll wheel switching
+                                    &amp; auto-reload.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🗡️</div>
+                            <div>
+                                <div class="feature-label">Melee Combat</div>
+                                <div>Close-range swipe attack (V Key) for when ammo runs dry.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💣</div>
+                            <div>
+                                <div class="feature-label">Explosive Grenades</div>
+                                <div>Throw explosives (G key) with physics and AOE damage.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🛡️</div>
+                            <div>
+                                <div class="feature-label">8 Zombie Variants</div>
+                                <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral),
+                                    Spitter (Acid), Flying (Winged), Crawler (Low-Profile), and Boss zombies.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">👑</div>
+                            <div>
+                                <div class="feature-label">Boss Battles</div>
+                                <div>Epic boss zombies spawn periodically with massive health and devastating attacks.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💜</div>
+                            <div>
+                                <div class="feature-label">Power-Up System</div>
+                                <div>Double damage buff (10s) and rare nuke pickup that instantly clears all zombies.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🔥</div>
+                            <div>
+                                <div class="feature-label">Kill Streak Combos</div>
+                                <div>Chain kills within 1.5s for combo notifications: "RAMPAGE!", "UNSTOPPABLE!" and
+                                    more.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">👥</div>
+                            <div>
+                                <div class="feature-label">Local Co-op</div>
+                                <div>2-player shared screen mode with split HUD, distinct player colors, and smart input
+                                    assignment.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎮</div>
+                            <div>
+                                <div class="feature-label">Controller Support</div>
+                                <div>Full Xbox/gamepad support with analog sticks, automatic input detection, and
+                                    virtual crosshair.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌐</div>
+                            <div>
+                                <div class="feature-label">Multiplayer Lobby (V0.5.3+)</div>
+                                <div>Modern glassmorphism design with animated background, player cards, enhanced
+                                    connection status, and cloud-hosted on Hugging Face Spaces.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎵</div>
+                            <div>
+                                <div class="feature-label">Audio System</div>
+                                <div>Web Audio API generated sounds plus menu music. Master volume control with
+                                    persistent settings.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🧮</div>
+                            <div>
+                                <div class="feature-label">WebGPU Acceleration</div>
+                                <div>GPU background shaders, bloom, and compute-driven particles. Automatic Canvas
+                                    fallback when unavailable.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💨</div>
+                            <div>
+                                <div class="feature-label">Advanced Ballistics</div>
+                                <div>Visual velocity-based bullet trails and shell casings ejected from weapons for
+                                    improved direction and speed feedback.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎨</div>
+                            <div>
+                                <div class="feature-label">Horror Atmosphere</div>
+                                <div>Creepy animated menu background with pulsing gradients, scanlines, static noise,
+                                    and blood splatters.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🥶</div>
+                            <div>
+                                <div class="feature-label">Crowd Control</div>
+                                <div>Bullets now briefly slow zombies on hit, allowing for strategic kiting.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">⏳</div>
+                            <div>
+                                <div class="feature-label">Strategic Respite</div>
+                                <div>3-second wave breaks to reload and prepare for the next onslaught.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📦</div>
+                            <div>
+                                <div class="feature-label">Vital Pickups</div>
+                                <div>Health orbs (+25 HP) and ammo boxes (+15 ammo) spawn periodically.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🩸</div>
+                            <div>
+                                <div class="feature-label">Juicy Visuals</div>
+                                <div>Screen shake, muzzle flash, directional blood splatter, and shell ejection.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🏆</div>
+                            <div>
+                                <div class="feature-label">Progressive Difficulty</div>
+                                <div>Waves scale with speed, health &amp; count. High score tracking &amp; HUD stats.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎮</div>
+                            <div>
+                                <div class="feature-label">Custom Controls</div>
+                                <div>Full key rebinding support and persistent settings.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌙</div>
+                            <div>
+                                <div class="feature-label">Day/Night Cycle</div>
+                                <div>Dynamic time transitions with night difficulty scaling. Zombies move 20% faster
+                                    during night phases.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">⚡</div>
+                            <div>
+                                <div class="feature-label">Sprint System</div>
+                                <div>Stamina management for tactical movement. Sprint drains stamina, regenerates when
+                                    idle. Speed boost power-ups available.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💥</div>
+                            <div>
+                                <div class="feature-label">Critical Hits</div>
+                                <div>10% chance for critical hits dealing 2x damage with distinctive yellow/red gradient
+                                    damage numbers and "CRIT!" notifications.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">✨</div>
+                            <div>
+                                <div class="feature-label">Hit Markers</div>
+                                <div>Visual "X" indicator appears on crosshair when shots connect, providing instant
+                                    feedback on successful hits.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">👁️</div>
+                            <div>
+                                <div class="feature-label">Spawn Indicators</div>
+                                <div>Pulsing red glow appears 1 second before zombies spawn, giving you time to react
+                                    and position strategically.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📍</div>
+                            <div>
+                                <div class="feature-label">Off-Screen Indicators</div>
+                                <div>Arrows at screen edges point toward nearby off-screen zombies, color-coded by
+                                    distance for tactical awareness.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📊</div>
+                            <div>
+                                <div class="feature-label">Reload Progress Bar</div>
+                                <div>Visual progress bar shows reload completion percentage instead of text, providing
+                                    clear feedback during combat.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🛡️</div>
+                            <div>
+                                <div class="feature-label">Shield System</div>
+                                <div>Shield pickups grant temporary overshield that absorbs damage before health. Visual
+                                    blue particles on shield hits.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🔥</div>
+                            <div>
+                                <div class="feature-label">Rapid Fire Power-Up</div>
+                                <div>Temporary fire rate boost that doubles your shooting speed for 10 seconds, perfect
+                                    for clearing hordes.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🤖</div>
+                            <div>
+                                <div class="feature-label">AI Squad Mode</div>
+                                <div>Play with AI companions! Add up to 3 AI bots to your squad for cooperative survival
+                                    gameplay.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💢</div>
+                            <div>
+                                <div class="feature-label">Floating Damage Numbers</div>
+                                <div>Visual damage feedback with floating numbers that show exactly how much damage
+                                    you're dealing to enemies.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">☠️</div>
+                            <div>
+                                <div class="feature-label">Acid Pools</div>
+                                <div>Spitter zombies create hazardous acid pools on impact that damage players standing
+                                    in them for 5 seconds.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎯</div>
+                            <div>
+                                <div class="feature-label">Damage Indicators</div>
+                                <div>Red screen flash and directional feedback when taking damage, helping you identify
+                                    threat direction quickly.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🏅</div>
+                            <div>
+                                <div class="feature-label">Rank & Progression</div>
+                                <div>9 permanent ranks with 5 tiers each. Earn rank XP from scores and wave completions.
+                                    Display your rank badge in lobbies.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🏆</div>
+                            <div>
+                                <div class="feature-label">Achievement System</div>
+                                <div>30+ unlockable achievements across 5 categories. Earn rank XP rewards and
+                                    unlockable titles. Track progress in achievement gallery.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎁</div>
+                            <div>
+                                <div class="feature-label">Battlepass System</div>
+                                <div>Seasonal progression track with 50 tiers. Season 1: Outbreak (60-day season). Free
+                                    track with Rank XP, Titles, Emblems, and Cosmetics.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📊</div>
+                            <div>
+                                <div class="feature-label">Global Leaderboard</div>
+                                <div>Compete for top 10 global scores. Real-time leaderboard updates via Socket.IO. Your
+                                    score highlighted when in top 10.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">👤</div>
+                            <div>
+                                <div class="feature-label">Player Profile</div>
+                                <div>Comprehensive statistics tracking. View rank, stats, achievements, and battlepass
+                                    summary. Persistent profile across sessions.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🎯</div>
+                            <div>
+                                <div class="feature-label">16 Skills System</div>
+                                <div>Expand capabilities with strategic skill choices. 3-choice level-up system. Skills
+                                    can be upgraded multiple times for stacking effects.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🏗️</div>
+                            <div>
+                                <div class="feature-label">Base Building <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Build walls, gates, and auto-turrets to defend against the horde. Strategic
+                                    fortification system for survival.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌐</div>
+                            <div>
+                                <div class="feature-label">Online Multiplayer <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Full networked gameplay with synchronized zombie hordes. Real-time co-op survival
+                                    across the internet.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🚀</div>
+                            <div>
+                                <div class="feature-label">Rocket Launcher <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>High-damage explosive weapon with devastating AOE. Perfect for clearing dense
+                                    zombie hordes.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌳</div>
+                            <div>
+                                <div class="feature-label">Skill Trees & Perks <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Expanded progression system with branching skill trees and permanent perk unlocks.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🗺️</div>
+                            <div>
+                                <div class="feature-label">Multiple Maps <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Urban, forest, and military base environments. Each map with unique layouts and
+                                    strategic advantages.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌧️</div>
+                            <div>
+                                <div class="feature-label">Dynamic Weather <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Rain, fog, and storms affect visibility and gameplay. Weather impacts zombie
+                                    behavior and player tactics.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🕷️</div>
+                            <div>
+                                <div class="feature-label">More Zombie Variants <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Crawlers, Summoners, Jumpers, and Swarmers. New enemy types with unique behaviors
+                                    and challenges.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🔨</div>
+                            <div>
+                                <div class="feature-label">Crafting System <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Resource gathering and item crafting. Create weapons, ammo, and survival equipment
+                                    from scavenged materials.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🚗</div>
+                            <div>
+                                <div class="feature-label">Vehicles <span style="opacity: 0.6; font-size: 10px;">(Coming
+                                        Soon)</span></div>
+                                <div>Driveable cars for escape and tactical positioning. Use vehicles to run down
+                                    zombies or make quick getaways.</div>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📖</div>
+                            <div>
+                                <div class="feature-label">Story Mode <span
+                                        style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
+                                <div>Narrative objectives and story-driven missions. Uncover the mystery behind the
+                                    zombie apocalypse.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cta-row">
+                        <button class="btn-primary" onclick="window.location.href='zombie-game.html'">
+                            <span>Play now</span>
+                        </button>
+                        <div class="btn-secondary">
+                            <div><strong>Keyboard:</strong> WASD move · Mouse aim · Click shoot · <strong>V</strong>
+                                melee · <strong>1/2/3/4</strong> weapons · <strong>G</strong> grenade ·
+                                <strong>R</strong> reload · <strong>ESC</strong> pause</div>
+                            <div style="margin-top: 4px;"><strong>Controller:</strong> Left Stick move · Right Stick aim
+                                · <strong>RT</strong> shoot · <strong>RB</strong> grenade · <strong>X</strong> reload ·
+                                <strong>Y/LB</strong> weapons · <strong>R3</strong> melee · <strong>Start</strong> pause
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="controls-note">
+                        Tip: For the smoothest experience, use a modern Chromium‑based browser and keep the tab focused.
                     </p>
-                    <p>
-                        Master the skill system with 16 upgradeable skills, progress through 9 permanent ranks with achievements and seasonal battlepass rewards. 
-                        Play solo, team up in local co-op with up to 4 players, or join the multiplayer lobby for coordinated survival. Features include 
-                        kill streak combos, comprehensive power-ups, boss waves, day/night cycle with dynamic difficulty, sprint system with stamina management, 
-                        and a fully functional multiplayer lobby system.
-                    </p>
-                    <p>
-                        Enhanced with critical hits, hit markers, spawn indicators, off-screen threat warnings, reload progress bars, floating damage numbers, 
-                        bullet trails, shell casings, screen shake, directional blood splatter, menu music, and horror atmosphere effects. Built with pure 
-                        HTML5 Canvas and JavaScript — no engines, no frameworks, just you and the horde.
-                    </p>
                 </div>
+            </section>
 
-                <div class="feature-grid">
-                    <div class="feature">
-                        <div class="feature-icon">🔫</div>
-                        <div>
-                            <div class="feature-label">7 Distinct Weapons</div>
-                            <div>Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG. Scroll wheel switching &amp; auto-reload.</div>
-                        </div>
+            <aside class="side-card">
+                <div>
+                    <div class="side-heading">Technical Specs</div>
+                    <div class="stat">
+                        <span>Rendering</span>
+                        <strong>WebGPU + Canvas 2D</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🗡️</div>
-                        <div>
-                            <div class="feature-label">Melee Combat</div>
-                            <div>Close-range swipe attack (V Key) for when ammo runs dry.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Engine</span>
+                        <strong>ZOMBS-XFX-NGIN V0.8.3.3 ALPHA</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">💣</div>
-                        <div>
-                            <div class="feature-label">Explosive Grenades</div>
-                            <div>Throw explosives (G key) with physics and AOE damage.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Architecture</span>
+                        <strong>ES6 Modules / Zero Deps</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🛡️</div>
-                        <div>
-                            <div class="feature-label">8 Zombie Variants</div>
-                            <div>Normal, Fast (Runners), Armored (Tanks), Exploding (Boomers), Ghost (Spectral), Spitter (Acid), Flying (Winged), Crawler (Low-Profile), and Boss zombies.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Performance</span>
+                        <strong>Quadtree + Object Pooling</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">👑</div>
-                        <div>
-                            <div class="feature-label">Boss Battles</div>
-                            <div>Epic boss zombies spawn periodically with massive health and devastating attacks.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Game Loop</span>
+                        <strong>Fixed Timestep (60Hz)</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">💜</div>
-                        <div>
-                            <div class="feature-label">Power-Up System</div>
-                            <div>Double damage buff (10s) and rare nuke pickup that instantly clears all zombies.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Audio</span>
+                        <strong>Web Audio API (Procedural)</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🔥</div>
-                        <div>
-                            <div class="feature-label">Kill Streak Combos</div>
-                            <div>Chain kills within 1.5s for combo notifications: "RAMPAGE!", "UNSTOPPABLE!" and more.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Input</span>
+                        <strong>Mouse / KB / Gamepad API</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">👥</div>
-                        <div>
-                            <div class="feature-label">Local Co-op</div>
-                            <div>2-player shared screen mode with split HUD, distinct player colors, and smart input assignment.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Networking</span>
+                        <strong>Socket.io (WebSocket)</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎮</div>
-                        <div>
-                            <div class="feature-label">Controller Support</div>
-                            <div>Full Xbox/gamepad support with analog sticks, automatic input detection, and virtual crosshair.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Persistence</span>
+                        <strong>LocalStorage API</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌐</div>
-                        <div>
-                            <div class="feature-label">Multiplayer Lobby (V0.5.3+)</div>
-                            <div>Modern glassmorphism design with animated background, player cards, enhanced connection status, and cloud-hosted on Hugging Face Spaces.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Multiplayer</span>
+                        <strong>Local Co-op + Online Lobby</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎵</div>
-                        <div>
-                            <div class="feature-label">Audio System</div>
-                            <div>Web Audio API generated sounds plus menu music. Master volume control with persistent settings.</div>
-                        </div>
+                    <div class="stat">
+                        <span>AI Systems</span>
+                        <strong>Companions + State Machines</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🧮</div>
-                        <div>
-                            <div class="feature-label">WebGPU Acceleration</div>
-                            <div>GPU background shaders, bloom, and compute-driven particles. Automatic Canvas fallback when unavailable.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Networking</span>
+                        <strong>Speed Sync + Delta Compression</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">💨</div>
-                        <div>
-                            <div class="feature-label">Advanced Ballistics</div>
-                            <div>Visual velocity-based bullet trails and shell casings ejected from weapons for improved direction and speed feedback.</div>
-                        </div>
+                    <div class="stat">
+                        <span>Platform</span>
+                        <strong>Browser Native (No Build)</strong>
                     </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎨</div>
-                        <div>
-                            <div class="feature-label">Horror Atmosphere</div>
-                            <div>Creepy animated menu background with pulsing gradients, scanlines, static noise, and blood splatters.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🥶</div>
-                        <div>
-                            <div class="feature-label">Crowd Control</div>
-                            <div>Bullets now briefly slow zombies on hit, allowing for strategic kiting.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">⏳</div>
-                        <div>
-                            <div class="feature-label">Strategic Respite</div>
-                            <div>3-second wave breaks to reload and prepare for the next onslaught.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">📦</div>
-                        <div>
-                            <div class="feature-label">Vital Pickups</div>
-                            <div>Health orbs (+25 HP) and ammo boxes (+15 ammo) spawn periodically.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🩸</div>
-                        <div>
-                            <div class="feature-label">Juicy Visuals</div>
-                            <div>Screen shake, muzzle flash, directional blood splatter, and shell ejection.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🏆</div>
-                        <div>
-                            <div class="feature-label">Progressive Difficulty</div>
-                            <div>Waves scale with speed, health &amp; count. High score tracking &amp; HUD stats.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎮</div>
-                        <div>
-                            <div class="feature-label">Custom Controls</div>
-                            <div>Full key rebinding support and persistent settings.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌙</div>
-                        <div>
-                            <div class="feature-label">Day/Night Cycle</div>
-                            <div>Dynamic time transitions with night difficulty scaling. Zombies move 20% faster during night phases.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">⚡</div>
-                        <div>
-                            <div class="feature-label">Sprint System</div>
-                            <div>Stamina management for tactical movement. Sprint drains stamina, regenerates when idle. Speed boost power-ups available.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">💥</div>
-                        <div>
-                            <div class="feature-label">Critical Hits</div>
-                            <div>10% chance for critical hits dealing 2x damage with distinctive yellow/red gradient damage numbers and "CRIT!" notifications.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">✨</div>
-                        <div>
-                            <div class="feature-label">Hit Markers</div>
-                            <div>Visual "X" indicator appears on crosshair when shots connect, providing instant feedback on successful hits.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">👁️</div>
-                        <div>
-                            <div class="feature-label">Spawn Indicators</div>
-                            <div>Pulsing red glow appears 1 second before zombies spawn, giving you time to react and position strategically.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">📍</div>
-                        <div>
-                            <div class="feature-label">Off-Screen Indicators</div>
-                            <div>Arrows at screen edges point toward nearby off-screen zombies, color-coded by distance for tactical awareness.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">📊</div>
-                        <div>
-                            <div class="feature-label">Reload Progress Bar</div>
-                            <div>Visual progress bar shows reload completion percentage instead of text, providing clear feedback during combat.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🛡️</div>
-                        <div>
-                            <div class="feature-label">Shield System</div>
-                            <div>Shield pickups grant temporary overshield that absorbs damage before health. Visual blue particles on shield hits.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🔥</div>
-                        <div>
-                            <div class="feature-label">Rapid Fire Power-Up</div>
-                            <div>Temporary fire rate boost that doubles your shooting speed for 10 seconds, perfect for clearing hordes.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🤖</div>
-                        <div>
-                            <div class="feature-label">AI Squad Mode</div>
-                            <div>Play with AI companions! Add up to 3 AI bots to your squad for cooperative survival gameplay.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">💢</div>
-                        <div>
-                            <div class="feature-label">Floating Damage Numbers</div>
-                            <div>Visual damage feedback with floating numbers that show exactly how much damage you're dealing to enemies.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">☠️</div>
-                        <div>
-                            <div class="feature-label">Acid Pools</div>
-                            <div>Spitter zombies create hazardous acid pools on impact that damage players standing in them for 5 seconds.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎯</div>
-                        <div>
-                            <div class="feature-label">Damage Indicators</div>
-                            <div>Red screen flash and directional feedback when taking damage, helping you identify threat direction quickly.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🏅</div>
-                        <div>
-                            <div class="feature-label">Rank & Progression</div>
-                            <div>9 permanent ranks with 5 tiers each. Earn rank XP from scores and wave completions. Display your rank badge in lobbies.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🏆</div>
-                        <div>
-                            <div class="feature-label">Achievement System</div>
-                            <div>30+ unlockable achievements across 5 categories. Earn rank XP rewards and unlockable titles. Track progress in achievement gallery.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎁</div>
-                        <div>
-                            <div class="feature-label">Battlepass System</div>
-                            <div>Seasonal progression track with 50 tiers. Season 1: Outbreak (60-day season). Free track with Rank XP, Titles, Emblems, and Cosmetics.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">📊</div>
-                        <div>
-                            <div class="feature-label">Global Leaderboard</div>
-                            <div>Compete for top 10 global scores. Real-time leaderboard updates via Socket.IO. Your score highlighted when in top 10.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">👤</div>
-                        <div>
-                            <div class="feature-label">Player Profile</div>
-                            <div>Comprehensive statistics tracking. View rank, stats, achievements, and battlepass summary. Persistent profile across sessions.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🎯</div>
-                        <div>
-                            <div class="feature-label">16 Skills System</div>
-                            <div>Expand capabilities with strategic skill choices. 3-choice level-up system. Skills can be upgraded multiple times for stacking effects.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🏗️</div>
-                        <div>
-                            <div class="feature-label">Base Building <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Build walls, gates, and auto-turrets to defend against the horde. Strategic fortification system for survival.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌐</div>
-                        <div>
-                            <div class="feature-label">Online Multiplayer <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Full networked gameplay with synchronized zombie hordes. Real-time co-op survival across the internet.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🚀</div>
-                        <div>
-                            <div class="feature-label">Rocket Launcher <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>High-damage explosive weapon with devastating AOE. Perfect for clearing dense zombie hordes.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌳</div>
-                        <div>
-                            <div class="feature-label">Skill Trees & Perks <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Expanded progression system with branching skill trees and permanent perk unlocks.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🗺️</div>
-                        <div>
-                            <div class="feature-label">Multiple Maps <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Urban, forest, and military base environments. Each map with unique layouts and strategic advantages.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🌧️</div>
-                        <div>
-                            <div class="feature-label">Dynamic Weather <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Rain, fog, and storms affect visibility and gameplay. Weather impacts zombie behavior and player tactics.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🕷️</div>
-                        <div>
-                            <div class="feature-label">More Zombie Variants <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Crawlers, Summoners, Jumpers, and Swarmers. New enemy types with unique behaviors and challenges.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🔨</div>
-                        <div>
-                            <div class="feature-label">Crafting System <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Resource gathering and item crafting. Create weapons, ammo, and survival equipment from scavenged materials.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">🚗</div>
-                        <div>
-                            <div class="feature-label">Vehicles <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Driveable cars for escape and tactical positioning. Use vehicles to run down zombies or make quick getaways.</div>
-                        </div>
-                    </div>
-                    <div class="feature">
-                        <div class="feature-icon">📖</div>
-                        <div>
-                            <div class="feature-label">Story Mode <span style="opacity: 0.6; font-size: 10px;">(Coming Soon)</span></div>
-                            <div>Narrative objectives and story-driven missions. Uncover the mystery behind the zombie apocalypse.</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="cta-row">
-                    <button class="btn-primary" onclick="window.location.href='zombie-game.html'">
-                        <span>Play now</span>
-                    </button>
-                    <div class="btn-secondary">
-                        <div><strong>Keyboard:</strong> WASD move · Mouse aim · Click shoot · <strong>V</strong> melee · <strong>1/2/3/4</strong> weapons · <strong>G</strong> grenade · <strong>R</strong> reload · <strong>ESC</strong> pause</div>
-                        <div style="margin-top: 4px;"><strong>Controller:</strong> Left Stick move · Right Stick aim · <strong>RT</strong> shoot · <strong>RB</strong> grenade · <strong>X</strong> reload · <strong>Y/LB</strong> weapons · <strong>R3</strong> melee · <strong>Start</strong> pause</div>
-                    </div>
-                </div>
-
-                <p class="controls-note">
-                    Tip: For the smoothest experience, use a modern Chromium‑based browser and keep the tab focused.
-                </p>
-            </div>
-        </section>
-
-        <aside class="side-card">
-            <div>
-                <div class="side-heading">Technical Specs</div>
-                <div class="stat">
-                    <span>Rendering</span>
-                    <strong>WebGPU + Canvas 2D</strong>
-                </div>
-                <div class="stat">
-                    <span>Engine</span>
-                    <strong>ZOMBS-XFX-NGIN V0.8.2.0 ALPHA</strong>
-                </div>
-                <div class="stat">
-                    <span>Architecture</span>
-                    <strong>ES6 Modules / Zero Deps</strong>
-                </div>
-                <div class="stat">
-                    <span>Performance</span>
-                    <strong>Quadtree + Object Pooling</strong>
-                </div>
-                <div class="stat">
-                    <span>Game Loop</span>
-                    <strong>Fixed Timestep (60Hz)</strong>
-                </div>
-                <div class="stat">
-                    <span>Audio</span>
-                    <strong>Web Audio API (Procedural)</strong>
-                </div>
-                <div class="stat">
-                    <span>Input</span>
-                    <strong>Mouse / KB / Gamepad API</strong>
-                </div>
-                <div class="stat">
-                    <span>Networking</span>
-                    <strong>Socket.io (WebSocket)</strong>
-                </div>
-                <div class="stat">
-                    <span>Persistence</span>
-                    <strong>LocalStorage API</strong>
-                </div>
-                <div class="stat">
-                    <span>Multiplayer</span>
-                    <strong>Local Co-op + Online Lobby</strong>
-                </div>
-                <div class="stat">
-                    <span>AI Systems</span>
-                    <strong>Companions + State Machines</strong>
-                </div>
-                <div class="stat">
-                    <span>Networking</span>
-                    <strong>Speed Sync + Delta Compression</strong>
-                </div>
-                <div class="stat">
-                    <span>Platform</span>
-                    <strong>Browser Native (No Build)</strong>
-                </div>
-            </div>
-
-            <div>
-                <div class="side-heading">System Requirements</div>
-                
-                <div style="margin-bottom: 16px;">
-                    <div class="stat" style="margin-bottom: 6px; color: #ffcdd2; font-size: 11px; letter-spacing: 0.1em; font-weight: 700;">MINIMUM</div>
-                    <div class="stat"><span>OS</span> <strong>Windows 10 / macOS 11</strong></div>
-                    <div class="stat"><span>Browser</span> <strong>Chrome 113+ / Edge</strong></div>
-                    <div class="stat"><span>Processor</span> <strong>Intel i3-8100 / Ryzen 3</strong></div>
-                    <div class="stat"><span>Memory</span> <strong>4 GB RAM</strong></div>
-                    <div class="stat"><span>Graphics</span> <strong>Intel UHD 630</strong></div>
                 </div>
 
                 <div>
-                    <div class="stat" style="margin-bottom: 6px; color: #ffcdd2; font-size: 11px; letter-spacing: 0.1em; font-weight: 700;">RECOMMENDED</div>
-                    <div class="stat"><span>OS</span> <strong>Windows 11 / macOS 14</strong></div>
-                    <div class="stat"><span>Browser</span> <strong>Latest Chromium</strong></div>
-                    <div class="stat"><span>Processor</span> <strong>Intel i5-10400 / Ryzen 5</strong></div>
-                    <div class="stat"><span>Memory</span> <strong>8 GB RAM</strong></div>
-                    <div class="stat"><span>Graphics</span> <strong>GTX 1060 / RX 580</strong></div>
+                    <div class="side-heading">System Requirements</div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div class="stat"
+                            style="margin-bottom: 6px; color: #ffcdd2; font-size: 11px; letter-spacing: 0.1em; font-weight: 700;">
+                            MINIMUM</div>
+                        <div class="stat"><span>OS</span> <strong>Windows 10 / macOS 11</strong></div>
+                        <div class="stat"><span>Browser</span> <strong>Chrome 113+ / Edge</strong></div>
+                        <div class="stat"><span>Processor</span> <strong>Intel i3-8100 / Ryzen 3</strong></div>
+                        <div class="stat"><span>Memory</span> <strong>4 GB RAM</strong></div>
+                        <div class="stat"><span>Graphics</span> <strong>Intel UHD 630</strong></div>
+                    </div>
+
+                    <div>
+                        <div class="stat"
+                            style="margin-bottom: 6px; color: #ffcdd2; font-size: 11px; letter-spacing: 0.1em; font-weight: 700;">
+                            RECOMMENDED</div>
+                        <div class="stat"><span>OS</span> <strong>Windows 11 / macOS 14</strong></div>
+                        <div class="stat"><span>Browser</span> <strong>Latest Chromium</strong></div>
+                        <div class="stat"><span>Processor</span> <strong>Intel i5-10400 / Ryzen 5</strong></div>
+                        <div class="stat"><span>Memory</span> <strong>8 GB RAM</strong></div>
+                        <div class="stat"><span>Graphics</span> <strong>GTX 1060 / RX 580</strong></div>
+                    </div>
                 </div>
-            </div>
 
-            <div>
-                <div class="side-heading">V0.8.2.0 ALPHA</div>
-                <ul class="mini-list">
-                    <li><span>💥</span> <strong>WebGPU Explosions</strong>: Large-scale explosions enabled with 8x radius support</li>
-                    <li><span>🎨</span> <strong>Particle Overhaul</strong>: Optimized rendering with 2000 particle limit for massive effects</li>
-                    <li><span>🌐</span> <strong>Particle Parallax</strong>: Camera-relative movement for world-space feel (V0.8.1.5)</li>
-                    <li><span>🔧</span> <strong>Explosion Fixes</strong>: Critical rendering fixes with enhanced alpha blending (V0.8.1.4)</li>
-                    <li><span>🚗</span> <strong>Prop Enhancements</strong>: Animated smoke effects and zombie-themed props (V0.8.1.3)</li>
-                    <li><span>🌍</span> <strong>Living World</strong>: Camera system, moving ground, and procedural props (V0.8.1.2)</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.8.0 ALPHA</div>
-                <ul class="mini-list">
-                    <li><span>🔧</span> <strong>Major Refactor</strong>: GameHUD.js modularization with 9 screen classes</li>
-                    <li><span>📉</span> <strong>Code Reduction</strong>: Reduced GameHUD.js from ~4,715 to ~1,757 lines (63% reduction)</li>
-                    <li><span>🏗️</span> <strong>Architecture</strong>: Improved separation of concerns and maintainability</li>
-                    <li><span>✅</span> <strong>Backward Compatible</strong>: All existing functionality preserved</li>
-                    <li><span>🎯</span> <strong>Screen Classes</strong>: MainMenuScreen, LobbyScreen, GameOverScreen, and 6 more</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.7.2 ALPHA</div>
-                <ul class="mini-list">
-                    <li><span>🎮</span> <strong>Game Over Improvements</strong>: Navigation buttons, multiplayer lobby return</li>
-                    <li><span>🗄️</span> <strong>MongoDB Migration</strong>: Persistent highscore storage with cloud database</li>
-                    <li><span>🎨</span> <strong>Main Menu Redesign</strong>: Improved layout with better positioning</li>
-                    <li><span>💬</span> <strong>Lobby Chat System</strong>: Real-time chat with security features</li>
-                    <li><span>⚖️</span> <strong>XP Balance</strong>: Linear progression formula, reduced XP values</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.7.1.1 ALPHA</div>
-                <ul class="mini-list">
-                    <li><span>🐛</span> <strong>Bug Fix</strong>: Fixed duplicate variable declaration syntax error</li>
-                    <li><span>📦</span> <strong>Docker Config</strong>: Fixed server file references for Hugging Face deployment</li>
-                    <li><span>🔄</span> <strong>Version Update</strong>: All version indicators updated to V0.7.1.1 ALPHA</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.7.1</div>
-                <ul class="mini-list">
-                    <li><span>🏅</span> <strong>Rank System</strong>: 9 permanent ranks with 5 tiers each, persistent across sessions</li>
-                    <li><span>🏆</span> <strong>Achievements</strong>: 30+ unlockable achievements across 5 categories with rewards</li>
-                    <li><span>🎁</span> <strong>Battlepass</strong>: Season 1: Outbreak (60-day season, 50 tiers)</li>
-                    <li><span>👤</span> <strong>Player Profile</strong>: Comprehensive statistics tracking and profile screen</li>
-                    <li><span>📊</span> <strong>Global Leaderboard</strong>: Server-side score tracking with top 10 display</li>
-                    <li><span>🎨</span> <strong>Visual Settings</strong>: Text rendering, rank badge, crosshair, health bar customization</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.7.0</div>
-                <ul class="mini-list">
-                    <li><span>⚖️</span> <strong>Balance Overhaul</strong>: Major combat balance adjustments</li>
-                    <li><span>🎯</span> <strong>Crit Rate</strong>: Reduced from 10% to ~3.33% (2/3 reduction)</li>
-                    <li><span>💪</span> <strong>Zombie HP</strong>: All zombie HP doubled (except Boss)</li>
-                    <li><span>🔫</span> <strong>Weapon Damage</strong>: All weapon damage values doubled</li>
-                    <li><span>🐛</span> <strong>Bug Fix</strong>: Hoarder skill ammo multiplier now persists across weapon switches</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.5.3</div>
-                <ul class="mini-list">
-                    <li><span>🎨</span> <strong>UI Improvements</strong>: Main menu adjustments &amp; comprehensive font scaling fixes</li>
-                    <li><span>🌐</span> <strong>Lobby Redesign</strong>: Modern glassmorphism with animated background &amp; player cards</li>
-                    <li><span>📏</span> <strong>Font Scaling</strong>: All fonts now scale properly (buttons, menus, lobbies, about screen)</li>
-                    <li><span>⚙️</span> <strong>UI Presets</strong>: Quick scale buttons (Small 70%, Medium 100%, Large 130%)</li>
-                    <li><span>⚡</span> <strong>Performance</strong>: Optimized off-screen indicator distance calculations</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.5.2</div>
-                <ul class="mini-list">
-                    <li><span>⚡</span> <strong>Engine Micro-Optimizations</strong>: 15 small performance improvements</li>
-                    <li><span>🚫</span> <strong>Math.sqrt() Elimination</strong>: Squared distance comparisons in hot paths</li>
-                    <li><span>🔄</span> <strong>Loop Optimization</strong>: forEach→for loops for faster iteration</li>
-                    <li><span>🌳</span> <strong>Quadtree Reuse</strong>: Single instance reused per frame</li>
-                    <li><span>💾</span> <strong>Settings Caching</strong>: Reduced redundant lookups</li>
-                    <li><span>📊</span> <strong>Performance Gains</strong>: 30-50% FPS improvement on Canvas 2D</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.5.1</div>
-                <ul class="mini-list">
-                    <li><span>⚡</span> <strong>Speed Sync</strong>: Zombie speed synchronization for perfect multiplayer</li>
-                    <li><span>📉</span> <strong>Delta Compression</strong>: 50-80% bandwidth reduction for large hordes</li>
-                    <li><span>🔄</span> <strong>Adaptive Updates</strong>: Dynamic 5-20Hz based on zombie count &amp; latency</li>
-                    <li><span>✨</span> <strong>Advanced Interpolation</strong>: 60-80% reduction in movement jitter</li>
-                    <li><span>🚀</span> <strong>Velocity Extrapolation</strong>: Smooth movement between network updates</li>
-                    <li><span>💻</span> <strong>Binary Add-ons</strong>: 10-20% CPU reduction for WebSocket operations</li>
-                    <li><span>📊</span> <strong>Latency Measurement</strong>: Real-time network quality tracking</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.5.0</div>
-                <ul class="mini-list">
-                    <li><span>🌐</span> <strong>Cloud Server</strong>: Hugging Face Spaces deployment</li>
-                    <li><span>🔌</span> <strong>Smart Connection</strong>: Auto server health checks &amp; wake-up</li>
-                    <li><span>📊</span> <strong>Server Status</strong>: Main menu shows server readiness</li>
-                    <li><span>⚡</span> <strong>Improved Stability</strong>: Fixed WebGPU &amp; connection issues</li>
-                    <li><span>🔄</span> <strong>Better Reliability</strong>: Enhanced Socket.io configuration</li>
-                    <li><span>📏</span> <strong>UI Scaling</strong>: 50-150% UI scale slider for accessibility</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">V0.3.0 Features</div>
-                <ul class="mini-list">
-                    <li><span>✔</span> <strong>Day/Night Cycle</strong>: Dynamic time transitions with night difficulty scaling</li>
-                    <li><span>✔</span> <strong>Flamethrower</strong>: Short-range DoT weapon with burning mechanics</li>
-                    <li><span>✔</span> <strong>Spitter Zombie</strong>: Ranged enemy with acid projectiles &amp; pools</li>
-                    <li><span>✔</span> <strong>Sprint System</strong>: Stamina-based movement with tactical management</li>
-                    <li><span>✔</span> <strong>Local Co-op</strong>: 4-player shared screen with grid HUD</li>
-                    <li><span>✔</span> <strong>WebGPU Engine</strong>: GPU-accelerated shaders &amp; bloom post-processing</li>
-                    <li><span>✔</span> <strong>Menu Music</strong>: Background music with volume control</li>
-                    <li><span>✔</span> <strong>Horror UI</strong>: Animated menu with blood splatters &amp; effects</li>
-                    <li><span>✔</span> <strong>Kill Streaks</strong>: Combo system with visual notifications</li>
-                    <li><span>✔</span> <strong>Power-ups</strong>: Damage buff (2x, 10s), Speed Boost (8s), Rapid Fire (10s), Shield (+50), Nuke (instant clear). All show HUD timers.</li>
-                    <li><span>✔</span> <strong>Ghost Zombies</strong>: Semi-transparent spectral enemies</li>
-                    <li><span>✔</span> <strong>Boss Waves</strong>: Epic boss battles</li>
-                    <li><span>✔</span> <strong>Bullet Trails</strong>: Velocity-based visual trails &amp; shell casings</li>
-                    <li><span>✔</span> <strong>Controller Support</strong>: Full gamepad integration</li>
-                    <li><span>✔</span> <strong>Multiplayer Lobby</strong>: Socket.io powered matchmaking</li>
-                    <li><span>✔</span> <strong>Critical Hits</strong>: 10% crit chance with 2x damage &amp; special visuals</li>
-                    <li><span>✔</span> <strong>Hit Markers</strong>: Crosshair "X" indicator on successful hits</li>
-                    <li><span>✔</span> <strong>Spawn Indicators</strong>: Visual warnings before zombie spawns</li>
-                    <li><span>✔</span> <strong>Off-Screen Indicators</strong>: Edge arrows pointing to nearby threats</li>
-                    <li><span>✔</span> <strong>Reload Progress Bar</strong>: Visual reload completion feedback</li>
-                    <li><span>✔</span> <strong>Shield System</strong>: Overshield pickups &amp; damage absorption</li>
-                    <li><span>✔</span> <strong>Rapid Fire Power-Up</strong>: Temporary fire rate boost</li>
-                    <li><span>✔</span> <strong>AI Squad Mode</strong>: Play with AI companions</li>
-                    <li><span>✔</span> <strong>Floating Damage Numbers</strong>: Visual damage feedback</li>
-                    <li><span>✔</span> <strong>Acid Pools</strong>: Environmental hazards from Spitter zombies</li>
-                    <li><span>✔</span> <strong>Damage Indicators</strong>: Red flash &amp; directional feedback</li>
-                </ul>
-            </div>
-            <div>
-                <div class="side-heading">Core Features</div>
-                <ul class="mini-list">
-                    <li><span>✔</span> 4 weapons: Pistol, Shotgun, Rifle, Flamethrower (unique stats)</li>
-                    <li><span>✔</span> 8 zombie types: Normal, Fast, Armored, Exploding, Ghost, Spitter, Flying, Crawler</li>
-                    <li><span>✔</span> Melee combat with swipe animation</li>
-                    <li><span>✔</span> Grenades with physics &amp; AOE damage</li>
-                    <li><span>✔</span> Health &amp; Ammo pickups</li>
-                    <li><span>✔</span> Wave-based spawning with breaks</li>
-                    <li><span>✔</span> Progressive difficulty scaling</li>
-                    <li><span>✔</span> Screen shake &amp; visual effects</li>
-                    <li><span>✔</span> Blood splatter &amp; particle system</li>
-                    <li><span>✔</span> High-res ground tile assets</li>
-                    <li><span>✔</span> Customizable keybinds &amp; settings</li>
-                    <li><span>✔</span> High score persistence (localStorage)</li>
-                    <li><span>✔</span> Pause menu &amp; game over screens</li>
-                </ul>
-            </div>
-
-            <div>
-                <div class="side-heading">Roadmap & Future Updates</div>
-                <ul class="mini-list">
-                    <li><span>○</span> <strong>Base Building</strong>: Walls, gates &amp; defenses</li>
-                    <li><span>○</span> <strong>Online Multiplayer</strong>: Full networked gameplay</li>
-                    <li><span>○</span> <strong>New Arsenal</strong>: Rocket Launcher, Chainsaw</li>
-                    <li><span>○</span> <strong>Progression</strong>: Skill trees &amp; perks</li>
-                    <li><span>○</span> <strong>Dynamic Weather</strong>: Rain, fog &amp; storms</li>
-                    <li><span>○</span> <strong>More Zombies</strong>: Crawlers, Summoners</li>
-                    <li><span>○</span> <strong>Crafting</strong>: Resource gathering &amp; items</li>
-                    <li><span>○</span> <strong>Maps</strong>: Urban, forest, military base</li>
-                    <li><span>○</span> <strong>Vehicles</strong>: Driveable cars for escape</li>
-                    <li><span>○</span> <strong>Narrative</strong>: Story mode objectives</li>
-                </ul>
-            </div>
-        </aside>
-
-        <!-- Scoreboard Container -->
-        <aside class="scoreboard-card" id="scoreboard-container">
-            <div>
-                <div class="side-heading">🏆 Top Scores</div>
-                <div class="scoreboard-label">Local Scores (Browser Storage)</div>
-                <div id="scoreboard-entries">
-                    <div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>
+                <div>
+                    <div class="side-heading">V0.8.3.3 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🔊</span> <strong>UI Interaction Audio</strong>: Procedural hover "Tick" and click "Pip" sounds for all menus</li>
+                        <li><span>🎨</span> <strong>Improved HUD Visuals</strong>: Modern "Glass Tech" aesthetic with color-coded accent bars</li>
+                        <li><span>📊</span> <strong>Stacked Layout</strong>: Redesigned weapon and stat boxes with expanded dimensions for better legibility</li>
+                        <li><span>⚖️</span> <strong>XP Rate Balance</strong>: Reduced base XP by 15% for more meaningful progression</li>
+                    </ul>
                 </div>
-            </div>
-        </aside>
+                <div>
+                    <div class="side-heading">V0.8.3.2 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>⚡</span> <strong>Laser Gun Weapon</strong>: Rapid-fire instant-hit weapon with neon beam visuals (Slot 8)</li>
+                        <li><span>🎵</span> <strong>Menu Click Sounds</strong>: Procedural "Pip" sound feedback for all settings interactions</li>
+                        <li><span>🎮</span> <strong>Expanded Controls</strong>: Settings panel updated for 8 weapons and flashlight keybind</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.8.3.1 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🎵</span> <strong>Arcade Music System</strong>: Procedural dynamic soundtrack with Web Audio API</li>
+                        <li><span>👕</span> <strong>Normal Zombie Variants</strong>: 8 unique visual variants with clothing, accessories, and animated arms</li>
+                        <li><span>🧟</span> <strong>Arm Variations</strong>: Cohesive sleeves matching clothing colors and visible hands</li>
+                        <li><span>💀</span> <strong>Difficulty Scaling</strong>: Doubled zombie spawn rate for more intense waves</li>
+                        <li><span>🌙</span> <strong>Dark Mode Default</strong>: Landing page now defaults to dark theme</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.8.3.0 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🎬</span> <strong>Campaign Mode Intro</strong>: Cinematic intro sequence with fizzle effects</li>
+                        <li><span>🔦</span> <strong>Flashlight System</strong>: WebGPU-accelerated flashlight with F key toggle</li>
+                        <li><span>🎚️</span> <strong>Audio Mixer</strong>: Granular volume controls for footsteps, gunshots, hit markers, and multiplier sounds</li>
+                        <li><span>💥</span> <strong>Improved Impact SFX</strong>: Multi-layered zombie impact sounds</li>
+                        <li><span>🎯</span> <strong>Hit Marker Sound</strong>: Crisp mechanical tick for better feedback</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.8.2.0 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>💥</span> <strong>WebGPU Explosions</strong>: Large-scale explosions enabled with 8x
+                            radius support</li>
+                        <li><span>🎨</span> <strong>Particle Overhaul</strong>: Optimized rendering with 2000 particle
+                            limit for massive effects</li>
+                        <li><span>🌐</span> <strong>Particle Parallax</strong>: Camera-relative movement for world-space
+                            feel (V0.8.1.5)</li>
+                        <li><span>🔧</span> <strong>Explosion Fixes</strong>: Critical rendering fixes with enhanced
+                            alpha blending (V0.8.1.4)</li>
+                        <li><span>🚗</span> <strong>Prop Enhancements</strong>: Animated smoke effects and zombie-themed
+                            props (V0.8.1.3)</li>
+                        <li><span>🌍</span> <strong>Living World</strong>: Camera system, moving ground, and procedural
+                            props (V0.8.1.2)</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.8.0 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🔧</span> <strong>Major Refactor</strong>: GameHUD.js modularization with 9 screen
+                            classes</li>
+                        <li><span>📉</span> <strong>Code Reduction</strong>: Reduced GameHUD.js from ~4,715 to ~1,757
+                            lines (63% reduction)</li>
+                        <li><span>🏗️</span> <strong>Architecture</strong>: Improved separation of concerns and
+                            maintainability</li>
+                        <li><span>✅</span> <strong>Backward Compatible</strong>: All existing functionality preserved
+                        </li>
+                        <li><span>🎯</span> <strong>Screen Classes</strong>: MainMenuScreen, LobbyScreen,
+                            GameOverScreen, and 6 more</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.7.2 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🎮</span> <strong>Game Over Improvements</strong>: Navigation buttons, multiplayer
+                            lobby return</li>
+                        <li><span>🗄️</span> <strong>MongoDB Migration</strong>: Persistent highscore storage with cloud
+                            database</li>
+                        <li><span>🎨</span> <strong>Main Menu Redesign</strong>: Improved layout with better positioning
+                        </li>
+                        <li><span>💬</span> <strong>Lobby Chat System</strong>: Real-time chat with security features
+                        </li>
+                        <li><span>⚖️</span> <strong>XP Balance</strong>: Linear progression formula, reduced XP values
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.7.1.1 ALPHA</div>
+                    <ul class="mini-list">
+                        <li><span>🐛</span> <strong>Bug Fix</strong>: Fixed duplicate variable declaration syntax error
+                        </li>
+                        <li><span>📦</span> <strong>Docker Config</strong>: Fixed server file references for Hugging
+                            Face deployment</li>
+                        <li><span>🔄</span> <strong>Version Update</strong>: All version indicators updated to V0.7.1.1
+                            ALPHA</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.7.1</div>
+                    <ul class="mini-list">
+                        <li><span>🏅</span> <strong>Rank System</strong>: 9 permanent ranks with 5 tiers each,
+                            persistent across sessions</li>
+                        <li><span>🏆</span> <strong>Achievements</strong>: 30+ unlockable achievements across 5
+                            categories with rewards</li>
+                        <li><span>🎁</span> <strong>Battlepass</strong>: Season 1: Outbreak (60-day season, 50 tiers)
+                        </li>
+                        <li><span>👤</span> <strong>Player Profile</strong>: Comprehensive statistics tracking and
+                            profile screen</li>
+                        <li><span>📊</span> <strong>Global Leaderboard</strong>: Server-side score tracking with top 10
+                            display</li>
+                        <li><span>🎨</span> <strong>Visual Settings</strong>: Text rendering, rank badge, crosshair,
+                            health bar customization</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.7.0</div>
+                    <ul class="mini-list">
+                        <li><span>⚖️</span> <strong>Balance Overhaul</strong>: Major combat balance adjustments</li>
+                        <li><span>🎯</span> <strong>Crit Rate</strong>: Reduced from 10% to ~3.33% (2/3 reduction)</li>
+                        <li><span>💪</span> <strong>Zombie HP</strong>: All zombie HP doubled (except Boss)</li>
+                        <li><span>🔫</span> <strong>Weapon Damage</strong>: All weapon damage values doubled</li>
+                        <li><span>🐛</span> <strong>Bug Fix</strong>: Hoarder skill ammo multiplier now persists across
+                            weapon switches</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.5.3</div>
+                    <ul class="mini-list">
+                        <li><span>🎨</span> <strong>UI Improvements</strong>: Main menu adjustments &amp; comprehensive
+                            font scaling fixes</li>
+                        <li><span>🌐</span> <strong>Lobby Redesign</strong>: Modern glassmorphism with animated
+                            background &amp; player cards</li>
+                        <li><span>📏</span> <strong>Font Scaling</strong>: All fonts now scale properly (buttons, menus,
+                            lobbies, about screen)</li>
+                        <li><span>⚙️</span> <strong>UI Presets</strong>: Quick scale buttons (Small 70%, Medium 100%,
+                            Large 130%)</li>
+                        <li><span>⚡</span> <strong>Performance</strong>: Optimized off-screen indicator distance
+                            calculations</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.5.2</div>
+                    <ul class="mini-list">
+                        <li><span>⚡</span> <strong>Engine Micro-Optimizations</strong>: 15 small performance
+                            improvements</li>
+                        <li><span>🚫</span> <strong>Math.sqrt() Elimination</strong>: Squared distance comparisons in
+                            hot paths</li>
+                        <li><span>🔄</span> <strong>Loop Optimization</strong>: forEach→for loops for faster iteration
+                        </li>
+                        <li><span>🌳</span> <strong>Quadtree Reuse</strong>: Single instance reused per frame</li>
+                        <li><span>💾</span> <strong>Settings Caching</strong>: Reduced redundant lookups</li>
+                        <li><span>📊</span> <strong>Performance Gains</strong>: 30-50% FPS improvement on Canvas 2D</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.5.1</div>
+                    <ul class="mini-list">
+                        <li><span>⚡</span> <strong>Speed Sync</strong>: Zombie speed synchronization for perfect
+                            multiplayer</li>
+                        <li><span>📉</span> <strong>Delta Compression</strong>: 50-80% bandwidth reduction for large
+                            hordes</li>
+                        <li><span>🔄</span> <strong>Adaptive Updates</strong>: Dynamic 5-20Hz based on zombie count
+                            &amp; latency</li>
+                        <li><span>✨</span> <strong>Advanced Interpolation</strong>: 60-80% reduction in movement jitter
+                        </li>
+                        <li><span>🚀</span> <strong>Velocity Extrapolation</strong>: Smooth movement between network
+                            updates</li>
+                        <li><span>💻</span> <strong>Binary Add-ons</strong>: 10-20% CPU reduction for WebSocket
+                            operations</li>
+                        <li><span>📊</span> <strong>Latency Measurement</strong>: Real-time network quality tracking
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.5.0</div>
+                    <ul class="mini-list">
+                        <li><span>🌐</span> <strong>Cloud Server</strong>: Hugging Face Spaces deployment</li>
+                        <li><span>🔌</span> <strong>Smart Connection</strong>: Auto server health checks &amp; wake-up
+                        </li>
+                        <li><span>📊</span> <strong>Server Status</strong>: Main menu shows server readiness</li>
+                        <li><span>⚡</span> <strong>Improved Stability</strong>: Fixed WebGPU &amp; connection issues
+                        </li>
+                        <li><span>🔄</span> <strong>Better Reliability</strong>: Enhanced Socket.io configuration</li>
+                        <li><span>📏</span> <strong>UI Scaling</strong>: 50-150% UI scale slider for accessibility</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">V0.3.0 Features</div>
+                    <ul class="mini-list">
+                        <li><span>✔</span> <strong>Day/Night Cycle</strong>: Dynamic time transitions with night
+                            difficulty scaling</li>
+                        <li><span>✔</span> <strong>Flamethrower</strong>: Short-range DoT weapon with burning mechanics
+                        </li>
+                        <li><span>✔</span> <strong>Spitter Zombie</strong>: Ranged enemy with acid projectiles &amp;
+                            pools</li>
+                        <li><span>✔</span> <strong>Sprint System</strong>: Stamina-based movement with tactical
+                            management</li>
+                        <li><span>✔</span> <strong>Local Co-op</strong>: 4-player shared screen with grid HUD</li>
+                        <li><span>✔</span> <strong>WebGPU Engine</strong>: GPU-accelerated shaders &amp; bloom
+                            post-processing</li>
+                        <li><span>✔</span> <strong>Menu Music</strong>: Background music with volume control</li>
+                        <li><span>✔</span> <strong>Horror UI</strong>: Animated menu with blood splatters &amp; effects
+                        </li>
+                        <li><span>✔</span> <strong>Kill Streaks</strong>: Combo system with visual notifications</li>
+                        <li><span>✔</span> <strong>Power-ups</strong>: Damage buff (2x, 10s), Speed Boost (8s), Rapid
+                            Fire (10s), Shield (+50), Nuke (instant clear). All show HUD timers.</li>
+                        <li><span>✔</span> <strong>Ghost Zombies</strong>: Semi-transparent spectral enemies</li>
+                        <li><span>✔</span> <strong>Boss Waves</strong>: Epic boss battles</li>
+                        <li><span>✔</span> <strong>Bullet Trails</strong>: Velocity-based visual trails &amp; shell
+                            casings</li>
+                        <li><span>✔</span> <strong>Controller Support</strong>: Full gamepad integration</li>
+                        <li><span>✔</span> <strong>Multiplayer Lobby</strong>: Socket.io powered matchmaking</li>
+                        <li><span>✔</span> <strong>Critical Hits</strong>: 10% crit chance with 2x damage &amp; special
+                            visuals</li>
+                        <li><span>✔</span> <strong>Hit Markers</strong>: Crosshair "X" indicator on successful hits</li>
+                        <li><span>✔</span> <strong>Spawn Indicators</strong>: Visual warnings before zombie spawns</li>
+                        <li><span>✔</span> <strong>Off-Screen Indicators</strong>: Edge arrows pointing to nearby
+                            threats</li>
+                        <li><span>✔</span> <strong>Reload Progress Bar</strong>: Visual reload completion feedback</li>
+                        <li><span>✔</span> <strong>Shield System</strong>: Overshield pickups &amp; damage absorption
+                        </li>
+                        <li><span>✔</span> <strong>Rapid Fire Power-Up</strong>: Temporary fire rate boost</li>
+                        <li><span>✔</span> <strong>AI Squad Mode</strong>: Play with AI companions</li>
+                        <li><span>✔</span> <strong>Floating Damage Numbers</strong>: Visual damage feedback</li>
+                        <li><span>✔</span> <strong>Acid Pools</strong>: Environmental hazards from Spitter zombies</li>
+                        <li><span>✔</span> <strong>Damage Indicators</strong>: Red flash &amp; directional feedback</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="side-heading">Core Features</div>
+                    <ul class="mini-list">
+                        <li><span>✔</span> 4 weapons: Pistol, Shotgun, Rifle, Flamethrower (unique stats)</li>
+                        <li><span>✔</span> 8 zombie types: Normal, Fast, Armored, Exploding, Ghost, Spitter, Flying,
+                            Crawler</li>
+                        <li><span>✔</span> Melee combat with swipe animation</li>
+                        <li><span>✔</span> Grenades with physics &amp; AOE damage</li>
+                        <li><span>✔</span> Health &amp; Ammo pickups</li>
+                        <li><span>✔</span> Wave-based spawning with breaks</li>
+                        <li><span>✔</span> Progressive difficulty scaling</li>
+                        <li><span>✔</span> Screen shake &amp; visual effects</li>
+                        <li><span>✔</span> Blood splatter &amp; particle system</li>
+                        <li><span>✔</span> High-res ground tile assets</li>
+                        <li><span>✔</span> Customizable keybinds &amp; settings</li>
+                        <li><span>✔</span> High score persistence (localStorage)</li>
+                        <li><span>✔</span> Pause menu &amp; game over screens</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="side-heading">Roadmap & Future Updates</div>
+                    <ul class="mini-list">
+                        <li><span>○</span> <strong>Base Building</strong>: Walls, gates &amp; defenses</li>
+                        <li><span>○</span> <strong>Online Multiplayer</strong>: Full networked gameplay</li>
+                        <li><span>○</span> <strong>New Arsenal</strong>: Rocket Launcher, Chainsaw</li>
+                        <li><span>○</span> <strong>Progression</strong>: Skill trees &amp; perks</li>
+                        <li><span>○</span> <strong>Dynamic Weather</strong>: Rain, fog &amp; storms</li>
+                        <li><span>○</span> <strong>More Zombies</strong>: Crawlers, Summoners</li>
+                        <li><span>○</span> <strong>Crafting</strong>: Resource gathering &amp; items</li>
+                        <li><span>○</span> <strong>Maps</strong>: Urban, forest, military base</li>
+                        <li><span>○</span> <strong>Vehicles</strong>: Driveable cars for escape</li>
+                        <li><span>○</span> <strong>Narrative</strong>: Story mode objectives</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Scoreboard Container -->
+            <aside class="scoreboard-card" id="scoreboard-container">
+                <div>
+                    <div class="side-heading">🏆 Top Scores</div>
+                    <div class="scoreboard-label">Local Scores (Browser Storage)</div>
+                    <div id="scoreboard-entries">
+                        <div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>
+                    </div>
+                </div>
+            </aside>
         </main>
     </div>
 
     <footer class="footer">
-        Made with love, blood, sweat, and tears by Ryan, with the guidance of SOTA AI models: Gemini 2.5 &amp; 3 by Google, Claude by Anthropic, Composer by Cursor, &amp; GPT 5.1 by OpenAI
+        Made with love, blood, sweat, and tears by Ryan, with the guidance of SOTA AI models: Gemini 2.5 &amp; 3 by
+        Google, Claude by Anthropic, Composer by Cursor, &amp; GPT 5.1 by OpenAI
     </footer>
 
     <script>
         // Theme Toggle Functionality
-        (function() {
+        (function () {
             const themeToggle = document.getElementById('theme-toggle');
             const root = document.documentElement;
-            
-            // Load saved theme or default to dark
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            root.setAttribute('data-theme', savedTheme);
-            
+
             themeToggle.addEventListener('click', () => {
                 const currentTheme = root.getAttribute('data-theme');
                 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -1528,9 +1713,9 @@
         // Star Wars-style fly-out animation
         const canvas = document.getElementById('starfield-canvas');
         const ctx = canvas.getContext('2d');
-        
+
         let centerX, centerY;
-        
+
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -1542,20 +1727,20 @@
 
         // All active elements flying out
         const activeElements = [];
-        
+
         // Element types with spawn configuration (only 3 types)
         const elementTypes = [
             { type: 'zombie', speed: 0.8, size: 20, spawnInterval: 2000 },
             { type: 'bullet', speed: 1.2, size: 8, spawnInterval: 500 },
             { type: 'health', speed: 0.85, size: 12, spawnInterval: 2200 }
         ];
-        
+
         // Track last spawn time for each type
         const lastSpawnTime = {};
         elementTypes.forEach(et => {
             lastSpawnTime[et.type] = Date.now() - Math.random() * et.spawnInterval; // Stagger initial spawns
         });
-        
+
         // Function to spawn a new element
         function spawnElement(typeConfig) {
             const angle = Math.random() * Math.PI * 2; // Random direction
@@ -1569,13 +1754,13 @@
                 opacity: 1
             });
         }
-        
+
         function drawZombie(x, y, size, scale) {
             const s = size * scale;
             ctx.save();
             ctx.translate(x, y);
             ctx.scale(scale, scale);
-            
+
             // Toxic aura
             const pulse = Math.sin(Date.now() / 250) * 0.4 + 0.6;
             const auraGradient = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2);
@@ -1585,7 +1770,7 @@
             ctx.beginPath();
             ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Body
             const bodyGradient = ctx.createRadialGradient(-4, -4, 0, 0, 0, s);
             bodyGradient.addColorStop(0, '#9acd32');
@@ -1594,7 +1779,7 @@
             ctx.beginPath();
             ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Eyes
             const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
             ctx.fillStyle = `rgba(255, 0, 0, ${eyePulse})`;
@@ -1602,16 +1787,16 @@
             ctx.arc(-s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
             ctx.arc(s * 0.4, -s * 0.25, s * 0.25, 0, Math.PI * 2);
             ctx.fill();
-            
+
             ctx.restore();
         }
-        
+
         function drawBullet(x, y, size, scale) {
             const s = size * scale;
             ctx.save();
             ctx.translate(x, y);
             ctx.scale(scale, scale);
-            
+
             // Bullet glow (yellow)
             const bulletGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2);
             bulletGlow.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
@@ -1620,7 +1805,7 @@
             ctx.beginPath();
             ctx.arc(0, 0, s * 2, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Bullet core
             const bulletGradient = ctx.createRadialGradient(-1, -1, 0, 0, 0, s);
             bulletGradient.addColorStop(0, '#ffffff');
@@ -1630,26 +1815,26 @@
             ctx.beginPath();
             ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Bullet outline
             ctx.strokeStyle = '#cc8800';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.stroke();
-            
+
             ctx.restore();
         }
-        
+
         function drawHealthPickup(x, y, size, scale) {
             const s = size * scale;
             ctx.save();
             ctx.translate(x, y);
             ctx.scale(scale, scale);
-            
+
             const t = Date.now() / 500;
             const pulse = 0.8 + Math.sin(t) * 0.15;
-            
+
             // Glow
             const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 2.2 * pulse);
             glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
@@ -1658,7 +1843,7 @@
             ctx.beginPath();
             ctx.arc(0, 0, s * 2.2 * pulse, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Core
             const coreGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, s);
             coreGradient.addColorStop(0, '#ff8a80');
@@ -1667,7 +1852,7 @@
             ctx.beginPath();
             ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Cross
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
@@ -1677,16 +1862,16 @@
             ctx.moveTo(0, -s / 2);
             ctx.lineTo(0, s / 2);
             ctx.stroke();
-            
+
             ctx.restore();
         }
-        
+
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             const now = Date.now();
             const maxDistance = Math.max(canvas.width, canvas.height) * 0.8;
-            
+
             // Spawn new elements continuously
             elementTypes.forEach(typeConfig => {
                 if (now - lastSpawnTime[typeConfig.type] >= typeConfig.spawnInterval) {
@@ -1694,28 +1879,28 @@
                     lastSpawnTime[typeConfig.type] = now;
                 }
             });
-            
+
             // Update and draw all active elements
             for (let i = activeElements.length - 1; i >= 0; i--) {
                 const el = activeElements[i];
-                
+
                 // Update distance (Star Wars effect - moving away)
                 el.distance += el.speed;
-                
+
                 // Calculate position from fixed center
                 const x = centerX + Math.cos(el.angle) * el.distance;
                 const y = centerY + Math.sin(el.angle) * el.distance;
-                
+
                 // Calculate scale and opacity (fade out as distance increases)
                 el.scale = Math.max(0.1, 1 - (el.distance / maxDistance));
                 el.opacity = Math.max(0, 1 - (el.distance / maxDistance) * 0.8);
-                
+
                 // Draw element if still visible
                 if (el.distance < maxDistance && el.opacity > 0.05) {
                     ctx.save();
                     ctx.globalAlpha = el.opacity;
-                    
-                    switch(el.type) {
+
+                    switch (el.type) {
                         case 'zombie':
                             drawZombie(x, y, el.size, el.scale);
                             break;
@@ -1726,22 +1911,22 @@
                             drawHealthPickup(x, y, el.size, el.scale);
                             break;
                     }
-                    
+
                     ctx.restore();
                 } else {
                     // Remove element if too far or invisible
                     activeElements.splice(i, 1);
                 }
             }
-            
+
             requestAnimationFrame(animate);
         }
-        
+
         // Start animation
         animate();
 
         // Scoreboard System
-        (function() {
+        (function () {
             const SCOREBOARD_KEY = 'zombobs_scoreboard';
             const scoreboardContainer = document.getElementById('scoreboard-entries');
 
@@ -1764,7 +1949,7 @@
                 const hours = Math.floor(seconds / 3600);
                 const minutes = Math.floor((seconds % 3600) / 60);
                 const secs = Math.floor(seconds % 60);
-                
+
                 if (hours > 0) {
                     return `${hours}h ${minutes}m ${secs}s`;
                 } else if (minutes > 0) {
@@ -1791,8 +1976,8 @@
                 } else if (diffDays < 7) {
                     return `${diffDays}d ago`;
                 } else {
-                    return date.toLocaleDateString('en-US', { 
-                        month: 'short', 
+                    return date.toLocaleDateString('en-US', {
+                        month: 'short',
                         day: 'numeric',
                         year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
                     });
@@ -1805,7 +1990,7 @@
 
             function renderScoreboard() {
                 const scoreboard = loadScoreboard();
-                
+
                 if (scoreboard.length === 0) {
                     scoreboardContainer.innerHTML = '<div class="scoreboard-empty">No scores yet. Play a game to set your first record!</div>';
                     return;
@@ -1826,12 +2011,12 @@
                     const rank = index + 1;
                     const rankClass = rank <= 3 ? `rank-${rank}` : '';
                     const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
-                    
+
                     // Get username from entry, or use current username from localStorage, or fallback to 'Survivor'
-                    const displayUsername = entry.username && entry.username.trim() !== '' 
-                        ? entry.username.trim() 
+                    const displayUsername = entry.username && entry.username.trim() !== ''
+                        ? entry.username.trim()
                         : currentUsername;
-                    
+
                     html += `
                         <div class="scoreboard-entry ${rankClass}">
                             <div class="scoreboard-rank">${rankText}</div>
@@ -1880,6 +2065,5 @@
         })();
     </script>
 </body>
+
 </html>
-
-

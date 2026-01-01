@@ -43,7 +43,7 @@ export class ZombieSpawnSystem {
         // v0.8.1.2: In single player arcade mode, spawn boss relative to player position in world space
         const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
-        
+
         let bossX, bossY;
         if (isSinglePlayerArcade && localPlayer) {
             // Spawn boss above player in world space
@@ -54,7 +54,7 @@ export class ZombieSpawnSystem {
             bossX = canvas.width / 2;
             bossY = -50;
         }
-        
+
         const boss = new BossZombie(bossX, bossY);
         gameState.boss = boss;
         gameState.zombies.push(boss);
@@ -97,8 +97,8 @@ export class ZombieSpawnSystem {
             return;
         }
 
-        // Increase spawn count by 1.5x for regular zombies (not bosses)
-        count = Math.floor(count * 1.5);
+        // Increase spawn count by 3x for regular zombies (not bosses) - doubled from 1.5x for harder difficulty
+        count = Math.floor(count * 3.0);
 
         // Track actual zombies spawned this wave for HUD display
         gameState.zombiesSpawnedThisWave = count;
@@ -109,12 +109,12 @@ export class ZombieSpawnSystem {
         // v0.8.1.2: In single player arcade mode, spawn zombies relative to player position in world space
         const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
         const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
-        
+
         // Spawn zombies with staggered timing
         for (let i = 0; i < count; i++) {
             // Calculate spawn position
             let spawnX, spawnY;
-            
+
             if (isSinglePlayerArcade && localPlayer) {
                 // Spawn at edges of viewport in world space (relative to player)
                 const side = Math.floor(Math.random() * 4);
@@ -207,7 +207,7 @@ export class ZombieSpawnSystem {
                 // Override with our predetermined spawn position
                 zombie.x = spawnX;
                 zombie.y = spawnY;
-                
+
                 gameState.zombies.push(zombie);
 
                 // Broadcast zombie spawn to other clients (leader only)

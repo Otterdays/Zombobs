@@ -308,6 +308,64 @@ export class Rocket extends Bullet {
         ctx.arc(-12, 0, 2, 0, Math.PI * 2);
         ctx.fill();
 
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+export class LaserBeam extends Bullet {
+    constructor(x, y, angle, weapon, endX, endY) {
+        super(x, y, angle, weapon);
+        this.endX = endX;
+        this.endY = endY;
+        this.life = 1.0;
+        this.decay = 0.15; // Fast fade
+        this.type = 'laser_visual'; // Ignored by collision
+        this.color = '#ff0055'; // Neon Pink/Red
+        this.width = 4;
+
+        // No velocity, it's static
+        this.vx = 0;
+        this.vy = 0;
+    }
+
+    update() {
+        this.life -= this.decay;
+        if (this.life <= 0) {
+            this.markedForRemoval = true;
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.life;
+
+        // Inner Core (White)
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = this.width / 2;
+        ctx.stroke();
+
+        // Outer Glow (Color)
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = this.width;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Impact flare
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.endX, this.endY, this.width * 2, 0, Math.PI * 2);
+        ctx.fill();
+
         ctx.restore();
     }
 }

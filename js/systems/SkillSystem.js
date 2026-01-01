@@ -254,15 +254,15 @@ export const SKILLS_POOL = [
 class SkillSystem {
     constructor() {
         this.xpValues = {
-            normal: 7,
-            fast: 14,
-            exploding: 21,
-            armored: 16,
-            ghost: 24,
-            spitter: 21,
-            flying: 18,
-            crawler: 16,
-            boss: 338
+            normal: 6,      // Reduced from 7 (15% reduction)
+            fast: 12,       // Reduced from 14 (15% reduction)
+            exploding: 18,  // Reduced from 21 (15% reduction)
+            armored: 14,    // Reduced from 16 (15% reduction)
+            ghost: 20,      // Reduced from 24 (15% reduction)
+            spitter: 18,    // Reduced from 21 (15% reduction)
+            flying: 15,     // Reduced from 18 (15% reduction)
+            crawler: 14,    // Reduced from 16 (15% reduction)
+            boss: 287       // Reduced from 338 (15% reduction)
         };
 
         // Kill streak XP bonuses

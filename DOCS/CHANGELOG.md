@@ -2,6 +2,79 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.3.5] - 2025-12-31
+
+### Fixed
+- **Battlepass Progress Tracking** - Resolved issue where kills and arcade round completions were not updating quest progress.
+- **Quest Objectives Detection** - Implemented session-level tracking for previously unmonitored stats (Headshots, Pickups Collected).
+  - **Headshot Detection**: Enhanced the collision system to distinguish between upper-body and lower-body hits; kills via upper-body hits now correctly register as headshots.
+  - **Pickup Tracking**: Integrated tracking for Health, Ammo, and Powerup collections into the session results data pipeline.
+  - **Achievement Sync**: These new stats also correctly contribute to relevant achievement unlocks.
+
+## [v0.8.3.4] - 2025-12-31
+
+### Fixed
+- **Custom Cursor & Overlay Layering** - Comprehensive fix for Profile, Achievements, and Battlepass visibility.
+  - **Stacking Context**: Moved `uiCanvas` to the top-level DOM and used `position: fixed` to ensure the custom cursor always draws above HTML elements.
+  - **HUD Overlap**: Prevented the canvas-based HUD and Main Menu from drawing when HTML overlays are active.
+  - **Escape Key**: Re-routed the `Escape` key to close active overlays rather than pausing the game.
+  - **Input Blocking**: Ensured gameplay inputs (like movement) are disabled while viewing overlays.
+  - **Visual Polish**: Hidden the WebGPU status icon while in dossier-themed menus for a more immersive experience.
+
+## [v0.8.3.3] - 2025-12-31
+
+### Added
+- **UI Interaction Audio** - Full menu feedback system
+  - **Menu Hover**: Subtle procedural "Tick" sound when navigating buttons and settings.
+  - **Menu Click**: Integrated "Pip" sound feedback for all Main Menu, Lobby, and Pause Menu interactions.
+- **Improved HUD Visuals** - Modern "Glass Tech" aesthetic
+  - **Color Accents**: Added vertical color-coded bars to all HUD boxes (Ammo, Score, Zombies, Grenades).
+  - **Stacked Layout**: Redesigned Weapon and Stat boxes to separate labels from values, preventing text overlap.
+  - **Expanded Dimensions**: Increased box heights to 50px and weapon box width to 200px for better legibility.
+
+## [v0.8.3.2] - 2025-12-31
+
+### Added
+- **Laser Gun Weapon** - Rapid-fire instant-hit weapon
+  - **Mechanics**: Implemented instant raycasting for the Laser Gun, providing precise and responsive feedback.
+  - **Visuals**: High-contrast neon pink/red beam transitions with a fading visual trail and impact flares.
+  - **Sound**: Unique procedural high-frequency "Zap" sweep with lowpass filtering.
+  - **Keybind**: Assigned to weapon slot 8 (Key '8' by default).
+- **UI Interaction Sounds** - Enhanced menu feedback
+  - **Menu Click**: Short, high-pitch procedural "Pip" sound added to all settings button, tab, and toggle interactions.
+
+### Changed
+- **Settings System Expansion** - Support for more weapons and flashlight
+  - **Keybind Display**: Updated Settings Panel to show labels for slots 1-8 (Pistol through Laser) and the Flashlight (F).
+  - **Default Controls**: Added weapon8 to default control set in SettingsManager.
+- **Weapon System Refinement** - Reusable collision logic
+  - **Instant Hit Logic**: Developed a "Logic Bullet" system that allows instant raycast weapons (like the Laser) to reuse existing score, multiplier, and blood splatter logic without code duplication.
+
+## [v0.8.3.1] - 2025-12-31
+
+### Added
+- **Arcade Music System** - Procedural, dynamic music for Arcade Mode
+  - **Procedural Logic**: Implemented `ArcadeMusicSystem.js` using Web Audio API for high-fidelity audio without large assets.
+  - **Dynamic Intensity**: Music complexity (808 Bass, Pads, Arps) scales based on waves and zombie count.
+  - **Trap Aesthetic**: Features sequenced 808 subs, snare backbeats, and 4-bar dropouts (breaks).
+- **Audio Mixer Settings** - Granular control over sound effects
+  - **New Sliders**: Added independent volume controls for Walking, Gunshots, Hit Markers, and Multiplier sounds.
+- **Normal Zombie Visual Diversity** - 8 unique visual variants
+  - **Variants**: Classic, Decayed, Fresh, Office Worker, Punk, Nurse, Construction Worker, Soldier.
+  - **Cohesive Sleeves**: Arms now match clothing color (e.g., Nurse scrubs, Suits) for better visual unity.
+  - **Details**: Bone exposure, clothing tatters, and accessories (hardhats, helmets, glasses).
+
+### Changed
+- **Audio Refinement** - Visceral and satisfying sound effects
+  - **Impacts**: Multi-layered "meaty" synthesis for zombie damage and kills (Squelch/Splat).
+  - **Hit Marker**: Crisp, noise-based mechanical "tick" for bullet feedback.
+  - **Multiplier Up**: Dual-oscillator "Crystal Shimmer" (short 0.3s duration).
+- **Zombie Visual Polish** - Improved animations
+  - **Animated Movement**: Added walking feet (sine wave) and dual swaying arms.
+  - **Anatomy**: Added visible skin-colored hands at the ends of arms.
+- **Difficulty Scaling**: Doubled zombie spawn rate multiplier from 1.5x to 3.0x.
+- **Homepage Theme**: Defaulted to Dark Mode with anti-FOUC early loading.
+
 ## [v0.8.3.0] - 2025-12-31
 
 ### Added

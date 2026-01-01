@@ -6,7 +6,7 @@ import { LOW_AMMO_FRACTION, NEWS_UPDATES, WEAPONS, SERVER_URL } from '../core/co
 import { settingsManager } from '../systems/SettingsManager.js';
 import { SKILLS_POOL } from '../systems/SkillSystem.js';
 import { saveMultiplierStats, getLastRuns, formatTime, loadScoreboard } from '../utils/gameUtils.js';
-import { isAudioInitialized } from '../systems/AudioSystem.js';
+import { isAudioInitialized, playMenuClickSound, playMenuHoverSound } from '../systems/AudioSystem.js';
 import { rankSystem } from '../systems/RankSystem.js';
 import { RankDisplay } from './RankDisplay.js';
 import { LeaderboardDisplay } from './LeaderboardDisplay.js';
@@ -108,31 +108,42 @@ export class GameHUD {
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(x, y, width, statHeight);
 
-        // 5. Icon (left side, matching HP UI layout)
-        const iconSize = 20 * scale; // Slightly smaller for compact boxes
-        const iconX = x + 25 * scale;
-        const iconY = y + statHeight * 0.5; // Center vertically
-        this.ctx.font = `${iconSize}px serif`; // Emoji font
+        // 4. Color Accent (vertical bar on far left)
+        this.ctx.fillStyle = color;
+        this.ctx.shadowBlur = 10 * scale;
+        this.ctx.shadowColor = color;
+        this.ctx.fillRect(x, y, 4 * scale, statHeight);
+        this.ctx.shadowBlur = 0;
+
+        // 5. Icon (far left, vertically centered)
+        const iconSize = 22 * scale;
+        const iconX = x + 24 * scale;
+        const iconY = y + statHeight * 0.5;
+        this.ctx.font = `${iconSize}px serif`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(icon, iconX, iconY);
 
-        // 6. Label text (next to icon, matching HP UI style)
-        const labelFontSize = Math.max(8, Math.round(11 * scale)); // Slightly smaller for compact
+        // 6. Label text (Top-left stacked)
+        const labelFontSize = Math.max(9, Math.round(11 * scale));
         this.ctx.font = `bold ${labelFontSize}px "Roboto Mono", monospace`;
-        this.ctx.fillStyle = '#9e9e9e';
+        this.ctx.fillStyle = '#bfbfbf';
         this.ctx.textAlign = 'left';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(label, x + 50 * scale, y + statHeight * 0.35);
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText(label.toUpperCase(), x + 46 * scale, y + 10 * scale);
 
-        // 7. Value (big number on right, matching HP UI style)
+        // 7. Value (Bottom-right stacked, prominent)
         this.ctx.textAlign = 'right';
-        const valueFontSize = Math.max(14, Math.round(22 * scale)); // Slightly smaller for compact
+        this.ctx.textBaseline = 'bottom';
+        const valueFontSize = Math.max(16, Math.round(24 * scale));
         this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = color;
-        this.ctx.shadowBlur = 5 * scale;
+
+        // Glow for the value
+        this.ctx.shadowBlur = 12 * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillText(value, x + width - 10 * scale, y + statHeight * 0.5);
+        this.ctx.fillText(value, x + width - 12 * scale, y + statHeight - 8 * scale);
+
         this.ctx.shadowBlur = 0;
         this.ctx.textAlign = 'left'; // Reset alignment
     }
@@ -238,6 +249,9 @@ export class GameHUD {
             this.galleryScreen.draw();
         } else if (gameState.showAbout) {
             this.aboutScreen.draw();
+        } else if (gameState.showProfile || gameState.showAchievements || gameState.showBadges || gameState.showBattlepass) {
+            // HTML Overlays - Don't draw anything on the canvas (Main Menu/HUD) 
+            // This prevents the canvas UI from covering the HTML elements.
         } else if (gameState.showLobby) {
             this.lobbyScreen.draw();
         } else if (gameState.showCoopLobby) {
@@ -275,12 +289,16 @@ export class GameHUD {
             }
         }
 
-        // Always draw WebGPU status icon on top of everything
-        this.drawWebGPUStatusIcon();
+        // Always draw WebGPU status icon on top of everything, except when HTML overlays are active
+        if (!gameState.showProfile && !gameState.showAchievements && !gameState.showBadges && !gameState.showBattlepass) {
+            this.drawWebGPUStatusIcon();
+        }
 
         // Draw custom cursor when in menus or paused
-        if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby || 
-            gameState.showAILobby || gameState.showAbout || gameState.showGallery || 
+        if (gameState.showMainMenu || gameState.showLobby || gameState.showCoopLobby ||
+            gameState.showAILobby || gameState.showAbout || gameState.showGallery ||
+            gameState.showProfile || gameState.showAchievements || gameState.showBadges ||
+            gameState.showBattlepass || gameState.showUsernameModal ||
             gameState.showSettingsPanel ||
             this.paused || gameState.gamePaused || gameState.showLevelUp || this.gameOver) {
             this.drawCursor();
@@ -292,7 +310,7 @@ export class GameHUD {
         const startX = this.padding;
         const scale = this.getUIScale();
         const itemSpacing = this.getScaledItemSpacing();
-        
+
         // Position HP bar below WebGPU indicator
         // WebGPU icon height is 32px, positioned at padding (15px)
         const webgpuHeight = 32;
@@ -305,18 +323,18 @@ export class GameHUD {
         const compassY = 10;
         const compassWidth = this.canvas.width * 0.4;
         const compassX = (this.canvas.width - compassWidth) / 2;
-        
+
         const statWidth = 140 * scale;
         const statHeight = 50 * scale;
         const compassSpacing = 10 * scale;
-        
+
         // Position stats vertically centered with compass
         const statY = compassY + (compassHeight / 2) - (statHeight / 2);
-        
+
         // WAVE box - LEFT of directional compass
         const waveX = compassX - compassSpacing - statWidth;
         this.drawStat('WAVE', gameState.wave, '🌊', '#ffc107', waveX, statY, statWidth);
-        
+
         // Kills box - RIGHT of directional compass
         const killsX = compassX + compassWidth + compassSpacing;
         this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth);
@@ -337,19 +355,19 @@ export class GameHUD {
         const sharedStatHeight = 50 * scale;
         startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing; // Health + Shield (or just Health if no shield)
         const finalY = this.drawSharedStats(startX, startY);
-        
+
         // Calculate bottom UI positions (above instructions)
         // Instructions box top is at canvas.height - 75 * scale (raised to avoid taskbar)
         const instructionsTop = this.canvas.height - (75 * scale);
         const instructionsHeight = 60 * scale;
         const bottomSpacing = 15 * scale;
         const bottomUIBaseline = instructionsTop - bottomSpacing;
-        
+
         const bottomWidth = 160 * scale;
         const xpBarWidth = 280 * scale; // Slightly narrower to make room for weapon boxes
-        const xpBarHeight = 40 * scale; // XP bar height (reduced from 50)
-        const bottomHeight = 50 * scale; // For weapon info calculations
-        
+        const xpBarHeight = 50 * scale; // Increased from 40 for better stacking
+        const bottomHeight = 50 * scale; // Consistent height for all bottom boxes
+
         // Top right: Active Skills (moved from bottom left)
         const hpBarHeight = 50 * scale;
         const skillsSpacing = 10 * scale;
@@ -358,30 +376,30 @@ export class GameHUD {
         const skillHeight = 40 * scale;
         const skillsY = this.padding + webgpuHeight + webgpuSpacing + hpBarHeight + skillsSpacing;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
-        
+
         // Bottom middle: XP Bar - very close to instructions (tightened gap)
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
         const xpBarY = instructionsTop - xpBarHeight - (1 * scale); // Very tight gap above instructions
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
-        
+
         // Bottom left: Zombies Left and Score boxes - side by side, aligned with XP bar
         const leftStatWidth = 160 * scale; // Width for each box
-        const leftStatHeight = 40 * scale; // Same height as XP bar
+        const leftStatHeight = 50 * scale; // Consistent with XP bar
         const leftStatSpacing = 8 * scale; // Small gap between boxes
         const leftStatY = xpBarY; // Same Y as XP bar
         const remainingZombies = gameState.zombies.length;
         const totalZombies = gameState.zombiesSpawnedThisWave || gameState.zombiesPerWave;
         const waveProgressText = `${remainingZombies}/${totalZombies}`;
         const waveProgressColor = remainingZombies <= totalZombies * 0.3 ? '#76ff03' : '#ffc107';
-        
+
         const leftX = this.padding;
         const scoreX = leftX + leftStatWidth + leftStatSpacing;
         this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, leftStatY, leftStatWidth, leftStatHeight);
         this.drawStat('Score', gameState.score, '🏆', '#ffd700', scoreX, leftStatY, leftStatWidth, leftStatHeight);
-        
+
         // Bottom right: Weapon and Grenade boxes - side by side, aligned with XP bar
-        const weaponWidth = 180 * scale; // Width for each box
-        const weaponHeight = 40 * scale; // Same height as XP bar
+        const weaponWidth = 200 * scale; // Increased from 180 to fit names better
+        const weaponHeight = 50 * scale; // Consistent with XP bar
         const weaponSpacing = 8 * scale; // Small gap between weapon and grenade boxes
         const weaponY = xpBarY; // Same Y as XP bar
         const grenadeX = this.canvas.width - weaponWidth - this.padding;
@@ -405,7 +423,7 @@ export class GameHUD {
         // Calculate positions for 2x2 grid
         const leftX = padding;
         const rightX = this.canvas.width - width - padding;
-        
+
         // Position P1 HP bar below WebGPU indicator
         // WebGPU icon height is 32px, positioned at padding (15px)
         const webgpuHeight = 32;
@@ -443,18 +461,17 @@ export class GameHUD {
         // Position shared stats below P1's stats
         const sharedStatsY = topY + statsHeight + itemSpacing;
         this.drawSharedStats(leftX, sharedStatsY);
-        
+
         // Calculate bottom UI positions (above instructions)
         // Instructions box top is at canvas.height - 75 * scale (raised to avoid taskbar)
         const instructionsTop = this.canvas.height - (75 * scale);
         const bottomSpacing = 15 * scale;
         const bottomUIBaseline = instructionsTop - bottomSpacing;
-        
+
         const bottomWidth = 160 * scale;
-        const xpBarWidth = 280 * scale; // Slightly narrower to make room for weapon boxes
-        const xpBarHeight = 40 * scale; // XP bar height (reduced from 50)
+        const xpBarHeight = 50 * scale; // Synchronized to 50
         const bottomHeight = 50 * scale; // For weapon info calculations
-        
+
         // Top right: Active Skills (moved from bottom left)
         const hpBarHeight = 50 * scale;
         const skillsSpacing = 10 * scale;
@@ -463,16 +480,16 @@ export class GameHUD {
         const skillHeight = 40 * scale;
         const skillsY = padding + webgpuHeight + webgpuSpacing + hpBarHeight + skillsSpacing;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
-        
+
         // XP Bar - very close to instructions (tightened gap)
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
         const xpBarY = instructionsTop - xpBarHeight - (1 * scale); // Very tight gap above instructions
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
-        
+
         // Bottom right: Weapon and Grenade boxes - side by side, aligned with XP bar
         if (localPlayer) {
-            const weaponWidth = 180 * scale; // Width for each box
-            const weaponHeight = 40 * scale; // Same height as XP bar
+            const weaponWidth = 200 * scale; // Increased to match single player
+            const weaponHeight = 50 * scale; // Synchronized to 50
             const weaponSpacing = 8 * scale; // Small gap between weapon and grenade boxes
             const weaponY = xpBarY; // Same Y as XP bar
             const grenadeX = this.canvas.width - weaponWidth - padding;
@@ -550,13 +567,13 @@ export class GameHUD {
 
     drawXPBar(x, y, width) {
         const scale = this.getUIScale();
-        const height = 40 * scale; // Reduced height for cleaner look
+        const height = 50 * scale; // Synchronized to 50
         const padding = 12 * scale;
         const fontSize = this.getScaledFontSize();
-        
+
         // Calculate XP progress
         const xpProgress = Math.min(1, gameState.xp / gameState.nextLevelXP);
-        
+
         // Background - dark glass effect (no border)
         const bgGradient = this.ctx.createLinearGradient(x, y, x, y + height);
         bgGradient.addColorStop(0, 'rgba(10, 12, 16, 0.85)');
@@ -715,14 +732,14 @@ export class GameHUD {
             const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
             const fontSize = this.getScaledFontSize();
             const textY = currentY + (15 * scale);
-            
+
             // Draw weapon name
             this.ctx.fillStyle = '#ffffff';
             this.ctx.font = this.font;
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(`${weaponLabel}:`, x + (10 * scale), textY);
-            
+
             // Draw percentage next to weapon name
             const weaponNameWidth = this.ctx.measureText(`${weaponLabel}:`).width;
             this.ctx.fillStyle = ammoColor;
@@ -758,19 +775,15 @@ export class GameHUD {
         const weaponLabel = player.currentWeapon.name;
 
         if (player.isReloading) {
-            // Draw weapon box with reload progress
-            const progressBarWidth = width - (20 * scale);
-            const progressBarHeight = 6 * scale;
-            const progressBarX = weaponX + (10 * scale);
-            const progressBarY = y + height - progressBarHeight - 6 * scale;
+            // Draw weapon box with reload progress (Matching drawStat style)
             const now = Date.now();
             const reloadProgress = Math.min(1, (now - player.reloadStartTime) / player.currentWeapon.reloadTime);
 
-            // Background
+            // 1. Background
             this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
             this.ctx.fillRect(weaponX, y, width, height);
 
-            // Texture overlay
+            // 2. Texture overlay
             const groundPattern = initGroundPattern();
             if (groundPattern) {
                 this.ctx.save();
@@ -780,15 +793,23 @@ export class GameHUD {
                 this.ctx.restore();
             }
 
+            // 3. Border and Accent
             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             this.ctx.lineWidth = 1;
             this.ctx.strokeRect(weaponX, y, width, height);
 
-            // Progress bar background
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillStyle = ammoColor;
+            this.ctx.fillRect(weaponX, y, 4 * scale, height);
+
+            // 4. Progress bar at the bottom
+            const progressBarWidth = width - (20 * scale);
+            const progressBarHeight = 6 * scale;
+            const progressBarX = weaponX + (10 * scale);
+            const progressBarY = y + height - progressBarHeight - 8 * scale;
+
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             this.ctx.fillRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight);
 
-            // Progress fill
             const fillWidth = progressBarWidth * reloadProgress;
             const progressGradient = this.ctx.createLinearGradient(progressBarX, progressBarY, progressBarX + fillWidth, progressBarY);
             progressGradient.addColorStop(0, '#ff9800');
@@ -796,19 +817,22 @@ export class GameHUD {
             this.ctx.fillStyle = progressGradient;
             this.ctx.fillRect(progressBarX, progressBarY, fillWidth, progressBarHeight);
 
-            // Text
-            const ammoText = `${Math.ceil(reloadProgress * 100)}%`;
-            const fontSize = this.getScaledFontSize();
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.font = this.font;
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(`${weaponLabel}:`, weaponX + padding, y + height * 0.35);
+            // 5. Stacked Text
+            const ammoPercent = `${Math.ceil(reloadProgress * 100)}%`;
 
-            const weaponNameWidth = this.ctx.measureText(`${weaponLabel}:`).width;
+            // Name (Top)
+            this.ctx.fillStyle = '#bfbfbf';
+            this.ctx.font = `bold ${Math.max(9, Math.round(11 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText(weaponLabel.toUpperCase(), weaponX + 46 * scale, y + 10 * scale);
+
+            // Percentage (Bottom-right, prominent)
+            this.ctx.textAlign = 'right';
+            this.ctx.textBaseline = 'bottom';
             this.ctx.fillStyle = ammoColor;
-            this.ctx.font = `700 ${fontSize}px 'Roboto Mono', monospace`;
-            this.ctx.fillText(ammoText, weaponX + padding + weaponNameWidth + (6 * scale), y + height * 0.35);
+            this.ctx.font = `bold ${Math.max(16, Math.round(24 * scale))}px "Roboto Mono", monospace`;
+            this.ctx.fillText(ammoPercent, weaponX + width - 12 * scale, y + height - 16 * scale); // Raised slightly to clear bar
         } else {
             const ammoText = `${player.currentAmmo}/${player.maxAmmo}`;
             this.drawStat(weaponLabel, ammoText, '🔫', ammoColor, weaponX, y, width);
@@ -826,7 +850,7 @@ export class GameHUD {
         const grenadeKey = controls.grenade || 'g';
         const meleeKey = controls.melee || 'v';
         const flashlightKey = controls.flashlight || 'f';
-        
+
         // Build weapon keybind string
         const weaponKeybinds = [
             { key: controls.weapon1 || '1', weapon: WEAPONS.pistol },
@@ -837,9 +861,9 @@ export class GameHUD {
             { key: controls.weapon6 || '6', weapon: WEAPONS.sniper },
             { key: controls.weapon7 || '7', weapon: WEAPONS.rocketLauncher }
         ];
-        
+
         const weaponString = weaponKeybinds.map(w => `${w.key}=${w.weapon.name}`).join(' ');
-        
+
         // Format lines
         const line1 = `WASD to move • Mouse to aim • Click to shoot • ${sprintKey.toUpperCase()} to sprint`;
         const line2 = weaponString;
@@ -857,7 +881,7 @@ export class GameHUD {
             this.ctx.measureText(line2).width,
             this.ctx.measureText(line3).width
         );
-        
+
         // WIDER and FLATTER box - raised to avoid Windows taskbar
         const boxWidth = Math.min(this.canvas.width * 0.95, textWidth + 80 * scale); // 95% of screen width or text + padding
         const boxHeight = 60 * scale; // Flatter height (was 80)
@@ -866,7 +890,7 @@ export class GameHUD {
         // Semi-transparent background - WIDER and FLATTER
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(this.canvas.width / 2 - boxWidth / 2, boxY, boxWidth, boxHeight);
-        
+
         // Border
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 1;
@@ -938,10 +962,10 @@ export class GameHUD {
         // Get mouse position (from tracked position or return if not available)
         const x = this.mouseX;
         const y = this.mouseY;
-        
+
         // Only draw if mouse position is tracked and valid
-        if (x === undefined || y === undefined || 
-            x < 0 || x > this.canvas.width || 
+        if (x === undefined || y === undefined ||
+            x < 0 || x > this.canvas.width ||
             y < 0 || y > this.canvas.height) return;
 
         const scale = this.getUIScale();
@@ -1156,17 +1180,17 @@ export class GameHUD {
         if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
             return;
         }
-        
+
         // Ensure positive dimensions
         if (width <= 0 || height <= 0) {
             return;
         }
-        
+
         // Glassmorphism effect - dark background with transparency
         const cardBg = this.ctx.createLinearGradient(x, y, x, y + height);
         cardBg.addColorStop(0, 'rgba(10, 12, 16, 0.85)');
         cardBg.addColorStop(1, 'rgba(10, 12, 16, 0.75)');
-        
+
         this.ctx.fillStyle = cardBg;
         this.ctx.fillRect(x, y, width, height);
 
@@ -1228,6 +1252,14 @@ export class GameHUD {
     }
 
     checkMenuButtonClick(mouseX, mouseY) {
+        const action = this._checkMenuButtonClickDelegation(mouseX, mouseY);
+        if (action) {
+            playMenuClickSound();
+        }
+        return action;
+    }
+
+    _checkMenuButtonClickDelegation(mouseX, mouseY) {
         // Delegate to appropriate screen instances
         if (gameState.gamePaused && !gameState.showSettingsPanel) {
             return this.pauseMenuScreen.checkButtonClick(mouseX, mouseY);
@@ -1259,41 +1291,33 @@ export class GameHUD {
     updateMenuHover(mouseX, mouseY) {
         this.mouseX = mouseX;
         this.mouseY = mouseY;
+
+        const prevHovered = this.hoveredButton;
+
         // Delegate to appropriate screen instances
         if (gameState.gamePaused && !gameState.showSettingsPanel) {
             this.hoveredButton = this.pauseMenuScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (this.gameOver) {
+        } else if (this.gameOver) {
             this.hoveredButton = this.gameOverScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (gameState.showAILobby) {
+        } else if (gameState.showAILobby) {
             this.hoveredButton = this.aiLobbyScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (gameState.showCoopLobby) {
+        } else if (gameState.showCoopLobby) {
             this.hoveredButton = this.coopLobbyScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (gameState.showLobby) {
+        } else if (gameState.showLobby) {
             this.hoveredButton = this.lobbyScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (gameState.showAbout) {
+        } else if (gameState.showAbout) {
             this.hoveredButton = this.aboutScreen.updateHover(mouseX, mouseY);
-            return;
-        }
-        if (gameState.showGallery) {
+        } else if (gameState.showGallery) {
             this.hoveredButton = this.galleryScreen.updateHover(mouseX, mouseY);
-            return;
+        } else if (this.mainMenu) {
+            this.hoveredButton = this.mainMenuScreen.updateHover(mouseX, mouseY);
+        } else {
+            this.hoveredButton = null;
         }
-        if (this.mainMenu) {
-            this.mainMenuScreen.updateHover(mouseX, mouseY);
-            this.hoveredButton = this.mainMenuScreen.hoveredButton;
-            return;
+
+        if (this.hoveredButton && this.hoveredButton !== prevHovered) {
+            playMenuHoverSound();
         }
-        this.hoveredButton = null;
     }
 
     drawOffScreenIndicators() {
@@ -1345,7 +1369,7 @@ export class GameHUD {
             let zombieScreenY = zombie.y;
             let playerScreenX = closestPlayer.x;
             let playerScreenY = closestPlayer.y;
-            
+
             if (isSinglePlayerArcade) {
                 const zombieScreen = cameraSystem.worldToScreen(zombie.x, zombie.y);
                 const playerScreen = cameraSystem.worldToScreen(closestPlayer.x, closestPlayer.y);
@@ -1778,7 +1802,7 @@ export class GameHUD {
         // Shrink compass by ~15% if shrunk flag is set
         const shrinkFactor = shrunk ? 0.85 : 1.0;
         const scale = this.getUIScale();
-        
+
         // Box dimensions
         const boxWidth = 160 * scale * shrinkFactor;
         const boxHeight = 70 * scale * shrinkFactor;
@@ -1786,18 +1810,18 @@ export class GameHUD {
         const boxY = y; // y is the top of the area in some calls, or center? 
         // In drawSinglePlayerHUD: multiplierY = 55 * scale. This seems to be the center Y passed in.
         // Let's assume y is center-ish.
-        
+
         // Draw pronounced background plate
         this.ctx.save();
-        
+
         // Glassy background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         this.ctx.lineWidth = 2;
-        
+
         // Draw background box centered on y
         this.ctx.beginPath();
-        this.ctx.roundRect(boxX, boxY - boxHeight/2, boxWidth, boxHeight, 10 * scale);
+        this.ctx.roundRect(boxX, boxY - boxHeight / 2, boxWidth, boxHeight, 10 * scale);
         this.ctx.fill();
         this.ctx.stroke();
 
@@ -1827,7 +1851,7 @@ export class GameHUD {
         this.ctx.fillStyle = color;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
+
         // Strong glow
         this.ctx.shadowBlur = 20 * scale * shrinkFactor;
         this.ctx.shadowColor = glowColor;

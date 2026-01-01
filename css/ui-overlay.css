@@ -21,6 +21,8 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
+    cursor: none;
+    /* Hide system cursor so custom cursor on uiCanvas renders alone */
     background: var(--overlay-bg);
     backdrop-filter: var(--overlay-blur);
     -webkit-backdrop-filter: var(--overlay-blur);
@@ -32,11 +34,17 @@
     animation: fadeIn 0.3s ease-out;
 }
 
+.overlay-container * {
+    cursor: none !important;
+    /* Force hide even on buttons/links */
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
         transform: scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -183,6 +191,7 @@
     0% {
         transform: translateX(-100%);
     }
+
     100% {
         transform: translateX(100%);
     }
@@ -239,8 +248,10 @@
 
 .tier-card {
     flex-shrink: 0;
-    width: 140px; /* Increased width for two rewards */
-    height: 240px; /* Increased height */
+    width: 140px;
+    /* Increased width for two rewards */
+    height: 240px;
+    /* Increased height */
     background: var(--card-bg);
     border: 2px solid var(--card-border);
     border-radius: 12px;
@@ -308,9 +319,12 @@
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 30px rgba(255, 140, 0, 0.6);
     }
+
     50% {
         box-shadow: 0 0 40px rgba(255, 140, 0, 0.8);
     }
@@ -347,7 +361,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     padding: 4px;
     position: relative;
@@ -355,7 +369,7 @@
 }
 
 .tier-reward.empty {
-    border: 1px dashed rgba(255,255,255,0.1);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
     background: transparent;
 }
 
@@ -397,7 +411,7 @@
     font-weight: 900;
     padding: 2px 6px;
     border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* Battlepass Challenges */
@@ -426,7 +440,7 @@
 }
 
 .challenge-card {
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 12px;
@@ -696,7 +710,7 @@
     .achievements-sidebar {
         width: 180px;
     }
-    
+
     .achievements-grid {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
@@ -706,19 +720,19 @@
     .achievements-main {
         flex-direction: column;
     }
-    
+
     .achievements-sidebar {
         width: 100%;
         flex-direction: row;
         overflow-x: auto;
         flex-wrap: nowrap;
     }
-    
+
     .category-button {
         white-space: nowrap;
         flex-shrink: 0;
     }
-    
+
     .achievements-grid {
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
@@ -729,14 +743,14 @@
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: 
-        repeating-linear-gradient(
-            0deg,
+    cursor: none;
+    /* Hide system cursor so custom cursor on uiCanvas renders alone */
+    background:
+        repeating-linear-gradient(0deg,
             rgba(0, 0, 0, 0.05) 0px,
             transparent 1px,
             transparent 4px,
-            rgba(0, 0, 0, 0.05) 5px
-        ),
+            rgba(0, 0, 0, 0.05) 5px),
         linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -747,23 +761,26 @@
     overflow: hidden;
     animation: fadeIn 0.3s ease-out;
     border: 3px solid #8b6914;
-    box-shadow: 
+    box-shadow:
         inset 0 0 100px rgba(0, 0, 0, 0.8),
         0 0 50px rgba(139, 105, 20, 0.3);
+}
+
+.dossier-container * {
+    cursor: none !important;
+    /* Force hide even on buttons/links */
 }
 
 .dossier-container::before {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: 
-        repeating-linear-gradient(
-            90deg,
+    background-image:
+        repeating-linear-gradient(90deg,
             transparent,
             transparent 98px,
             rgba(139, 105, 20, 0.03) 98px,
-            rgba(139, 105, 20, 0.03) 100px
-        );
+            rgba(139, 105, 20, 0.03) 100px);
     pointer-events: none;
     opacity: 0.5;
 }
@@ -794,7 +811,7 @@
     text-transform: uppercase;
     letter-spacing: 0.2em;
     transform: rotate(-12deg);
-    box-shadow: 
+    box-shadow:
         0 0 20px rgba(211, 47, 47, 0.5),
         inset 0 0 10px rgba(255, 255, 255, 0.2);
     animation: stampAppear 0.5s ease-out;
@@ -805,9 +822,11 @@
         transform: rotate(-12deg) scale(0);
         opacity: 0;
     }
+
     50% {
         transform: rotate(-18deg) scale(1.1);
     }
+
     100% {
         transform: rotate(-12deg) scale(1);
         opacity: 1;
@@ -820,7 +839,7 @@
     text-transform: uppercase;
     letter-spacing: 0.2em;
     color: #d4af37;
-    text-shadow: 
+    text-shadow:
         0 0 10px rgba(212, 175, 55, 0.5),
         2px 2px 4px rgba(0, 0, 0, 0.8);
     margin-bottom: 8px;
@@ -867,7 +886,7 @@
     border-radius: 4px;
     padding: 24px;
     position: relative;
-    box-shadow: 
+    box-shadow:
         inset 0 0 20px rgba(0, 0, 0, 0.5),
         0 0 20px rgba(139, 105, 20, 0.2);
 }
@@ -1178,7 +1197,7 @@
 
     }
 
-    
+
 
     .badges-grid {
 
