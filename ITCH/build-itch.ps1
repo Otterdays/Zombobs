@@ -20,10 +20,9 @@ if (Test-Path $zipFile) {
 # Create build directory
 New-Item -ItemType Directory -Path $buildDir | Out-Null
 
-# Copy required files
+# Copy required files (rename zombie-game.html to index.html for itch.io)
 Write-Host "Copying files..." -ForegroundColor Cyan
-Copy-Item "index.html" -Destination $buildDir
-Copy-Item "zombie-game.html" -Destination $buildDir
+Copy-Item "zombie-game.html" -Destination "$buildDir\index.html"
 Copy-Item "assets" -Destination $buildDir -Recurse
 Copy-Item "css" -Destination $buildDir -Recurse
 Copy-Item "js" -Destination $buildDir -Recurse
@@ -31,9 +30,24 @@ Copy-Item "sample_assets" -Destination $buildDir -Recurse
 
 Write-Host "Files copied successfully!" -ForegroundColor Green
 
-# Create zip file
+# Create zip file (handle file locks gracefully)
 Write-Host "Creating zip file..." -ForegroundColor Cyan
-Compress-Archive -Path "$buildDir\*" -DestinationPath $zipFile -Force
+try {
+    # Use .NET compression to handle file locks better
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($buildDir, $zipFile, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+    Write-Host "Zip file created successfully!" -ForegroundColor Green
+} catch {
+    Write-Host "Warning: Some files may be locked. Trying alternative method..." -ForegroundColor Yellow
+    # Fallback to Compress-Archive with error handling
+    try {
+        Compress-Archive -Path "$buildDir\*" -DestinationPath $zipFile -Force -ErrorAction SilentlyContinue
+        Write-Host "Zip file created (some files may be missing due to locks)" -ForegroundColor Yellow
+    } catch {
+        Write-Host "Error creating zip file. Please close any open files and try again." -ForegroundColor Red
+        exit 1
+    }
+}
 
 Write-Host "`nBuild complete! Zip file created: $zipFile" -ForegroundColor Green
 Write-Host "Ready to upload to Itch.io!" -ForegroundColor Yellow

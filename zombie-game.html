@@ -3,17 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- Base URL for itch.io path resolution - must be before any resource links -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Base URL for itch.io path resolution - must be before any resource links -->
+    <base href="./">
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap"
         rel="stylesheet">
-    <!-- Relative paths with ./ for robust Itch.io and CDN path resolution -->
-    <link rel="stylesheet" href="./css/style.css">
-    <link rel="stylesheet" href="./css/ui-overlay.css">
+    <!-- Relative paths for itch.io compatibility -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ui-overlay.css">
     <script>
         // Suppress console warnings from Itch.io iframe Permissions Policy
         (function () {
@@ -44,8 +45,8 @@
     <canvas id="uiCanvas"></canvas>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- Use explicit relative path for module entry point -->
-    <script type="module" src="./js/main.js"></script>
+    <!-- Use relative path for itch.io compatibility -->
+    <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
