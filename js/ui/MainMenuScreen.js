@@ -57,11 +57,11 @@ export class MainMenuScreen {
                 x = Math.random() * width;
                 y = Math.random() * height;
                 // Avoid center menu area roughly
-                const distToCenter = Math.hypot(x - width/2, y - height/2);
+                const distToCenter = Math.hypot(x - width / 2, y - height / 2);
                 if (distToCenter > 300) valid = true;
                 attempts++;
             }
-            
+
             if (valid) {
                 this.eyes.push({
                     x: x,
@@ -78,7 +78,7 @@ export class MainMenuScreen {
         // Update Eyes
         for (let i = this.eyes.length - 1; i >= 0; i--) {
             const eye = this.eyes[i];
-            
+
             if (eye.state === 'in') {
                 eye.life += 2;
                 if (eye.life >= 50) eye.state = 'wait';
@@ -96,13 +96,13 @@ export class MainMenuScreen {
         // Spawn Explosions/Flashes
         if (now - this.lastExplosionSpawn > 3000 && Math.random() < 0.02) {
             this.lastExplosionSpawn = now;
-             let x, y;
+            let x, y;
             let valid = false;
             let attempts = 0;
-             while (!valid && attempts < 10) {
+            while (!valid && attempts < 10) {
                 x = Math.random() * width;
                 y = Math.random() * height;
-                 const distToCenter = Math.hypot(x - width/2, y - height/2);
+                const distToCenter = Math.hypot(x - width / 2, y - height / 2);
                 if (distToCenter > 250) valid = true;
                 attempts++;
             }
@@ -116,17 +116,17 @@ export class MainMenuScreen {
                     alpha: 1.0,
                     color: Math.random() > 0.5 ? '#ffeb3b' : '#ff5722' // Yellow or Orange
                 });
-                
+
                 // Add some particles for the explosion
-                for(let k=0; k<10; k++) {
+                for (let k = 0; k < 10; k++) {
                     this.particles.push({
-                         x: x,
-                         y: y,
-                         vx: (Math.random() - 0.5) * 10,
-                         vy: (Math.random() - 0.5) * 10,
-                         life: 30 + Math.random() * 20,
-                         color: '#ffffff',
-                         size: 2 + Math.random() * 3
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        life: 30 + Math.random() * 20,
+                        color: '#ffffff',
+                        size: 2 + Math.random() * 3
                     });
                 }
             }
@@ -162,7 +162,7 @@ export class MainMenuScreen {
             if (eye.state === 'in') opacity = eye.life / 50;
             else if (eye.state === 'wait') opacity = 1.0;
             else if (eye.state === 'out') opacity = 1.0 - ((eye.life - (eye.maxLife - 50)) / 50);
-            
+
             this.ctx.globalAlpha = opacity;
             this.ctx.translate(eye.x, eye.y);
             this.ctx.rotate(eye.angle);
@@ -183,8 +183,8 @@ export class MainMenuScreen {
 
             this.ctx.restore();
             // Reset transform for next eye
-             this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-             this.ctx.save();
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            this.ctx.save();
         }
         this.ctx.restore();
 
@@ -196,7 +196,7 @@ export class MainMenuScreen {
             this.ctx.beginPath();
             this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
             this.ctx.fill();
-            
+
             // Inner white flash
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
@@ -264,10 +264,10 @@ export class MainMenuScreen {
         const usernameBoxX = centerX - usernameBoxWidth / 2;
         const usernameBoxY = 30 * scale; // Top of window with padding
         const cornerRadius = 12 * scale;
-        
+
         // Draw username box background with gradient effect
         this.ctx.save();
-        
+
         // Outer glow on hover
         if (usernameHovered) {
             this.ctx.shadowBlur = 20 * scale;
@@ -276,12 +276,12 @@ export class MainMenuScreen {
             this.ctx.shadowBlur = 8 * scale;
             this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         }
-        
+
         // Draw rounded rectangle background
         this.ctx.beginPath();
         this.ctx.roundRect(usernameBoxX, usernameBoxY, usernameBoxWidth, usernameBoxHeight, cornerRadius);
         this.ctx.closePath();
-        
+
         // Background gradient
         const gradient = this.ctx.createLinearGradient(usernameBoxX, usernameBoxY, usernameBoxX, usernameBoxY + usernameBoxHeight);
         if (usernameHovered) {
@@ -293,35 +293,35 @@ export class MainMenuScreen {
         }
         this.ctx.fillStyle = gradient;
         this.ctx.fill();
-        
+
         // Border
         this.ctx.shadowBlur = 0;
         this.ctx.strokeStyle = usernameHovered ? '#ff9800' : '#555555';
         this.ctx.lineWidth = 2 * scale;
         this.ctx.stroke();
-        
+
         // Inner highlight
         this.ctx.beginPath();
         this.ctx.roundRect(usernameBoxX + 1 * scale, usernameBoxY + 1 * scale, usernameBoxWidth - 2 * scale, usernameBoxHeight / 2, cornerRadius - 1);
         this.ctx.closePath();
         this.ctx.fillStyle = usernameHovered ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)';
         this.ctx.fill();
-        
+
         this.ctx.restore();
-        
+
         // Username text
         const fontSize = Math.max(16, Math.round(18 * scale));
         this.ctx.font = `bold ${fontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = usernameHovered ? '#ff9800' : '#e0e0e0';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
+
         // Text shadow for better readability
         this.ctx.shadowBlur = 4 * scale;
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillText(gameState.username || 'Survivor', centerX, usernameY);
         this.ctx.shadowBlur = 0;
-        
+
         // Hint text below box when hovered
         if (usernameHovered) {
             const hintFontSize = Math.max(10, Math.round(12 * scale));
@@ -371,9 +371,10 @@ export class MainMenuScreen {
         const row6Y = buttonStartY + (buttonHeight + buttonSpacing) * 5;
         this.hud.drawMenuButton('Battlepass', centerX - buttonWidth / 2, row6Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'battlepass', false);
 
-        // Row 7: About (centered)
+        // Row 7: Landing (left), About (right)
         const row7Y = buttonStartY + (buttonHeight + buttonSpacing) * 6;
-        this.hud.drawMenuButton('About', centerX - buttonWidth / 2, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
+        this.hud.drawMenuButton('Landing', leftColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'landing', false);
+        this.hud.drawMenuButton('About', rightColumnX, row7Y - buttonHeight / 2, buttonWidth, buttonHeight, this.hoveredButton === 'about', false);
 
         // Draw rank badge next to username
         this.drawRankBadge();
@@ -394,7 +395,7 @@ export class MainMenuScreen {
 
         // Local Highscores (last 2 runs)
         this.drawLocalHighscores();
-        
+
         // Local Leaderboard (top scores)
         this.drawLocalLeaderboard();
 
@@ -454,13 +455,13 @@ export class MainMenuScreen {
         // Check if rank badge should be shown
         const showRankBadge = settingsManager.getSetting('video', 'showRankBadge') !== false;
         if (!showRankBadge) return;
-        
+
         const scale = this.getUIScale();
         const centerX = this.canvas.width / 2;
         // Draw rank badge to the right of username (username is now at top)
         const usernameY = 30 * scale + 25 * scale; // Top padding + half box height
         const usernameBoxWidth = 320 * scale;
-        
+
         // Draw rank badge to the right of username box
         const badgeX = centerX + usernameBoxWidth / 2 + 20 * scale;
         const badgeY = 30 * scale + 25 * scale - 25 * scale; // Aligned with username box center
@@ -470,19 +471,19 @@ export class MainMenuScreen {
     drawLocalHighscores() {
         const scale = this.getUIScale();
         const lastRuns = getLastRuns(1, 'arcade'); // Only show the last arcade run on left side
-        
+
         // Card dimensions
         const cardWidth = 200 * scale;
         const cardHeight = 110 * scale;
         const padding = 12 * scale;
-        
+
         // Position on left side of screen
         const cardX = 20 * scale; // Left padding
         const y = 100 * scale; // Below username box area
-        
+
         // Always draw the card container
         this.hud.drawGlassCard(cardX, y, cardWidth, cardHeight);
-        
+
         // Header
         const headerFontSize = Math.max(11, 12 * scale);
         this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
@@ -490,7 +491,7 @@ export class MainMenuScreen {
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
         this.ctx.fillText('Last Arcade Run', cardX + padding, y + padding);
-        
+
         if (lastRuns.length === 0) {
             // No runs available - show empty state
             const emptyFontSize = Math.max(9, 10 * scale);
@@ -502,9 +503,9 @@ export class MainMenuScreen {
             this.ctx.fillText('Play a game!', cardX + cardWidth / 2, textY + 15 * scale);
             return;
         }
-        
+
         const run = lastRuns[0]; // Get the last run
-        
+
         // Score (large, prominent) - improved spacing
         const scoreFontSize = Math.max(18, 22 * scale);
         const scoreText = (run.score || 0).toLocaleString();
@@ -519,21 +520,21 @@ export class MainMenuScreen {
         }
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillText(scoreText, cardX + padding, y + padding + 20 * scale);
-        
+
         // Stats (wave, kills, time) - improved font size and spacing
         const statFontSize = Math.max(9, 10 * scale);
         this.ctx.font = `${statFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#b0b0b0'; // Slightly brighter for better contrast
         let statY = y + padding + 48 * scale; // Better spacing from score
-        
+
         // Wave
         this.ctx.fillText(`Wave: ${run.wave || 0}`, cardX + padding, statY);
         statY += 15 * scale; // Slightly increased line spacing
-        
+
         // Kills
         this.ctx.fillText(`Kills: ${run.kills || 0}`, cardX + padding, statY);
         statY += 15 * scale;
-        
+
         // Time - ensure it fits
         const timeText = formatTime(run.timeSurvived || 0);
         const timeLabel = `Time: ${timeText}`;
@@ -556,27 +557,27 @@ export class MainMenuScreen {
             const mode = entry.gameMode || 'arcade'; // Default to arcade if missing
             return mode === 'arcade';
         });
-        
+
         // Card dimensions - reduced width, entry height for better text fitting
         const cardWidth = 220 * scale;
         const maxHeight = 400 * scale; // Max height for scrollable content
         const padding = 12 * scale;
         const entryHeight = 75 * scale; // Increased from 70 for better spacing
         const entryPadding = 8 * scale;
-        
+
         // Position below Last Run box
         const cardX = 20 * scale; // Same X as Last Run
         const y = 220 * scale; // Below Last Run (100 + 110 + 10 gap)
-        
+
         // Calculate actual height based on entries (max 5 visible entries)
         const visibleEntries = Math.min(scoreboard.length, 5);
-        const cardHeight = scoreboard.length === 0 
-            ? 80 * scale 
+        const cardHeight = scoreboard.length === 0
+            ? 80 * scale
             : Math.min(visibleEntries * entryHeight + padding * 2 + 20 * scale, maxHeight);
-        
+
         // Draw glass card
         this.hud.drawGlassCard(cardX, y, cardWidth, cardHeight);
-        
+
         // Header - improved font size
         const headerFontSize = Math.max(11, 12 * scale);
         this.ctx.font = `bold ${headerFontSize}px "Roboto Mono", monospace`;
@@ -584,14 +585,14 @@ export class MainMenuScreen {
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
         this.ctx.fillText('Local Best', cardX + padding, y + padding);
-        
+
         // Subtitle - improved font size, right-aligned, moved up
         const subtitleFontSize = Math.max(10, 11 * scale);
         this.ctx.font = `${subtitleFontSize}px "Roboto Mono", monospace`;
         this.ctx.fillStyle = '#b0b0b0'; // Slightly brighter for better contrast
         this.ctx.textAlign = 'right';
         this.ctx.fillText('Top Scores', cardX + cardWidth - padding, y + padding + 3 * scale);
-        
+
         if (scoreboard.length === 0) {
             // Empty state - improved styling
             const emptyFontSize = Math.max(9, 10 * scale);
@@ -602,22 +603,22 @@ export class MainMenuScreen {
             this.ctx.fillText('Play to set records!', cardX + cardWidth / 2, y + padding + 55 * scale);
             return;
         }
-        
+
         // Draw entries (show top 5)
         const entriesToShow = Math.min(scoreboard.length, 5);
         let entryY = y + padding + 30 * scale; // Slightly increased spacing from header
-        
+
         // Calculate available width for text
         const textAreaWidth = cardWidth - padding * 2 - 8 * scale; // Account for padding and margins
-        
+
         for (let i = 0; i < entriesToShow; i++) {
             const entry = scoreboard[i];
             const rank = i + 1;
-            
+
             // Entry background
             const entryBgY = entryY - entryPadding;
             const entryBgHeight = entryHeight - entryPadding * 2;
-            
+
             // Rank-based colors - improved contrast
             let bgColor, borderColor, rankColor;
             if (rank === 1) {
@@ -637,16 +638,16 @@ export class MainMenuScreen {
                 borderColor = 'rgba(255, 255, 255, 0.08)';
                 rankColor = '#b0b0b0'; // Slightly brighter
             }
-            
+
             // Draw entry background
             this.ctx.fillStyle = bgColor;
             this.ctx.fillRect(cardX + padding, entryBgY, cardWidth - padding * 2, entryBgHeight);
-            
+
             // Draw entry border
             this.ctx.strokeStyle = borderColor;
             this.ctx.lineWidth = 1;
             this.ctx.strokeRect(cardX + padding, entryBgY, cardWidth - padding * 2, entryBgHeight);
-            
+
             // Rank - improved font size
             const rankFontSize = Math.max(9, 10 * scale);
             this.ctx.font = `bold ${rankFontSize}px "Roboto Mono", monospace`;
@@ -654,7 +655,7 @@ export class MainMenuScreen {
             this.ctx.textAlign = 'left';
             const rankText = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
             this.ctx.fillText(rankText, cardX + padding + 4 * scale, entryY);
-            
+
             // Score (large, prominent) - improved spacing and text measurement, right-aligned, moved up
             const scoreFontSize = Math.max(13, 15 * scale);
             this.ctx.font = `bold ${scoreFontSize}px "Roboto Mono", monospace`;
@@ -669,22 +670,22 @@ export class MainMenuScreen {
             this.ctx.fillStyle = '#ff5252';
             this.ctx.textAlign = 'right';
             this.ctx.fillText(scoreText, cardX + cardWidth - padding - 4 * scale, entryY + 14 * scale);
-            
+
             // Details (wave, kills, time) - improved font size and spacing, left-aligned, moved up
             const detailFontSize = Math.max(8, 9 * scale);
             this.ctx.font = `${detailFontSize}px "Roboto Mono", monospace`;
             this.ctx.fillStyle = '#b0b0b0'; // Better contrast
             this.ctx.textAlign = 'left'; // Left-align stats
             let detailY = entryY + 26 * scale; // Moved up more
-            
+
             // Calculate column positions for better alignment
             const leftColX = cardX + padding + 4 * scale;
             const rightColX = cardX + padding + 120 * scale; // Better column spacing
-            
+
             // Wave and Kills on same line - with text measurement
             const waveText = `Wave: ${entry.wave || 0}`;
             this.ctx.fillText(waveText, leftColX, detailY);
-            
+
             const killsText = `Kills: ${(entry.kills || 0).toLocaleString()}`;
             // Measure kills text and adjust if needed
             this.ctx.font = `${detailFontSize}px "Roboto Mono", monospace`;
@@ -698,7 +699,7 @@ export class MainMenuScreen {
                 this.ctx.fillText(killsText, rightColX, detailY);
             }
             detailY += 12 * scale; // Line spacing
-            
+
             // Time and Multiplier - with text measurement
             const timeText = formatTime(entry.timeSurvived || 0);
             const timeLabel = `Time: ${timeText}`;
@@ -711,7 +712,7 @@ export class MainMenuScreen {
             } else {
                 this.ctx.fillText(timeLabel, leftColX, detailY);
             }
-            
+
             if (entry.maxMultiplier) {
                 const multiplierText = `${entry.maxMultiplier.toFixed(1)}x`;
                 this.ctx.font = `${detailFontSize}px "Roboto Mono", monospace`;
@@ -720,10 +721,10 @@ export class MainMenuScreen {
                     this.ctx.fillText(multiplierText, rightColX, detailY);
                 }
             }
-            
+
             entryY += entryHeight;
         }
-        
+
         // Show "and X more" if there are more than 5 entries - improved positioning
         if (scoreboard.length > 5) {
             const moreFontSize = Math.max(9, 10 * scale);
@@ -748,7 +749,7 @@ export class MainMenuScreen {
         const boxHeight = 28;  // Increased from 24 for better visibility
         const centerX = canvas.width / 2;
         const boxX = centerX - (boxWidth / 2);
-        
+
         // Position at bottom of screen with 10px padding
         const boxY = canvas.height - boxHeight - 10;
 
@@ -809,7 +810,7 @@ export class MainMenuScreen {
         const padding = 15;
         const boxHeight = 24;
         const spacing = 8; // Space between WebGPU icon and version box
-        
+
         // Position next to WebGPU icon (top left)
         const webgpuIconWidth = 75;
         const x = padding + webgpuIconWidth + spacing;
@@ -823,7 +824,7 @@ export class MainMenuScreen {
         // Background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(x, y, boxWidth, boxHeight);
-        
+
         // Border
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 1;
@@ -834,7 +835,7 @@ export class MainMenuScreen {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(version, x + boxWidth / 2, y + boxHeight / 2);
-        
+
         this.ctx.restore();
     }
 
@@ -869,7 +870,7 @@ export class MainMenuScreen {
         // Add extra padding to prevent text overflow
         const panelWidth = maxWidth + textPadding * 2 + (20 * scale);
         const panelHeight = lines.length * lineHeight + textPadding * 2;
-        
+
         // Position to the right of version box, at same Y level (top left)
         const webgpuIconWidth = 75;
         const versionBoxHeight = 24;
@@ -963,10 +964,17 @@ export class MainMenuScreen {
             if (y >= row5Y - mainMenuButtonHeight / 2 && y <= row5Y + mainMenuButtonHeight / 2) return 'achievements';
         }
 
-        // Check centered buttons (row 6 and 7)
-        const row7Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 6;
+        // Check Row 6 (Centered)
         if (x >= centerX - mainMenuButtonWidth / 2 && x <= centerX + mainMenuButtonWidth / 2) {
             if (y >= row6Y - mainMenuButtonHeight / 2 && y <= row6Y + mainMenuButtonHeight / 2) return 'battlepass';
+        }
+
+        // Check Row 7
+        const row7Y = buttonStartY + (mainMenuButtonHeight + buttonSpacing) * 6;
+        if (x >= leftColumnX && x <= leftColumnX + mainMenuButtonWidth) {
+            if (y >= row7Y - mainMenuButtonHeight / 2 && y <= row7Y + mainMenuButtonHeight / 2) return 'landing';
+        }
+        if (x >= rightColumnX && x <= rightColumnX + mainMenuButtonWidth) {
             if (y >= row7Y - mainMenuButtonHeight / 2 && y <= row7Y + mainMenuButtonHeight / 2) return 'about';
         }
 
@@ -993,10 +1001,10 @@ export class MainMenuScreen {
     }
 
     checkNewsTickerHit(x, y) {
-        return x >= this.newsTickerBoxX && 
-               x <= this.newsTickerBoxX + this.newsTickerBoxWidth &&
-               y >= this.newsTickerBoxY && 
-               y <= this.newsTickerBoxY + this.newsTickerBoxHeight;
+        return x >= this.newsTickerBoxX &&
+            x <= this.newsTickerBoxX + this.newsTickerBoxWidth &&
+            y >= this.newsTickerBoxY &&
+            y <= this.newsTickerBoxY + this.newsTickerBoxHeight;
     }
 
     startNewsTickerDrag(x, y) {
@@ -1043,23 +1051,23 @@ export class MainMenuScreen {
         this.ctx.save();
         this.ctx.shadowBlur = 30 * scale;
         this.ctx.shadowColor = 'rgba(255, 23, 68, 0.5)';
-        
+
         this.ctx.beginPath();
         this.ctx.roundRect(modalX, modalY, modalWidth, modalHeight, cornerRadius);
         this.ctx.closePath();
-        
+
         const gradient = this.ctx.createLinearGradient(modalX, modalY, modalX, modalY + modalHeight);
         gradient.addColorStop(0, 'rgba(30, 30, 30, 0.98)');
         gradient.addColorStop(1, 'rgba(15, 15, 15, 0.98)');
         this.ctx.fillStyle = gradient;
         this.ctx.fill();
-        
+
         // Border
         this.ctx.shadowBlur = 0;
         this.ctx.strokeStyle = '#ff1744';
         this.ctx.lineWidth = 2 * scale;
         this.ctx.stroke();
-        
+
         this.ctx.restore();
 
         // Title
@@ -1086,23 +1094,23 @@ export class MainMenuScreen {
             this.ctx.shadowBlur = 15 * scale;
             this.ctx.shadowColor = 'rgba(255, 152, 0, 0.5)';
         }
-        
+
         this.ctx.beginPath();
         this.ctx.roundRect(inputX, inputY, inputWidth, inputHeight, inputCornerRadius);
         this.ctx.closePath();
-        
+
         const inputGradient = this.ctx.createLinearGradient(inputX, inputY, inputX, inputY + inputHeight);
         inputGradient.addColorStop(0, this.usernameInputFocused ? 'rgba(40, 40, 40, 0.95)' : 'rgba(25, 25, 25, 0.95)');
         inputGradient.addColorStop(1, this.usernameInputFocused ? 'rgba(30, 30, 30, 0.95)' : 'rgba(15, 15, 15, 0.95)');
         this.ctx.fillStyle = inputGradient;
         this.ctx.fill();
-        
+
         // Input border
         this.ctx.shadowBlur = 0;
         this.ctx.strokeStyle = this.usernameInputFocused ? '#ff9800' : '#555555';
         this.ctx.lineWidth = 2 * scale;
         this.ctx.stroke();
-        
+
         this.ctx.restore();
 
         // Input text
@@ -1111,18 +1119,18 @@ export class MainMenuScreen {
         this.ctx.fillStyle = '#e0e0e0';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
-        
+
         // Show placeholder if empty
         const displayText = this.usernameInputText || 'Survivor';
         const textColor = this.usernameInputText ? '#e0e0e0' : '#888888';
         this.ctx.fillStyle = textColor;
-        
+
         // Add cursor if focused
         const cursorX = inputX + 15 * scale + this.ctx.measureText(displayText).width;
         const cursorY = inputY + inputHeight / 2;
-        
+
         this.ctx.fillText(displayText, inputX + 15 * scale, cursorY);
-        
+
         // Blinking cursor
         if (this.usernameInputFocused) {
             const cursorBlink = Math.floor(Date.now() / 500) % 2;
@@ -1137,16 +1145,16 @@ export class MainMenuScreen {
         const buttonHeight = 40 * scale;
         const buttonY = modalY + modalHeight - 70 * scale;
         const buttonSpacing = 20 * scale;
-        
+
         const okButtonX = centerX - buttonWidth - buttonSpacing / 2;
         const cancelButtonX = centerX + buttonSpacing / 2;
-        
+
         const okHovered = this.hoveredButton === 'username_ok';
         const cancelHovered = this.hoveredButton === 'username_cancel';
-        
+
         // OK Button
         this.hud.drawMenuButton('OK', okButtonX, buttonY, buttonWidth, buttonHeight, okHovered, false);
-        
+
         // Cancel Button
         this.hud.drawMenuButton('Cancel', cancelButtonX, buttonY, buttonWidth, buttonHeight, cancelHovered, false);
     }
@@ -1195,7 +1203,7 @@ export class MainMenuScreen {
         const buttonHeight = 40 * scale;
         const buttonY = modalY + modalHeight - 70 * scale;
         const buttonSpacing = 20 * scale;
-        
+
         const okButtonX = centerX - buttonWidth - buttonSpacing / 2;
         const cancelButtonX = centerX + buttonSpacing / 2;
 

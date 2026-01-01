@@ -1798,6 +1798,9 @@ window.addEventListener('mousedown', (e) => {
             gameState.showMainMenu = false;
             gameState.showLobby = true;
             connectToMultiplayer();
+        } else if (clickedButton === 'landing') {
+            // Navigate to Landing Page
+            window.location.href = 'landing.html';
         } else if (clickedButton === 'gallery') {
             gameState.showGallery = true;
             gameState.showMainMenu = false;
