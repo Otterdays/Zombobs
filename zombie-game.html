@@ -4,17 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Base URL for itch.io path resolution - must be before any resource links -->
-    <base href="./">
+    <!-- Meta tags for SEO and atmosphere -->
+    <meta name="description" content="ZOMBOBS - Zombie Apocalypse with Friends - Top-down survival shooter">
+    <meta name="theme-color" content="#ff1744">
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap"
         rel="stylesheet">
-    <!-- Relative paths for itch.io compatibility -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/ui-overlay.css">
+    <!-- Relative paths for robust Itch.io and CDN path resolution -->
+    <link rel="stylesheet" href="css/style.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/ui-overlay.css" crossorigin="anonymous">
     <script>
         // Suppress console warnings from Itch.io iframe Permissions Policy
         (function () {
@@ -45,8 +46,8 @@
     <canvas id="uiCanvas"></canvas>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- Use relative path for itch.io compatibility -->
-    <script type="module" src="js/main.js"></script>
+    <!-- Use relative path for module entry point with anonymous crossorigin -->
+    <script type="module" src="js/main.js" crossorigin="anonymous"></script>
 </body>
 
 </html>
