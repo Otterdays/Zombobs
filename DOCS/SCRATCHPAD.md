@@ -10,6 +10,8 @@
 - **Current Status**: ⏳ Planning
 
 ## Compacted History
+- **v0.8.3.9 - Itch.io Path Fix (2026-01-01) ✅ COMPLETE**
+  - **Asset Paths**: Reverted `index.html` references to clean relative paths (e.g. `css/style.css` instead of `./css/style.css`) as specifically requested by internal documentation for Itch.io compatibility.
 - **v0.8.3.8 - Local Server Fix (2026-01-01) ✅ COMPLETE**
   - **Routing Bug Fix**: Corrected `server.js` root route (`/`) to serve `landing.html`. It was accidentally pointing to `index.html` (the Game) after the file restructure.
 - **v0.8.3.7 - File Restructure (2026-01-01) ✅ COMPLETE**

@@ -2,6 +2,12 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.3.9] - 2026-01-01
+
+### Fixed
+- **Itch.io Compatibility** - Re-applied clean relative paths.
+  - Removed `./` prefix from internal asset links in `index.html` (e.g. `css` instead of `./css`) to strictly follow project deployment guides and resolve 403 errors.
+
 ## [v0.8.3.8] - 2026-01-01
 
 ### Fixed
