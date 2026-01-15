@@ -9,6 +9,17 @@
   - [ ] Implement collision for static map walls/props.
 - **Current Status**: ⏳ Planning
 
+### Android WebView Wrapper (Capacitor) [Active]
+- **Objective**: Ship Android APK using Capacitor WebView wrapper.
+- **Tasks**:
+  - [x] Create `mobile/` Capacitor app with Android platform.
+  - [x] Add web sync script to populate `mobile/www`.
+  - [x] Set app icon/splash from `assets/icons/favicon.png`.
+  - [x] Bundle Google Fonts locally for offline play.
+  - [x] Upgrade Android Gradle wrapper to 8.13 (JDK 17/19).
+  - [ ] QA touch-first UX.
+- **Current Status**: ⏳ In progress
+
 ## Compacted History
 - **v0.8.3.9 - Itch.io Path Fix (2026-01-01) ✅ COMPLETE**
   - **Asset Paths**: Reverted `index.html` references to clean relative paths (e.g. `css/style.css` instead of `./css/style.css`) as specifically requested by internal documentation for Itch.io compatibility.
@@ -60,3 +71,23 @@
 - [ ] Implement "Boss Rush" mode
 - [ ] Add rest of weapon placeholders (Flamethrower is done, Laser is done)
 - [ ] Build "The Crash Site" zone geometry for Railyard zone.
+
+## Blocked Items
+- [ ] Survival Mode (Disabled in code)
+
+## Recent Context (last 5 actions)
+1. Fixed Settings Panel responsiveness for mobile screens
+2. Added Touch Event listeners to main.js for mobile support
+3. Analyzed SettingsPanel.js and InputSystem.js for mobile compatibility
+4. Expanded Car Builder Parts (Previous Session)
+5. Debugged Main Menu Buttons (Previous Session).
+
+## Active Tasks
+- [x] Verify mobile settings panel fix
+- [x] Mobilify HUD (Auto-scaling for small screens)
+- [x] Fix Main Menu Touch Interaction
+- [x] Hide Keybinds & Add Pause Button on Mobile
+- [x] Fix Menu UI Size on Mobile
+- [x] Revamp Mobile HUD (Move Stick, Optimize Bottom bar)
+- [ ] Expand Car Builder Parts
+- [ ] Debug Main Menu Buttons

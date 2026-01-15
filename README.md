@@ -65,6 +65,20 @@
 
 ---
 
+## 📱 Android (Capacitor WebView)
+
+The Android app lives in `mobile/` and loads the same web game in a WebView.
+
+**Build flow (Windows PowerShell):**
+1) `cd mobile`
+2) `npm run sync:web` (copies `index.html`, `js/`, `css/`, `assets/` into `mobile/www`)
+3) `npx cap open android` (build/run from Android Studio)
+
+**Requirements:** Use JDK 17 or 19 for Android Studio/Gradle (Gradle 8.13).
+
+**Note:** Offline play works by default for local assets. Online features (multiplayer
+and global leaderboard) still require a reachable server.
+
 ## 🔥 What's New in V0.8.2.2 ALPHA
 
 ### 🐛 Bug Fixes & Rendering Improvements

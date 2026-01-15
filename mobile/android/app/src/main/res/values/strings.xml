@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zombobs Survival</string>
+    <string name="title_activity_main">Zombobs Survival</string>
+    <string name="package_name">com.zombobs_survival.game</string>
+    <string name="custom_url_scheme">com.zombobs_survival.game</string>
+</resources>

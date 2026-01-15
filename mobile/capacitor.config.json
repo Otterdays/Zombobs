@@ -1,0 +1,8 @@
+{
+  "appId": "com.zombobs_survival.game",
+  "appName": "Zombobs Survival",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

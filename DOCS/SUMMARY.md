@@ -226,6 +226,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 - **Styling**: CSS3 with gradients and animations
 - **Fonts**: Google Fonts (Creepster, Roboto Mono)
 - **Backend**: Node.js + Express + socket.io (for multiplayer)
+- **Mobile**: Capacitor WebView wrapper (Android)
 
 ## File Structure
 ```
@@ -280,6 +281,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── LOCAL_SERVER/
 │   ├── server.js                 # Express + socket.io server
 │   └── package.json              # Node.js dependencies
+├── mobile/
+│   ├── capacitor.config.json     # Capacitor app config
+│   ├── android/                  # Android native project (WebView host)
+│   └── www/                      # Synced web build for the app
 ├── sample_assets/
 │   └── tiles/
 │       ├── bloody_dark_floor.png # Ground texture tile

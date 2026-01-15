@@ -4,18 +4,34 @@ This document lists all external dependencies, packages, and libraries used in t
 
 ## External Dependencies
 
-### Google Fonts
+### Google Fonts (Bundled Locally)
 - **Creepster** - Horror-themed display font
-  - Source: Google Fonts API
+  - Source: Google Fonts
   - Usage: Game title and headers
-  - Loaded via: `https://fonts.googleapis.com/css2?family=Creepster`
-  - Last Updated: Project inception
+  - Bundled locally: `assets/fonts/AlZy_zVUqJz4yMrniH4hdQ.ttf`
+  - Last Updated: 2026-01-15 (offline mobile support)
 
 - **Roboto Mono** - Monospaced font
-  - Source: Google Fonts API
+  - Source: Google Fonts
   - Usage: UI text, HUD elements, body text
-  - Loaded via: `https://fonts.googleapis.com/css2?family=Roboto+Mono`
-  - Last Updated: Project inception
+  - Bundled locally:
+    - `assets/fonts/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vqPQw.ttf` (400)
+    - `assets/fonts/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_Of2PQw.ttf` (700)
+  - Last Updated: 2026-01-15 (offline mobile support)
+
+- **Special Elite** - Typewriter-style display font
+  - Source: Google Fonts
+  - Usage: Game UI typography (web)
+  - Bundled locally: `assets/fonts/XLYgIZbkc4JPUL5CVArUVL0nhnc.ttf`
+  - Last Updated: 2026-01-15 (offline mobile support)
+
+- **Courier Prime** - Monospaced font
+  - Source: Google Fonts
+  - Usage: Game UI typography (web)
+  - Bundled locally:
+    - `assets/fonts/u-450q2lgwslOqpF_6gQ8kELWwY.ttf` (400)
+    - `assets/fonts/u-4k0q2lgwslOqpF_6gQ8kELY7pMf-c.ttf` (700)
+  - Last Updated: 2026-01-15 (offline mobile support)
 
 ## Core Technologies (Built-in, No Installation Required)
 
@@ -86,6 +102,29 @@ This document lists all external dependencies, packages, and libraries used in t
   - Database: `zombobs`, Collection: `highscores`
   - Connection: Via `MONGO_URI` or `MONGODB_URI` environment variable
   - Last Updated: 2025-11-22 (MongoDB migration)
+
+## Mobile Wrapper Dependencies (Capacitor)
+
+### Android WebView Wrapper (`mobile/`)
+- **@capacitor/core** v5.7.8 - Capacitor runtime for WebView bridge
+  - Source: npm registry
+  - Usage: Core Capacitor APIs and WebView runtime
+  - Last Updated: 2026-01-15 (Android wrapper)
+
+- **@capacitor/cli** v5.7.8 - Capacitor CLI tools
+  - Source: npm registry
+  - Usage: Project initialization, sync, native platform tools
+  - Last Updated: 2026-01-15 (Android wrapper)
+
+- **@capacitor/android** v5.7.8 - Android platform bindings
+  - Source: npm registry
+  - Usage: Generates Android project and WebView host
+  - Last Updated: 2026-01-15 (Android wrapper)
+
+- **@capacitor/assets** v3.0.5 - Asset generator (dev)
+  - Source: npm registry
+  - Usage: Generate Android icons and splash screens
+  - Last Updated: 2026-01-15 (Android wrapper)
 
 ## External Services
 
