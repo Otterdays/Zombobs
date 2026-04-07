@@ -36,6 +36,12 @@ When pushing a new version update, update these files to maintain consistency ac
 - **[LOCAL_SERVER/package.json](LOCAL_SERVER/package.json)**: Update version field
 - **[huggingface-space-SERVER/package.json](huggingface-space-SERVER/package.json)**: Update version field
 
+### 6. Itch.io HTML build (when publishing the browser build)
+- **Always** run from repo root: `powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
+- Upload the generated **`Zombobs_Web.zip`** only. The script validates **no backslashes** in zip entry names (Windows default zips break itch CDN → **403** on all `css/` / `js/`).
+- **Never** ship an Explorer/`Compress-Archive`/`CreateFromDirectory` zip for itch without replacing the script’s validation logic.
+- Full checklist: [ITCH/DOCS/ITCH_IO_GUIDE.md](../ITCH/DOCS/ITCH_IO_GUIDE.md)
+
 ## Version Format
 
 Use consistent format: `V0.X.Y.Z ALPHA` (with space before ALPHA)

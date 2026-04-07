@@ -4,6 +4,14 @@ This document lists all external dependencies, packages, and libraries used in t
 
 ## External Dependencies
 
+### Socket.IO Client (vendored)
+- **Socket.IO** v4.7.2 browser client (minified)
+  - Source: [socket.io CDN](https://cdn.socket.io/4.7.2/socket.io.min.js) (copied into repo)
+  - Path: `js/vendor/socket.io.min.js`
+  - Usage: Multiplayer / leaderboard client; loaded from `index.html` before `js/main.js`
+  - **Why vendored:** Itch.io and other embedded iframes may block third-party script CDNs via CSP; same-origin script avoids that class of failures.
+  - Last Updated: 2026-04-06
+
 ### Google Fonts (Bundled Locally)
 - **Creepster** - Horror-themed display font
   - Source: Google Fonts

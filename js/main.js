@@ -1405,7 +1405,23 @@ gameEngine.update = (dt) => {
     }
 };
 
+let bootOverlayDismissed = false;
+function dismissBootOverlayOnce() {
+    if (bootOverlayDismissed) return;
+    bootOverlayDismissed = true;
+    const el = document.getElementById('boot-overlay');
+    if (!el) return;
+    el.setAttribute('aria-busy', 'false');
+    el.classList.add('boot-overlay--done');
+    const removeEl = () => {
+        if (el.parentNode) el.remove();
+    };
+    el.addEventListener('transitionend', removeEl, { once: true });
+    window.setTimeout(removeEl, 450);
+}
+
 gameEngine.draw = () => {
+    dismissBootOverlayOnce();
     const now = performance.now();
     gameState.framesSinceFpsUpdate++;
     if (now - gameState.lastFpsUpdateTime >= 500) {

@@ -3,12 +3,25 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <!-- Meta tags for SEO and atmosphere -->
     <meta name="description" content="ZOMBOBS - Zombie Apocalypse with Friends - Top-down survival shooter">
     <meta name="theme-color" content="#ff1744">
+    <meta name="color-scheme" content="dark">
+    <meta name="format-detection" content="telephone=no">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="ZOMBOBS - Zombie Apocalypse with Friends">
+    <meta property="og:description" content="Top-down zombie survival shooter. Solo, co-op, and multiplayer.">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="ZOMBOBS - Zombie Apocalypse with Friends">
+    <meta name="twitter:description" content="Top-down zombie survival shooter. Solo, co-op, and multiplayer.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS</title>
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="assets/icons/favicon.png">
+    <link rel="preload" href="assets/fonts/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vqPQw.ttf" as="font"
+        type="font/ttf" crossorigin>
     <link rel="stylesheet" href="css/fonts.css">
     <!-- Relative paths for robust Itch.io and CDN path resolution -->
     <link rel="stylesheet" href="css/style.css">
@@ -23,10 +36,8 @@
                 if (message.includes('Unrecognized feature') ||
                     message.includes('monetization') ||
                     message.includes('xr-spatial-tracking') ||
-                    message.includes('xr') ||
-                    message.includes('allowfullscreen') ||
-                    message.includes('allow') ||
-                    message.includes('Permissions-Policy')) {
+                    message.includes('Permissions-Policy') ||
+                    message.includes('allowfullscreen')) {
                     return; // Silently ignore
                 }
                 originalWarn.apply(console, args);
@@ -36,13 +47,25 @@
 </head>
 
 <body>
+    <div id="boot-overlay" class="boot-overlay" role="status" aria-live="polite" aria-busy="true">
+        <div class="boot-overlay__inner">
+            <span class="boot-overlay__spinner" aria-hidden="true"></span>
+            <span class="boot-overlay__label">Loading</span>
+        </div>
+    </div>
+    <noscript>
+        <div class="noscript-notice">
+            ZOMBOBS needs JavaScript. Enable scripts in your browser to play.
+        </div>
+    </noscript>
     <div id="gameContainer">
         <canvas id="gpuCanvas"></canvas>
         <canvas id="gameCanvas"></canvas>
     </div>
     <canvas id="uiCanvas"></canvas>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Vendored: avoids itch.io iframe CSP blocking third-party script CDNs -->
+    <script src="js/vendor/socket.io.min.js"></script>
     <!-- Use clean relative path for module entry point without crossorigin -->
     <script type="module" src="js/main.js"></script>
 </body>

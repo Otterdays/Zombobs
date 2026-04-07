@@ -21,6 +21,9 @@
 - **Current Status**: ⏳ In progress
 
 ## Compacted History
+- **Itch.io zip validation + docs (2026-04-06) ✅ COMPLETE**
+  - **Build gate**: `ITCH/build-itch.ps1` fails if zip entries contain `\` or required paths missing (prevents repeat of CDN 403).
+  - **Docs**: `ITCH_IO_GUIDE.md` mandatory script rule; `VERSION_UPDATE_CHECKLIST.md` §6; `SUMMARY.md` status + file tree amendment for `index.html`/`landing.html`.
 - **v0.8.3.9 - Itch.io Path Fix (2026-01-01) ✅ COMPLETE**
   - **Asset Paths**: Reverted `index.html` references to clean relative paths (e.g. `css/style.css` instead of `./css/style.css`) as specifically requested by internal documentation for Itch.io compatibility.
 - **v0.8.3.8 - Local Server Fix (2026-01-01) ✅ COMPLETE**
@@ -76,11 +79,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. Fixed Settings Panel responsiveness for mobile screens
-2. Added Touch Event listeners to main.js for mobile support
-3. Analyzed SettingsPanel.js and InputSystem.js for mobile compatibility
-4. Expanded Car Builder Parts (Previous Session)
-5. Debugged Main Menu Buttons (Previous Session).
+1. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
+2. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
+3. **index.html QoL (2026-04-06)**: Boot overlay, meta, safe-area, noscript, font preload; `dismissBootOverlayOnce` on first draw.
+4. Vendored Socket.IO for itch CSP; narrowed `console.warn` filter in `index.html`.
+5. Fixed Settings Panel responsiveness for mobile screens
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

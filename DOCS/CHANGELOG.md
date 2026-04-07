@@ -2,6 +2,28 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [v0.8.3.10] - 2026-04-06
+
+### Added
+- **Game page (`index.html`) QoL** - Boot loading overlay (hidden after first rendered frame), `noscript` notice, `viewport-fit=cover` and safe-area padding on `body`, primary UI font preload, Apple touch icon / full-screen meta hints, Open Graph and Twitter summary tags, `color-scheme` and `format-detection` meta.
+
+### Changed
+- **Itch.io / CSP** - Socket.IO client is **vendored** at `js/vendor/socket.io.min.js` and loaded from there instead of the CDN, reducing `ERR_BLOCKED_BY_CSP` and related iframe embed failures on itch.io.
+- **Itch guide** - `ITCH/DOCS/ITCH_IO_GUIDE.md` updated for current entry files (`index.html` / `landing.html`), zip-root requirement, 403 causes, and CSP note.
+
+### Fixed
+- **Console noise** - Narrowed Itch Permissions-Policy `console.warn` filter (removed overly broad `allow` / bare `xr` matches that could hide unrelated warnings).
+- **Itch.io 403 on all CSS/JS** - `ITCH/build-itch.ps1` now builds the zip with **forward-slash** entry paths (`css/style.css`). Windows `ZipFile::CreateFromDirectory` / `Compress-Archive` used backslashes, which did not match itch CDN URLs.
+
+### Verified
+- **Itch.io** - Browser build confirmed working after forward-slash zip fix (2026-04-06).
+
+### Added
+- **Itch build gate** - `ITCH/build-itch.ps1` now **validates** the output zip: fails if any entry name contains `\` or if `index.html`, `css/style.css`, `css/fonts.css`, `js/main.js`, or `js/vendor/socket.io.min.js` is missing.
+
+### Notes
+- `itch.io/html-callback` **ERR_BLOCKED_BY_CLIENT** is usually a **browser extension** (ad blocker / privacy); unrelated to game assets. `net::ERR_BLOCKED_BY_CLIENT` on `main.js` / `style.css` can be the same — try a private window with extensions disabled to confirm.
+
 ## [v0.8.3.9] - 2026-01-01
 
 ### Fixed

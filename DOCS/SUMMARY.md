@@ -4,6 +4,7 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **Itch.io HTML build (2026-04-06)** - Verified working on itch after fixing Windows zip entry paths. **Always** run `ITCH/build-itch.ps1` from repo root; it enforces forward-slash paths and required files (build fails otherwise). See `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md` § Itch.io.
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
 ✅ **Explosion Effects** - Grenade and rocket explosions with particle trails (Fixed 2025-11-24)
@@ -229,10 +230,11 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 - **Mobile**: Capacitor WebView wrapper (Android)
 
 ## File Structure
+[AMENDED 2026-04-06]: Entry names below reflect the v0.8.3.7 restructure (game vs landing).
 ```
 ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
-├── zombie-game.html              # Main entry point
-├── index.html                    # Landing page
+├── index.html                    # Game entry (itch.io embed, direct play)
+├── landing.html                  # Marketing / scoreboard landing (local server default)
 ├── launch.bat                    # Windows launcher (calls PowerShell)
 ├── launch.ps1                    # Styled PowerShell server launcher
 ├── assets/

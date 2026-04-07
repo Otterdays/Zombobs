@@ -79,6 +79,14 @@ The Android app lives in `mobile/` and loads the same web game in a WebView.
 **Note:** Offline play works by default for local assets. Online features (multiplayer
 and global leaderboard) still require a reachable server.
 
+## 🕸️ Itch.io (HTML upload)
+
+From the **repo root**, build the upload zip with:
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File ITCH/build-itch.ps1`
+
+This writes **`Zombobs_Web.zip`** and **fails the build** if zip entry paths use Windows backslashes or required files are missing (Explorer / `Compress-Archive` zips break itch’s CDN and cause **403** on all assets). Details: `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md`.
+
 ## 🔥 What's New in V0.8.2.2 ALPHA
 
 ### 🐛 Bug Fixes & Rendering Improvements
