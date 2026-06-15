@@ -12,6 +12,7 @@ export class GamepadState {
             melee: { pressed: false, justPressed: false, value: 0 },
             flashlight: { pressed: false, justPressed: false, value: 0 },
             dodge: { pressed: false, justPressed: false, value: 0 },
+            cycleThrowable: { pressed: false, justPressed: false, value: 0 },
             // Menu/Navigation
             select: { pressed: false, justPressed: false, value: 0 }, // A
             back: { pressed: false, justPressed: false, value: 0 },   // B

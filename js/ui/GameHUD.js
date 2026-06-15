@@ -43,6 +43,7 @@ export class GameHUD {
         this.campaignIntroScreen = new CampaignIntroScreen(canvas, this.ctx);
         this.basePadding = 15;
         this.baseItemSpacing = 12;
+        this.throwableCycleAnimTimer = 0;
         this.baseFontSize = 16;
         this.padding = this.getScaledPadding();
         this.itemSpacing = this.getScaledItemSpacing();
@@ -125,13 +126,28 @@ export class GameHUD {
 
     drawStat(label, value, icon, color, x, y, width, height = null) {
         const scale = this.getUIScale();
-        const statHeight = height || (50 * scale); // Use provided height or default to 50
+        let statHeight = height || (50 * scale); // Use provided height or default to 50
         const padding = 10 * scale;
         const fontSize = this.getScaledFontSize();
 
+        let currentX = x;
+        let currentY = y;
+        let currentWidth = width;
+        
+        const isCycling = (label === 'Grenades' || label === 'Molotovs') && this.throwableCycleAnimTimer > 0;
+        if (isCycling) {
+            const scaleFactor = 1 + (this.throwableCycleAnimTimer / 15) * 0.15; // Max 1.15x scale
+            const centerX = x + width / 2;
+            const centerY = y + statHeight / 2;
+            currentWidth = width * scaleFactor;
+            statHeight = statHeight * scaleFactor;
+            currentX = centerX - currentWidth / 2;
+            currentY = centerY - statHeight / 2;
+        }
+
         // 1. Glass Background (matching HP UI)
         this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
-        this.ctx.fillRect(x, y, width, statHeight);
+        this.ctx.fillRect(currentX, currentY, currentWidth, statHeight);
 
         // 2. Texture overlay (bloody_dark_floor.png pattern)
         const groundPattern = initGroundPattern();
@@ -139,26 +155,31 @@ export class GameHUD {
             this.ctx.save();
             this.ctx.globalAlpha = 0.15; // Subtle texture overlay
             this.ctx.fillStyle = groundPattern;
-            this.ctx.fillRect(x, y, width, statHeight);
+            this.ctx.fillRect(currentX, currentY, currentWidth, statHeight);
             this.ctx.restore();
         }
 
-        // 3. Border (subtle, matching HP UI - no glow)
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(x, y, width, statHeight);
+        // 3. Border
+        if (isCycling) {
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + (this.throwableCycleAnimTimer / 15) * 0.7})`;
+            this.ctx.lineWidth = 2;
+        } else {
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            this.ctx.lineWidth = 1;
+        }
+        this.ctx.strokeRect(currentX, currentY, currentWidth, statHeight);
 
         // 4. Color Accent (vertical bar on far left)
         this.ctx.fillStyle = color;
         this.ctx.shadowBlur = 10 * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillRect(x, y, 4 * scale, statHeight);
+        this.ctx.fillRect(currentX, currentY, 4 * scale, statHeight);
         this.ctx.shadowBlur = 0;
 
         // 5. Icon (far left, vertically centered)
         const iconSize = 22 * scale;
-        const iconX = x + 24 * scale;
-        const iconY = y + statHeight * 0.5;
+        const iconX = currentX + 24 * scale;
+        const iconY = currentY + statHeight * 0.5;
         this.ctx.font = `${iconSize}px serif`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -170,7 +191,7 @@ export class GameHUD {
         this.ctx.fillStyle = '#bfbfbf';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
-        this.ctx.fillText(label.toUpperCase(), x + 46 * scale, y + 10 * scale);
+        this.ctx.fillText(label.toUpperCase(), currentX + 46 * scale, currentY + 10 * scale);
 
         // 7. Value (Bottom-right stacked, prominent)
         this.ctx.textAlign = 'right';
@@ -182,7 +203,7 @@ export class GameHUD {
         // Glow for the value
         this.ctx.shadowBlur = 12 * scale;
         this.ctx.shadowColor = color;
-        this.ctx.fillText(value, x + width - 12 * scale, y + statHeight - 8 * scale);
+        this.ctx.fillText(value, currentX + currentWidth - 12 * scale, currentY + statHeight - 8 * scale);
 
         this.ctx.shadowBlur = 0;
         this.ctx.textAlign = 'left'; // Reset alignment
@@ -278,6 +299,14 @@ export class GameHUD {
     }
 
     draw() {
+        if (gameState.throwableCycleHUDTrigger) {
+            this.throwableCycleAnimTimer = 15;
+            gameState.throwableCycleHUDTrigger = false;
+        }
+        if (this.throwableCycleAnimTimer > 0) {
+            this.throwableCycleAnimTimer--;
+        }
+
         if (gameState.showCampaignIntro) {
             // Update and draw the intro screen
             this.campaignIntroScreen.update();
@@ -457,8 +486,12 @@ export class GameHUD {
             // Grenade box re-uses drawStat usually, but we want it tappable
             // Let's use drawStat but save bounds for tap
             const grenadeY = rightBlockStartY + weaponHeight + sidebarSpacing;
-            const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-            this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, rightX, grenadeY, weaponWidth, weaponHeight);
+            const activeThrowable = player.activeThrowable || 'grenade';
+            const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+            const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+            const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+            const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+            this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, rightX, grenadeY, weaponWidth, weaponHeight);
 
             // Store interactable bounds for Mobile Touches
             this.mobileBounds = {
@@ -584,6 +617,7 @@ export class GameHUD {
         const bottomUIBaseline = instructionsTop - bottomSpacing;
 
         const bottomWidth = 160 * scale;
+        const xpBarWidth = 280 * scale;
         const xpBarHeight = 50 * scale; // Synchronized to 50
         const bottomHeight = 50 * scale; // For weapon info calculations
 
@@ -867,8 +901,12 @@ export class GameHUD {
 
         // Grenades
         currentY += height + itemSpacing;
-        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, x, currentY, width);
+        const activeThrowable = player.activeThrowable || 'grenade';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, x, currentY, width);
     }
 
     drawWeaponInfoHorizontal(player, weaponX, grenadeX, y, width, height) {
@@ -954,8 +992,12 @@ export class GameHUD {
         }
 
         // Grenades box - side by side
-        const grenadeColor = player.grenadeCount > 0 ? '#ff9800' : '#666666';
-        this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, grenadeX, y, width);
+        const activeThrowable = player.activeThrowable || 'grenade';
+        const throwableLabel = activeThrowable === 'grenade' ? 'Grenades' : 'Molotovs';
+        const throwableCount = activeThrowable === 'grenade' ? player.grenadeCount : player.molotovCount;
+        const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
+        const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
+        this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, grenadeX, y, width);
     }
 
     drawInstructions() {
@@ -985,7 +1027,8 @@ export class GameHUD {
         // Format lines
         const line1 = `WASD to move • Mouse to aim • Click to shoot • ${sprintKey.toUpperCase()} to sprint`;
         const line2 = weaponString;
-        const line3 = `${grenadeKey.toUpperCase()} for grenade • ${flashlightKey.toUpperCase()} for light • ${meleeKey.toUpperCase()} or Right-Click for melee`;
+        const cycleKey = controls.cycleThrowable || 'q';
+        const line3 = `${grenadeKey.toUpperCase()} for active throwable (${cycleKey.toUpperCase()} to cycle) • ${flashlightKey.toUpperCase()} for light • ${meleeKey.toUpperCase()} or Right-Click for melee`;
 
         this.ctx.save();
         const scale = this.getUIScale();

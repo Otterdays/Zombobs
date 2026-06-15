@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # SCRATCHPAD
 
 ## Active Tasks
@@ -21,6 +22,16 @@
 - **Current Status**: ⏳ In progress
 
 ## Compacted History
+- **Runtime bugfixes — combatUtils / GameHUD / index.html (2026-06-14) ✅ COMPLETE**
+  - **combatUtils.js**: Removed stray `}` in quadtree init inside `handleBulletZombieCollisions()` — fixed module parse error (`Unexpected token '}'`).
+  - **GameHUD.js**: Added missing `xpBarWidth = 280 * scale` in `drawCoopHUD()` — fixed co-op HUD `ReferenceError`.
+  - **index.html**: Added `mobile-web-app-capable` meta alongside Apple PWA tag.
+- **v0.9.2.0 - Throwable Upgrade (Molotov Cocktail) & Dodge Game Feel (2026-06-15) ✅ COMPLETE**
+  - **Molotov Cocktail**: Implemented Molotov throwable class that explodes instantly on impact or zombie hit, spawning a visual fire pool using radial gradients.
+  - **Fiery Area Damage**: Fire pool ticks damage on both players and zombies, applying a 3-second burn DoT timer and handling deaths, score rewards, and multipliers.
+  - **Throwable Cycling**: Mapped keybind Q (keyboard) and D-pad Down (gamepad) to toggle active throwables (Grenade vs Molotov).
+  - **HUD Improvements**: Dynamic UI rendering of current throwable icon/count, with a satisfying scale bounce animation on cycling.
+  - **Dodge Game Feel**: Added screen shake on roll start and "DODGED!" floating combat text when i-framing through damage.
 - **v0.9.1.0 - Retro Arcade Features & Optimizations (2026-06-15) ✅ COMPLETE**
   - **Dodge Roll**: Added Space / B-button dodge mechanic with stamina cost, i-frames, whoosh sound, and ghost trails.
   - **Explosive Barrels**: Added procedurally spawned red metal barrels that flash, explode on fuse, chain detonate, damage nearby players, and wreckage.
@@ -84,11 +95,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
-2. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
-3. **index.html QoL (2026-04-06)**: Boot overlay, meta, safe-area, noscript, font preload; `dismissBootOverlayOnce` on first draw.
-4. Vendored Socket.IO for itch CSP; narrowed `console.warn` filter in `index.html`.
-5. Fixed Settings Panel responsiveness for mobile screens
+1. **Runtime bugfixes (2026-06-14)**: Removed stray `}` in `combatUtils.js` quadtree init (syntax error at load); added missing `xpBarWidth` in `GameHUD.drawCoopHUD()`; added `mobile-web-app-capable` meta to `index.html`.
+2. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
+3. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
+4. **index.html QoL (2026-04-06)**: Boot overlay, meta, safe-area, noscript, font preload; `dismissBootOverlayOnce` on first draw.
+5. Vendored Socket.IO for itch CSP; narrowed `console.warn` filter in `index.html`.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

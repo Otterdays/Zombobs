@@ -6,7 +6,7 @@ import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
-    ZOMBIE_BASE_SCORES
+    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
@@ -14,6 +14,7 @@ import { triggerMuzzleFlash, triggerDamageIndicator, checkCollision, checkZombie
 import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entities/Bullet.js';
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
+import { Molotov } from '../entities/Molotov.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
@@ -362,14 +363,19 @@ export function throwGrenade(target, canvas, player) {
     player = player || gameState.players[0];
     const now = Date.now();
 
+    const activeThrowable = player.activeThrowable || 'grenade';
+    const cooldown = activeThrowable === 'grenade' ? GRENADE_COOLDOWN : MOLOTOV_COOLDOWN;
+
     // Check cooldown
-    if (now - player.lastGrenadeThrowTime < GRENADE_COOLDOWN) {
+    if (now - player.lastGrenadeThrowTime < cooldown) {
         return;
     }
 
-    // Check grenade count
-    if (player.grenadeCount <= 0) {
-        return;
+    // Check throwable count
+    if (activeThrowable === 'grenade') {
+        if (player.grenadeCount <= 0) return;
+    } else {
+        if (player.molotovCount <= 0) return;
     }
 
     // v0.8.1.2: In single player arcade mode, don't clamp target to canvas bounds
@@ -381,8 +387,6 @@ export function throwGrenade(target, canvas, player) {
     const throwY = player.y + Math.sin(angle) * player.radius * 1.5;
 
     // Target is where the cursor/aim is
-    // In single player arcade mode, use world space coordinates directly
-    // In other modes, clamp to canvas bounds
     let targetX, targetY;
     if (isSinglePlayerArcade) {
         targetX = target.x;
@@ -392,8 +396,14 @@ export function throwGrenade(target, canvas, player) {
         targetY = Math.max(20, Math.min(canvas.height - 20, target.y));
     }
 
-    gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
-    player.grenadeCount--;
+    if (activeThrowable === 'grenade') {
+        gameState.grenades.push(new Grenade(throwX, throwY, targetX, targetY, player));
+        player.grenadeCount--;
+    } else {
+        gameState.grenades.push(new Molotov(throwX, throwY, targetX, targetY, player));
+        player.molotovCount--;
+    }
+    
     player.lastGrenadeThrowTime = now;
 
     // Small screen shake on throw
@@ -405,11 +415,26 @@ export function throwGrenade(target, canvas, player) {
         if (isLocalPlayer) {
             gameState.multiplayer.socket.emit('player:action', {
                 action: 'grenade',
+                throwableType: activeThrowable,
                 x: player.x,
                 y: player.y,
                 angle: angle
             });
         }
+    }
+}
+
+export function cycleThrowable(player) {
+    player = player || gameState.players[0];
+    const now = Date.now();
+    if (now - player.lastThrowableCycleTime < 200) return; // Debounce
+
+    player.activeThrowable = (player.activeThrowable || 'grenade') === 'grenade' ? 'molotov' : 'grenade';
+    player.lastThrowableCycleTime = now;
+    
+    // Spawn visual indicator / effect trigger on HUD
+    if (player === gameState.players[0]) {
+        gameState.throwableCycleHUDTrigger = true;
     }
 }
 
@@ -548,13 +573,24 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         const radiusSquared = radius * radius;
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
-            if (player.health <= 0 || player.isDodging) continue; // Skip if dead or dodging
+            if (player.health <= 0) continue; // Skip if dead
 
             const dx = player.x - x;
             const dy = player.y - y;
             const distSquared = dx * dx + dy * dy;
 
             if (distSquared <= radiusSquared) {
+                if (player.isDodging) {
+                    const now = Date.now();
+                    if (!player.lastDodgePopupTime || now - player.lastDodgePopupTime > 200) {
+                        player.lastDodgePopupTime = now;
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 20, "DODGED!", false, '#00ffff'));
+                        }
+                    }
+                    continue;
+                }
                 const distance = Math.sqrt(distSquared);
                 const damageMultiplier = 1 - (distance / radius) * 0.5;
                 const playerDamage = Math.floor(damage * damageMultiplier * 0.5); // Player takes 50% of explosion damage
@@ -620,7 +656,6 @@ export function handleBulletZombieCollisions() {
             collisionQuadtree.isArcade = isSinglePlayerArcade;
         } else {
             collisionQuadtree.clear();
-        }
         }
     }
 
@@ -1188,11 +1223,22 @@ export function handleBulletZombieCollisions() {
 export function handlePlayerZombieCollisions() {
     for (let i = 0; i < gameState.players.length; i++) {
         const player = gameState.players[i];
-        if (player.health <= 0 || player.isDodging) continue;
+        if (player.health <= 0) continue;
 
         for (let j = 0; j < gameState.zombies.length; j++) {
             const zombie = gameState.zombies[j];
             if (checkCollision(player, zombie)) {
+                if (player.isDodging) {
+                    const now = Date.now();
+                    if (!player.lastDodgePopupTime || now - player.lastDodgePopupTime > 200) {
+                        player.lastDodgePopupTime = now;
+                        const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                        if (damageNumberStyle !== 'off') {
+                            gameState.damageNumbers.push(new DamageNumber(player.x, player.y - 20, "DODGED!", false, '#00ffff'));
+                        }
+                    }
+                    continue;
+                }
                 let damage = 0.5;
                 const previousHealth = player.health;
 

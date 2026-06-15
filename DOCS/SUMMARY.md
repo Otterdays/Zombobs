@@ -371,6 +371,10 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **Armory Expansion (v0.8.3.2)**: Integrated the Laser Gun (Slot 8) with instant-hit raycast logic.
 
 ## Recent Updates (Unreleased)
+- **Runtime Stability Fixes (2026-06-14)**
+  - **combatUtils.js**: Removed extra `}` in `handleBulletZombieCollisions()` quadtree setup — game failed to parse module (`Unexpected token '}'` at line 1222)
+  - **GameHUD.js**: Defined `xpBarWidth` in `drawCoopHUD()` — co-op/multiplayer HUD crashed with `ReferenceError: xpBarWidth is not defined`
+  - **index.html**: Added `mobile-web-app-capable` meta tag (kept Apple tag for iOS) — resolves browser deprecation warning
 - **Weapon System Polish**: Comprehensive overhaul of all 8 weapon systems
   - **Critical Bug Fix**: Added missing `weaponStates` for SMG, Sniper, RPG, and Laser weapons (ammo tracking and background reload now work correctly)
   - **Collision Detection Fix**: Fixed 5 `return`→`continue`/`break` bugs in nested collision loops that were terminating collision checks prematurely

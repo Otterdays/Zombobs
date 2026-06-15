@@ -48,6 +48,14 @@ export const GRENADE_EXPLOSION_RADIUS = 80; // AOE damage radius
 export const GRENADE_DAMAGE = 50; // High damage for AOE
 export const GRENADE_FUSE_TIME = 1500; // 1.5 seconds before explosion
 
+// Molotov system
+export const MAX_MOLOTOVS = 2; // Maximum molotovs player can carry
+export const MOLOTOV_COOLDOWN = 2000; // 2 seconds between throws
+export const MOLOTOV_EXPLOSION_RADIUS = 70; // Fire spread radius
+export const MOLOTOV_DAMAGE = 15; // Low initial explosion damage
+export const MOLOTOV_FIRE_TICK_DAMAGE = 0.5; // Burn damage per 200ms tick
+export const MOLOTOV_FIRE_DURATION = 5000; // 5 seconds of burning ground
+
 // Particle limit
 export const MAX_PARTICLES = 500;
 

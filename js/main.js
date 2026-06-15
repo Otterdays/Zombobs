@@ -31,7 +31,7 @@ window.AcidPool = AcidPool;
 import { BossZombie } from './entities/BossZombie.js';
 import { DamageNumber } from './entities/Particle.js';
 import {
-    shootBullet, reloadWeapon, switchWeapon, throwGrenade, triggerExplosion,
+    shootBullet, reloadWeapon, switchWeapon, throwGrenade, cycleThrowable, triggerExplosion,
     handleBulletZombieCollisions, handlePlayerZombieCollisions, handlePickupCollisions
 } from './utils/combatUtils.js';
 import {
@@ -1904,6 +1904,7 @@ document.addEventListener('keydown', (e) => {
         throwGrenade(target, canvas, localPlayer);
     }
     if (key === controls.reload && gameState.gameRunning && !gameState.gamePaused && localPlayer) reloadWeapon(localPlayer);
+    if (key === controls.cycleThrowable && localPlayer) cycleThrowable(localPlayer);
     if (key === controls.melee && gameState.gameRunning && !gameState.gamePaused && localPlayer) performMeleeAttack(localPlayer);
 
     if (gameState.gamePaused || (!gameState.gameRunning && !gameHUD.gameOver)) {

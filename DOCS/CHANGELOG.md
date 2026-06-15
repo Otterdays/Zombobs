@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Changelog
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
@@ -5,6 +6,10 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Molotov Cocktail Throwable** — Added a new throwable weapon class that detonates instantly on impact with the ground or directly colliding with zombies. Spawns a fiery pool (orange/red glow and crackling embers) that damages players and zombies alike. Applies a lingering 3-second burn DoT effect to zombies.
+- **Throwable Cycling & Inventory** — Mapped `Q` (keyboard) and `D-pad Down` (gamepad) to swap equipped throwables between Grenades and Molotovs. Upgraded the HUD to render the correct active icon and count dynamically, complete with a satisfying visual scale bounce animation upon switching.
+- **Perfect Dodge Visual Feedback** — Added a floating "DODGED!" combat text popup when a player uses dodge i-frames to successfully evade an attack that would have otherwise hit them (works for zombie melee, exploding barrels, exploding zombies, and acid pools).
+- **Dodge Screen Shake** — Added a dynamic camera screen shake that triggers at the initiation of a dodge roll to dramatically increase the sense of weight and explosive momentum.
 - **Dodge Roll / Dash Ability** — Swift dash roll mapped to Space (keyboard) / B button (gamepad). Restricts movement to dodge direction, consumes 30 stamina, triggers a synthesized "whoosh" sound effect, and renders a semi-transparent ghost trail. Grants damage immunity (i-frames) against zombies and acid pools.
 - **Explosive Barrels** — Procedurally spawned red warning-painted metal barrels (15% chance). Detonate 600ms after taking bullet, laser, or explosion damage (15 HP), causing 75 AOE damage to players (self-damage) and zombies. Chain-detonates nearby barrels. Shows charred rim wreckage after explosion.
 - **Battlepass System Overhaul** — Complete rewrite of the battlepass progression system:
@@ -24,6 +29,9 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Laser Gun HUD Keybind** — Added Laser Gun (key 8) to the in-game HUD instructions panel, completing the weapon keybind display for all 8 weapons.
 
 ### Fixed
+- **combatUtils.js Syntax Error** — Extra closing brace in `handleBulletZombieCollisions()` quadtree init block closed the function early, causing `Unexpected token '}'` at load time and breaking all bullet–zombie collision logic.
+- **Co-op HUD Crash** — `drawCoopHUD()` referenced `xpBarWidth` without defining it (`ReferenceError` on co-op / multiplayer HUD draw). Added `const xpBarWidth = 280 * scale` to match single-player and desktop layouts.
+- **Deprecated PWA Meta Tag** — Added `<meta name="mobile-web-app-capable" content="yes">` alongside existing Apple tag in `index.html` to satisfy modern browser PWA hints.
 - **Battlepass Progress Wipe Bug** — Season 1 expired (March 2025) causing `checkSeasonValidity()` to reset all player battlepass progress on every game launch. Fixed by falling back to latest season.
 - **Tier Rewards Never Applied** — `rankXP` and title/emblem rewards defined in tier definitions were never actually applied to the rank system. Implemented `claimTierReward()` with auto-claim on session end.
 - **Daily Challenge Memory Leak** — `completedChallenges` array grew indefinitely with instance IDs. Removed; completion now tracked on challenge objects directly.

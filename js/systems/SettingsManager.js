@@ -89,7 +89,8 @@ export class SettingsManager {
                 weapon8: '8',
                 scrollWheelSwitch: true,
                 flashlight: 'f',
-                dodge: ' '
+                dodge: ' ',
+                cycleThrowable: 'q'
             },
             gamepad: {
                 fire: 7, // RT
@@ -101,7 +102,8 @@ export class SettingsManager {
                 prevWeapon: 4, // LB
                 nextWeapon: 3, // Y
                 melee: 11, // R3
-                dodge: 1 // B
+                dodge: 1, // B
+                cycleThrowable: 13 // D-pad Down
             },
             ui: {
                 controlMode: 'keyboard' // 'keyboard' or 'gamepad' - persisted preference

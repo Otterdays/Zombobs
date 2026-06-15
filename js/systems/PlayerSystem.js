@@ -11,7 +11,7 @@ import { settingsManager } from './SettingsManager.js';
 import { graphicsSettings } from './GraphicsSystem.js';
 import { inputSystem } from './InputSystem.js';
 import { playFootstepSound, playDodgeSound } from '../systems/AudioSystem.js';
-import { shootBullet, reloadWeapon, throwGrenade } from '../utils/combatUtils.js';
+import { shootBullet, reloadWeapon, throwGrenade, cycleThrowable } from '../utils/combatUtils.js';
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
 import { cameraSystem } from './CameraSystem.js';
@@ -206,6 +206,11 @@ export class PlayerSystem {
                 // Play dodge sound
                 playDodgeSound();
 
+                // Add screen shake for impactful feel
+                if (player === gameState.players[0]) {
+                    gameState.shakeAmount = Math.max(gameState.shakeAmount || 0, 6);
+                }
+
                 // Determine dodge direction
                 let dx = moveX;
                 let dy = moveY;
@@ -289,6 +294,7 @@ export class PlayerSystem {
                     if (gpState.buttons.melee.justPressed) performMeleeAttackCallback(player);
                     if (gpState.buttons.reload.justPressed) reloadWeapon(player);
                     if (gpState.buttons.grenade.justPressed) throwGrenade(target, canvas, player);
+                    if (gpState.buttons.cycleThrowable.justPressed) cycleThrowable(player);
                     if (gpState.buttons.prevWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(-1, player);
                     if (gpState.buttons.nextWeapon.justPressed && cycleWeaponCallback) cycleWeaponCallback(1, player);
                 }

@@ -1,5 +1,5 @@
 import {
-    WEAPONS, PLAYER_MAX_HEALTH, MAX_GRENADES,
+    WEAPONS, PLAYER_MAX_HEALTH, MAX_GRENADES, MAX_MOLOTOVS,
     PLAYER_BASE_SPEED, PLAYER_STAMINA_MAX
 } from './constants.js';
 
@@ -61,7 +61,10 @@ export function createPlayer(x, y, colorIndex = 0) {
 
         // Grenade state
         grenadeCount: MAX_GRENADES,
+        molotovCount: MAX_MOLOTOVS,
+        activeThrowable: 'grenade',
         lastGrenadeThrowTime: 0,
+        lastThrowableCycleTime: 0,
 
         // Shield
         shield: 0,
