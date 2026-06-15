@@ -1338,6 +1338,7 @@ export class SettingsPanel {
                 reload: 'Reload',
                 grenade: 'Grenade',
                 melee: 'Melee',
+                dodge: 'Dodge Roll',
                 weapon1: 'Pistol',
                 weapon2: 'Shotgun',
                 weapon3: 'Rifle',
@@ -1357,6 +1358,7 @@ export class SettingsPanel {
                 grenade: 'Grenade',
                 sprint: 'Sprint',
                 melee: 'Melee',
+                dodge: 'Dodge Roll',
                 prevWeapon: 'Prev Weapon',
                 nextWeapon: 'Next Weapon',
                 pause: 'Pause'

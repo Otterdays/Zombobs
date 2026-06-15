@@ -15,6 +15,7 @@ import { Bullet, FlameBullet, PiercingBullet, Rocket, LaserBeam } from '../entit
 import { Shell } from '../entities/Shell.js';
 import { Grenade } from '../entities/Grenade.js';
 import { DamageNumber } from '../entities/Particle.js';
+import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
@@ -131,7 +132,8 @@ export function shootBullet(target, canvas, player) {
 
         let endX = gunX + rayDirX * range;
         let endY = gunY + rayDirY * range;
-        let hitZombie = null;
+        let hitTarget = null;
+        let hitType = null;
         let minDist = range;
 
         // Check all zombies for ray intersection
@@ -152,22 +154,52 @@ export function shootBullet(target, canvas, player) {
             if (distSq < hitRadius * hitRadius) {
                 if (t < minDist) {
                     minDist = t;
-                    hitZombie = zombie;
+                    hitTarget = zombie;
+                    hitType = 'zombie';
                 }
             }
         }
 
-        if (hitZombie) {
+        // Check all props for ray intersection
+        for (const prop of gameState.props) {
+            if (prop.type !== 'explosiveBarrel' || prop.detonated) continue;
+
+            const dx = prop.x - gunX;
+            const dy = prop.y - gunY;
+            const t = dx * rayDirX + dy * rayDirY;
+
+            if (t <= 0 || t > range) continue;
+
+            const projX = gunX + rayDirX * t;
+            const projY = gunY + rayDirY * t;
+            const distSq = (prop.x - projX) ** 2 + (prop.y - projY) ** 2;
+            const hitRadius = prop.radius + 10;
+
+            if (distSq < hitRadius * hitRadius) {
+                if (t < minDist) {
+                    minDist = t;
+                    hitTarget = prop;
+                    hitType = 'prop';
+                }
+            }
+        }
+
+        if (hitTarget) {
             endX = gunX + rayDirX * minDist;
             endY = gunY + rayDirY * minDist;
 
-            // Create an invisible bullet at the hit point to trigger standard logic
-            const logicBullet = new Bullet(hitZombie.x, hitZombie.y, angle, player.currentWeapon);
-            logicBullet.type = 'laser_hit';
-            logicBullet.damage *= damageMult;
-            logicBullet.player = player;
-            logicBullet.radius = hitZombie.radius + 5; // Ensure it overlaps
-            gameState.bullets.push(logicBullet);
+            if (hitType === 'zombie') {
+                // Create an invisible bullet at the hit point to trigger standard logic
+                const logicBullet = new Bullet(hitTarget.x, hitTarget.y, angle, player.currentWeapon);
+                logicBullet.type = 'laser_hit';
+                logicBullet.damage *= damageMult;
+                logicBullet.player = player;
+                logicBullet.radius = hitTarget.radius + 5; // Ensure it overlaps
+                gameState.bullets.push(logicBullet);
+            } else if (hitType === 'prop') {
+                // Apply damage directly to barrel
+                hitTarget.takeDamage((player.currentWeapon.damage || 5) * damageMult, player);
+            }
         }
 
         // Create visual beam
@@ -381,7 +413,7 @@ export function throwGrenade(target, canvas, player) {
     }
 }
 
-export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null) {
+export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, sourcePlayer = null, forcePlayerDamage = false) {
 
 
     // Safety check - ensure valid coordinates
@@ -493,12 +525,30 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
         }
     }
 
-    // Player damage if explosion is not from player (e.g., exploding zombie)
-    if (!sourceIsPlayer) {
+    // AOE damage to explosive barrels for chain reactions
+    if (gameState.props && gameState.props.length > 0) {
+        for (let i = 0; i < gameState.props.length; i++) {
+            const prop = gameState.props[i];
+            if (prop.type === 'explosiveBarrel' && !prop.detonated) {
+                const dx = prop.x - x;
+                const dy = prop.y - y;
+                const distSquared = dx * dx + dy * dy;
+                if (distSquared <= radiusSquared) {
+                    const distance = Math.sqrt(distSquared);
+                    const damageMultiplier = 1 - (distance / radius) * 0.5;
+                    const finalDamage = Math.floor(damage * damageMultiplier);
+                    prop.takeDamage(finalDamage, sourcePlayer);
+                }
+            }
+        }
+    }
+
+    // Player damage if explosion is not from player, or if player damage is forced (e.g., barrel explosion)
+    if (!sourceIsPlayer || forcePlayerDamage) {
         const radiusSquared = radius * radius;
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
-            if (player.health <= 0) continue;
+            if (player.health <= 0 || player.isDodging) continue; // Skip if dead or dodging
 
             const dx = player.x - x;
             const dy = player.y - y;
@@ -536,12 +586,9 @@ export function handleBulletZombieCollisions() {
 
 
 
-    // Reuse Quadtree instance instead of recreating every frame
     if (!collisionQuadtree) {
         if (isSinglePlayerArcade) {
-            // Use a very large boundary for world space (covers entire possible world)
-            // This allows collision detection to work anywhere in the world
-            const worldSize = 100000; // Large enough to cover the entire explorable world
+            const worldSize = 100000;
             collisionQuadtree = new Quadtree({
                 x: -worldSize / 2,
                 y: -worldSize / 2,
@@ -551,12 +598,11 @@ export function handleBulletZombieCollisions() {
         } else {
             collisionQuadtree = new Quadtree({ x: 0, y: 0, width: canvas.width, height: canvas.height }, 4);
         }
+        collisionQuadtree.isArcade = isSinglePlayerArcade;
     } else {
-        // Only clear and update boundary if mode changed or canvas size changed (non-arcade)
-        const currentIsArcade = isSinglePlayerArcade;
         const needsUpdate =
-            (currentIsArcade && collisionQuadtree.boundary.width !== 100000) ||
-            (!currentIsArcade && (collisionQuadtree.boundary.width !== canvas.width || collisionQuadtree.boundary.height !== canvas.height));
+            (collisionQuadtree.isArcade !== isSinglePlayerArcade) ||
+            (!isSinglePlayerArcade && (collisionQuadtree.boundary.width !== canvas.width || collisionQuadtree.boundary.height !== canvas.height));
 
         if (needsUpdate) {
             collisionQuadtree.clear();
@@ -571,9 +617,10 @@ export function handleBulletZombieCollisions() {
             } else {
                 collisionQuadtree.boundary = { x: 0, y: 0, width: canvas.width, height: canvas.height };
             }
+            collisionQuadtree.isArcade = isSinglePlayerArcade;
         } else {
-            // Just clear the quadtree contents (zombies) but keep the structure
             collisionQuadtree.clear();
+        }
         }
     }
 
@@ -587,6 +634,36 @@ export function handleBulletZombieCollisions() {
 
         // Skip visual-only laser beams
         if (bullet.type === 'laser_visual') continue;
+        if (bullet.markedForRemoval) continue;
+
+        // Prop collisions (explosive barrels)
+        let hitProp = false;
+        if (gameState.props && gameState.props.length > 0) {
+            for (let i = 0; i < gameState.props.length; i++) {
+                const prop = gameState.props[i];
+                if (prop.type === 'explosiveBarrel' && !prop.detonated) {
+                    const dx = bullet.x - prop.x;
+                    const dy = bullet.y - prop.y;
+                    const distSquared = dx * dx + dy * dy;
+                    const hitRadius = prop.radius + (bullet.radius || 2);
+                    if (distSquared < hitRadius * hitRadius) {
+                        if (bullet.type === 'rocket') {
+                            const rocketPlayer = bullet.player || gameState.players[0];
+                            triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer, true);
+                            bullet.markedForRemoval = true;
+                        } else {
+                            prop.takeDamage(bullet.damage || 5, bullet);
+                            if (bullet.type !== 'flame' && bullet.type !== 'piercing') {
+                                bullet.markedForRemoval = true;
+                            }
+                        }
+                        hitProp = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (hitProp || bullet.markedForRemoval) continue;
 
         // Reuse query range object (update properties instead of creating new object)
         queryRange.x = bullet.x - 20; // Arbitrary padding around bullet
@@ -860,6 +937,23 @@ export function handleBulletZombieCollisions() {
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
 
+                    // Handle Headshot Decapitation & Gore
+                    if (isHeadshot) {
+                        gameState.headshots++;
+                        // Spawn bone particles (white/bone colored)
+                        createParticles(zombieX, zombieY, '#e8e8e8', 12);
+                        // Spray extra blood
+                        createBloodSplatter(zombieX, zombieY, impactAngle, true);
+                        bloodSimulationSystem.addBlood(zombieX, zombieY, 1.2);
+                        
+                        // Drop a decorative skull prop
+                        const skullProp = new Prop(zombieX, zombieY, 'skull');
+                        gameState.props.push(skullProp);
+
+                        // Show golden "HEADSHOT ☠" popup
+                        gameState.damageNumbers.push(new DamageNumber(zombieX, zombieY - 40, "HEADSHOT ☠", true, '#ffd700', 20));
+                    }
+
                     // Check if boss was killed
                     if (zombie.type === 'boss' || zombie === gameState.boss) {
                         gameState.bossActive = false;
@@ -1094,7 +1188,7 @@ export function handleBulletZombieCollisions() {
 export function handlePlayerZombieCollisions() {
     for (let i = 0; i < gameState.players.length; i++) {
         const player = gameState.players[i];
-        if (player.health <= 0) continue;
+        if (player.health <= 0 || player.isDodging) continue;
 
         for (let j = 0; j < gameState.zombies.length; j++) {
             const zombie = gameState.zombies[j];

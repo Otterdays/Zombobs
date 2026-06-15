@@ -143,6 +143,17 @@ export class Prop {
                 this.fireParticles = [];
                 this.initTrashCanFireParticles();
                 break;
+            case 'explosiveBarrel':
+                this.width = 30;
+                this.height = 42;
+                this.maxHealth = 15;
+                this.health = 15;
+                this.ignited = false;
+                this.ignitedTime = 0;
+                this.fuseTime = 600;
+                this.detonated = false;
+                this.isExplosive = true;
+                break;
             default:
                 this.width = 20;
                 this.height = 20;
@@ -314,6 +325,8 @@ export class Prop {
             this.updateBurntCarParticles();
         } else if (this.type === 'trashCan' && this.fireParticles) {
             this.updateTrashCanFireParticles();
+        } else if (this.type === 'explosiveBarrel' && this.ignited && !this.detonated) {
+            this.updateExplosiveBarrel();
         } else {
             return;
         }
@@ -494,6 +507,9 @@ export class Prop {
                 break;
             case 'trashCan':
                 this.drawTrashCan();
+                break;
+            case 'explosiveBarrel':
+                this.drawExplosiveBarrel();
                 break;
         }
         
@@ -1574,6 +1590,138 @@ export class Prop {
                 ctx.fill();
             }
         }
+    }
+
+    takeDamage(amount, source) {
+        if (this.type !== 'explosiveBarrel' || this.detonated) return;
+
+        this.health -= amount;
+
+        // Track the player who caused this damage
+        if (source) {
+            if (source.inputSource) {
+                this.lastDamagedByPlayer = source;
+            } else if (source.player) {
+                this.lastDamagedByPlayer = source.player;
+            }
+        }
+
+        // Spawn metal sparks
+        const sparksColor = '#e0a020';
+        import('../systems/ParticleSystem.js').then(m => {
+            m.createParticles(this.x, this.y, sparksColor, 4);
+        }).catch(err => {});
+
+        if (this.health <= 0 && !this.ignited) {
+            this.ignited = true;
+            this.ignitedTime = Date.now();
+        }
+    }
+
+    updateExplosiveBarrel() {
+        const now = Date.now();
+        const elapsed = now - this.ignitedTime;
+
+        // Spawn fire/smoke particles while ignited
+        if (Math.random() < 0.45) {
+            import('../systems/ParticleSystem.js').then(m => {
+                m.spawnParticle(
+                    this.x + (Math.random() - 0.5) * 15,
+                    this.y - this.height * 0.4,
+                    ['#ff3300', '#ff8800', '#ffff00'][Math.floor(Math.random() * 3)],
+                    {
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: -2 - Math.random() * 2,
+                        lifetime: 400 + Math.random() * 300,
+                        size: 4 + Math.random() * 4
+                    }
+                );
+            }).catch(err => {});
+        }
+
+        if (elapsed >= this.fuseTime) {
+            this.detonated = true;
+            
+            // Trigger explosion
+            import('../utils/combatUtils.js').then(module => {
+                module.triggerExplosion(this.x, this.y, 100, 75, true, this.lastDamagedByPlayer, true);
+            }).catch(err => {});
+        }
+    }
+
+    drawExplosiveBarrel() {
+        const halfWidth = this.width / 2;
+        const halfHeight = this.height / 2;
+
+        if (this.detonated) {
+            // Flattened charred wreckage
+            ctx.fillStyle = '#1a1a1a';
+            ctx.strokeStyle = '#0a0a0a';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.ellipse(0, 0, halfWidth * 1.2, halfHeight * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#111111';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, halfWidth * 0.8, halfHeight * 0.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(-halfWidth * 0.5, -halfHeight * 0.3, 4, 3);
+            ctx.fillRect(halfWidth * 0.4, halfHeight * 0.1, 3, 3);
+            return;
+        }
+
+        let baseColor = '#b32424';
+        let stripeColor = '#ffffff';
+        
+        if (this.ignited) {
+            const flash = Math.floor(Date.now() / 100) % 2 === 0;
+            baseColor = flash ? '#ff4444' : '#ffffff';
+            stripeColor = flash ? '#ffffff' : '#ff4444';
+        }
+
+        ctx.fillStyle = baseColor;
+        ctx.beginPath();
+        ctx.roundRect(-halfWidth, -halfHeight, this.width, this.height, 4);
+        ctx.fill();
+
+        ctx.strokeStyle = '#4a0e0e';
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(-halfWidth, -halfHeight * 0.4);
+        ctx.lineTo(halfWidth, -halfHeight * 0.4);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-halfWidth, halfHeight * 0.4);
+        ctx.lineTo(halfWidth, halfHeight * 0.4);
+        ctx.stroke();
+
+        ctx.fillStyle = stripeColor;
+        ctx.fillRect(-halfWidth, -halfHeight * 0.15, this.width, halfHeight * 0.3);
+
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-2, -2); ctx.lineTo(2, 2);
+        ctx.moveTo(2, -2); ctx.lineTo(-2, 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#1a0505';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-halfWidth, -halfHeight, this.width, this.height, 4);
+        ctx.stroke();
     }
 }
 

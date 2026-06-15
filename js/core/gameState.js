@@ -87,6 +87,14 @@ export function createPlayer(x, y, colorIndex = 0) {
             life: 0, maxLife: 5
         },
 
+        // Dodge roll state
+        isDodging: false,
+        dodgeTimeRemaining: 0,
+        dodgeCooldown: 0,
+        dodgeDirection: { x: 0, y: 0 },
+        dodgeKeyReleased: true,
+        positionHistory: [],
+
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
         gamepadIndex: null

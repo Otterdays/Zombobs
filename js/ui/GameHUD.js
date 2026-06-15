@@ -60,9 +60,17 @@ export class GameHUD {
         Object.defineProperty(this, 'newsTickerDragging', {
             get: () => this.mainMenuScreen?.newsTickerDragging || false
         });
+        this._isMobileCached = /Android|iPhone|iPad|iPod/i.test((navigator && navigator.userAgent) || '');
+        this._cachedScale = 1.0;
+        this._lastScaleTime = 0;
     }
 
     getUIScale() {
+        const now = Date.now();
+        if (this._lastScaleTime && now - this._lastScaleTime < 16) {
+            return this._cachedScale;
+        }
+
         let scale = settingsManager.getSetting('video', 'uiScale') ?? 1.0;
         // Ensure scale is always a finite positive number
         if (!Number.isFinite(scale) || scale <= 0) {
@@ -94,12 +102,13 @@ export class GameHUD {
             scale *= autoScale;
         }
 
+        this._cachedScale = scale;
+        this._lastScaleTime = now;
         return scale;
     }
 
     isMobile() {
-        const ua = (navigator && navigator.userAgent) || '';
-        return /Android|iPhone|iPad|iPod/i.test(ua);
+        return this._isMobileCached;
     }
 
     getScaledPadding() {

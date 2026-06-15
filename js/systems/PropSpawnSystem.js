@@ -120,20 +120,22 @@ export class PropSpawnSystem {
                 // Randomly choose prop type with weights
                 const rand = Math.random();
                 let propType;
-                if (rand < 0.30) {
-                    propType = 'rock'; // 30% chance (down from 35%)
+                if (rand < 0.25) {
+                    propType = 'rock'; // 25% chance
+                } else if (rand < 0.45) {
+                    propType = 'debris'; // 20% chance
                 } else if (rand < 0.55) {
-                    propType = 'debris'; // 25% chance (unchanged)
+                    propType = 'burntCar'; // 10% chance
                 } else if (rand < 0.65) {
-                    propType = 'burntCar'; // 10% chance (unchanged)
-                } else if (rand < 0.80) {
-                    propType = 'skull'; // 15% chance (unchanged)
-                } else if (rand < 0.88) {
-                    propType = 'zombieArms'; // 8% chance (down from 10%)
-                } else if (rand < 0.93) {
-                    propType = 'zombieLegs'; // 5% chance (unchanged)
+                    propType = 'skull'; // 10% chance
+                } else if (rand < 0.73) {
+                    propType = 'zombieArms'; // 8% chance
+                } else if (rand < 0.78) {
+                    propType = 'zombieLegs'; // 5% chance
+                } else if (rand < 0.85) {
+                    propType = 'trashCan'; // 7% chance
                 } else {
-                    propType = 'trashCan'; // 7% chance (new)
+                    propType = 'explosiveBarrel'; // 15% chance
                 }
                 
                 const prop = new Prop(propX, propY, propType);

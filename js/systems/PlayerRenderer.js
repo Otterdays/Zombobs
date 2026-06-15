@@ -701,6 +701,27 @@ export function drawFlashlight(player) {
  * @param {boolean} isFiring - Whether player is currently firing
  */
 export function drawEnhancedPlayer(player, isFiring = false) {
+    // Render ghost trails if player is dodging (skip recursion)
+    if (player.isDodging && player.positionHistory && player.positionHistory.length > 0) {
+        const originalAlpha = ctx.globalAlpha;
+        player.positionHistory.forEach((pos, idx) => {
+            const alpha = 0.05 + (idx / player.positionHistory.length) * 0.25;
+            ctx.globalAlpha = originalAlpha * alpha;
+
+            const ghostPlayer = {
+                ...player,
+                x: pos.x,
+                y: pos.y,
+                angle: pos.angle,
+                isDodging: false,
+                positionHistory: null,
+                flashlight: player.flashlight ? { ...player.flashlight, active: false } : { active: false }
+            };
+            drawEnhancedPlayer(ghostPlayer, false);
+        });
+        ctx.globalAlpha = originalAlpha;
+    }
+
     // Draw flashlight first so it's behind the player
     drawFlashlight(player);
 

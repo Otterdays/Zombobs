@@ -1195,9 +1195,9 @@ export class ExplodingZombie extends Zombie {
         // Pulsing orange/yellow glow (faster when low health or close to player) - quality scaled
         const auraQuality = graphicsSettings.getQualityValues('aura');
         if (auraQuality.opacity > 0) {
-            const distToPlayer = Math.sqrt((gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2);
+            const distToPlayerSq = (gameState.player.x - this.x) ** 2 + (gameState.player.y - this.y) ** 2;
             const healthRatio = this.health / Math.floor((2 + Math.floor(gameState.wave / 3)) * 2.5);
-            const pulseSpeed = healthRatio < 0.5 || distToPlayer < 100 ? 100 : 200;
+            const pulseSpeed = healthRatio < 0.5 || distToPlayerSq < 10000 ? 100 : 200;
             const pulse = Math.sin(Date.now() / pulseSpeed) * 0.5 + 0.5;
             const pulseMultiplier = auraQuality.pulseComplexity;
             const baseOpacity = 0.6 * auraQuality.opacity;

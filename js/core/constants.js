@@ -13,6 +13,12 @@ export const PLAYER_STAMINA_DRAIN = 1.0; // Stamina cost per frame while sprinti
 export const PLAYER_STAMINA_REGEN = 0.5; // Stamina recovery per frame
 export const PLAYER_STAMINA_REGEN_DELAY = 1000; // ms to wait before regenerating
 
+// Dodge roll / dash stats
+export const PLAYER_DODGE_COOLDOWN = 1000; // ms between dodges
+export const PLAYER_DODGE_DURATION = 250; // ms active dodge state
+export const PLAYER_DODGE_SPEED_MULT = 3.0; // speed multiplier while dodging
+export const PLAYER_DODGE_STAMINA_COST = 30;
+
 // Health pickup settings
 export const HEALTH_PICKUP_HEAL_AMOUNT = 25;
 export const HEALTH_PICKUP_SPAWN_INTERVAL = 15000; // ms between spawns

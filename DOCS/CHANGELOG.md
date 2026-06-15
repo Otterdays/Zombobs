@@ -5,6 +5,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Dodge Roll / Dash Ability** — Swift dash roll mapped to Space (keyboard) / B button (gamepad). Restricts movement to dodge direction, consumes 30 stamina, triggers a synthesized "whoosh" sound effect, and renders a semi-transparent ghost trail. Grants damage immunity (i-frames) against zombies and acid pools.
+- **Explosive Barrels** — Procedurally spawned red warning-painted metal barrels (15% chance). Detonate 600ms after taking bullet, laser, or explosion damage (15 HP), causing 75 AOE damage to players (self-damage) and zombies. Chain-detonates nearby barrels. Shows charred rim wreckage after explosion.
 - **Battlepass System Overhaul** — Complete rewrite of the battlepass progression system:
   - **Season 2: Dead Zone** — New 50-tier season spanning all of 2026 with unique titles/emblems (Wasteland Scout, Patient Zero, Dead Zone Overlord, etc.)
   - **Reward Claim System** — Tier rewards (rankXP, titles, emblems) now actually apply to the rank system. Auto-claims newly unlocked tiers on game over.
@@ -32,6 +34,10 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **AI Player Name Font** — Fixed AI player name rendering using wrong font (`Consolas` → `Roboto Mono`) for consistency with game's typography system.
 
 ### Changed
+- **Laser Gun Aiming Raycast** — Raycast checks now intersect with active explosive barrels, allowing instant-hit laser beam damage and detonation.
+- **Quadtree Boundary Update** — Refactored mode check comparisons from hardcoded size checks to clean boolean properties (`collisionQuadtree.isArcade`) for efficiency.
+- **GameHUD UI Performance** — Cached `isMobile()` regex check and UI scale calculations to prevent redundant computations on frame ticks.
+- **Zombie Aura Math** — Replaced `Math.sqrt` distance calculations in toxic/orange/green aura drawing with fast squared distance comparisons.
 - **Laser Gun Damage Rebalance** — Reduced damage from 5 → 3 (DPS ~83 → ~50). Previous value was ~4× Rifle DPS, making other weapons obsolete. New value maintains Laser's role as high-DPS precision weapon while preserving weapon diversity.
 - **Updated `DOCS/guns.md`** — Complete rewrite with all 8 weapons, corrected statistics table, weapon-specific muzzle flash colors, updated controls section, and marked completed future enhancements.
 

@@ -410,6 +410,48 @@ export function playDamageSound() {
     }
 }
 
+// Generate dodge whoosh sound using Web Audio API
+export function playDodgeSound() {
+    if (!audioContext) {
+        initAudio();
+        if (!audioContext) return; // Still can't create, skip sound
+    }
+
+    try {
+        const duration = 0.15; // 150ms whoosh
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < buffer.length; i++) {
+            const t = i / sampleRate;
+            let sample = 0;
+
+            // Pitch drop: 300Hz down to 80Hz
+            const freq = 300 - (t * 1200);
+            if (freq > 0) sample += Math.sin(t * freq * 2 * Math.PI) * 0.4;
+
+            // Soft noise for wind/whoosh texture, decayed quickly
+            const noise = Math.random() * 2 - 1;
+            sample += noise * 0.3 * Math.exp(-t * 20);
+
+            // Envelope: hump-shaped for smooth entry and exit
+            const envelope = Math.sin((t / duration) * Math.PI);
+            data[i] = sample * envelope * 0.35;
+        }
+
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.4;
+        source.connect(gainNode);
+        gainNode.connect(sfxGainNode || masterGainNode || audioContext.destination);
+        source.start(0);
+    } catch (error) {
+        // Silently fail if audio can't play
+    }
+}
+
 // Generate kill confirmed sound using Web Audio API
 // zombieType: 'normal', 'fast', 'armored', 'exploding', 'ghost', 'spitter', 'boss'
 export function playKillSound(zombieType = 'normal') {

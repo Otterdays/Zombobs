@@ -21,7 +21,7 @@ export class AcidPool {
             const radiusSquared = this.radius * this.radius;
             for (let i = 0; i < gameState.players.length; i++) {
                 const player = gameState.players[i];
-                if (player.health <= 0) continue;
+                if (player.health <= 0 || player.isDodging) continue;
                 
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;

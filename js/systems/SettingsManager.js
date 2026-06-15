@@ -88,7 +88,8 @@ export class SettingsManager {
                 weapon7: '7',
                 weapon8: '8',
                 scrollWheelSwitch: true,
-                flashlight: 'f'
+                flashlight: 'f',
+                dodge: ' '
             },
             gamepad: {
                 fire: 7, // RT
@@ -99,7 +100,8 @@ export class SettingsManager {
                 pause: 9, // Start
                 prevWeapon: 4, // LB
                 nextWeapon: 3, // Y
-                melee: 11 // R3
+                melee: 11, // R3
+                dodge: 1 // B
             },
             ui: {
                 controlMode: 'keyboard' // 'keyboard' or 'gamepad' - persisted preference

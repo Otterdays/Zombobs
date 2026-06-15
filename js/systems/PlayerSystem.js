@@ -4,12 +4,13 @@ import {
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
     MAX_LOCAL_PLAYERS,
-    WEAPONS, MUZZLE_FLASH_COLORS
+    WEAPONS, MUZZLE_FLASH_COLORS,
+    PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_DURATION, PLAYER_DODGE_SPEED_MULT, PLAYER_DODGE_STAMINA_COST
 } from '../core/constants.js';
 import { settingsManager } from './SettingsManager.js';
 import { graphicsSettings } from './GraphicsSystem.js';
 import { inputSystem } from './InputSystem.js';
-import { playFootstepSound } from '../systems/AudioSystem.js';
+import { playFootstepSound, playDodgeSound } from '../systems/AudioSystem.js';
 import { shootBullet, reloadWeapon, throwGrenade } from '../utils/combatUtils.js';
 import { spawnParticle } from './ParticleSystem.js';
 import { drawMeleeSwipe } from '../utils/drawingUtils.js';
@@ -163,16 +164,94 @@ export class PlayerSystem {
                 shouldSprint = isSprintingInput;
             }
 
-            if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
-                player.isSprinting = true;
-                player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
-                player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
-                player.lastSprintTime = Date.now();
-            } else {
+            // Check if player wants to trigger dodge
+            let dodgeInput = false;
+            if (player.inputSource === 'mouse') {
+                const dodgeKey = controls.dodge || ' ';
+                if (keys[dodgeKey]) {
+                    if (player.dodgeKeyReleased) {
+                        dodgeInput = true;
+                        player.dodgeKeyReleased = false;
+                    }
+                } else {
+                    player.dodgeKeyReleased = true;
+                }
+            } else if (player.inputSource === 'gamepad' && player.gamepadIndex !== undefined && player.gamepadIndex !== null) {
+                const gpState = inputSystem.getGamepad(player.gamepadIndex);
+                if (gpState && gpState.buttons.dodge && gpState.buttons.dodge.justPressed) {
+                    dodgeInput = true;
+                }
+            }
+
+            // Decrease active dodge time and cooldowns
+            if (player.dodgeCooldown > 0) {
+                player.dodgeCooldown = Math.max(0, player.dodgeCooldown - 16.67);
+            }
+
+            if (player.isDodging) {
+                player.dodgeTimeRemaining = Math.max(0, player.dodgeTimeRemaining - 16.67);
+                if (player.dodgeTimeRemaining <= 0) {
+                    player.isDodging = false;
+                }
+            }
+
+            // Trigger dodge roll
+            if (dodgeInput && !player.isDodging && player.dodgeCooldown <= 0 && player.stamina >= PLAYER_DODGE_STAMINA_COST) {
+                player.isDodging = true;
+                player.dodgeTimeRemaining = PLAYER_DODGE_DURATION;
+                player.dodgeCooldown = PLAYER_DODGE_COOLDOWN;
+                player.stamina = Math.max(0, player.stamina - PLAYER_DODGE_STAMINA_COST);
+                player.lastSprintTime = Date.now(); // Delay stamina regen
+                
+                // Play dodge sound
+                playDodgeSound();
+
+                // Determine dodge direction
+                let dx = moveX;
+                let dy = moveY;
+                if (dx === 0 && dy === 0) {
+                    dx = Math.cos(player.angle);
+                    dy = Math.sin(player.angle);
+                }
+                const lenD = Math.sqrt(dx * dx + dy * dy);
+                if (lenD > 0) {
+                    player.dodgeDirection = { x: dx / lenD, y: dy / lenD };
+                } else {
+                    player.dodgeDirection = { x: Math.cos(player.angle), y: Math.sin(player.angle) };
+                }
+            }
+
+            if (player.isDodging) {
+                // Override movement vector
+                moveX = player.dodgeDirection.x;
+                moveY = player.dodgeDirection.y;
+                player.speed = PLAYER_BASE_SPEED * PLAYER_DODGE_SPEED_MULT;
                 player.isSprinting = false;
-                player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
-                if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
-                    player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
+
+                // Position history for ghost trails
+                if (!player.positionHistory) {
+                    player.positionHistory = [];
+                }
+                player.positionHistory.push({ x: player.x, y: player.y, angle: player.angle, time: Date.now() });
+                if (player.positionHistory.length > 8) {
+                    player.positionHistory.shift();
+                }
+            } else {
+                if ((Math.abs(moveX) > 0 || Math.abs(moveY) > 0) && shouldSprint && player.stamina > 0) {
+                    player.isSprinting = true;
+                    player.speed = PLAYER_SPRINT_SPEED * totalSpeedMultiplier;
+                    player.stamina = Math.max(0, player.stamina - PLAYER_STAMINA_DRAIN);
+                    player.lastSprintTime = Date.now();
+                } else {
+                    player.isSprinting = false;
+                    player.speed = PLAYER_BASE_SPEED * totalSpeedMultiplier;
+                    if (Date.now() - player.lastSprintTime > PLAYER_STAMINA_REGEN_DELAY) {
+                        player.stamina = Math.min(player.maxStamina, player.stamina + PLAYER_STAMINA_REGEN);
+                    }
+                }
+                // Clear history when not dodging
+                if (player.positionHistory && player.positionHistory.length > 0) {
+                    player.positionHistory = [];
                 }
             }
 
