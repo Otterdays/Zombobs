@@ -303,7 +303,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 #### Zombie.js
 **Purpose**: Zombie enemy classes
 
-**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `CrawlerZombie`
+**Exports**: `Zombie` (base), `NormalZombie`, `FastZombie`, `ExplodingZombie`, `ArmoredZombie`, `GhostZombie`, `SpitterZombie`, `FlyingZombie`, `BlightZombie`, `CrawlerZombie`
 
 **Zombie Variants**:
 - **NormalZombie**: Default enemy type with **8 randomized visual variants**:
@@ -323,14 +323,20 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
 - **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, Wave 6+
 - **FlyingZombie**: Flies with wings, 1.2x speed, 70% health, smaller hitbox, subtle floating animation, Wave 5+
+- **BlightZombie**: Fungal support zombie, 0.75x speed, 1.3x health (tanky), 1.1x radius. Leaves toxic slime trail (acid pools every 900ms, smaller radius, lower damage). Explodes into a damaging spore cloud on death (70px radius, 20 AOE damage) plus a lingering slime pool. Deep purple/magenta appearance with mushroom growths and pulsing fungal nodules, Wave 7+
 - **CrawlerZombie**: Low-profile crawler, 1.3x speed, 60% health, 0.7x radius (smaller hitbox), dark brown/gray appearance, crawling pose, Wave 4+
 
 **Methods**:
-- `update(player)` - AI pathfinding (kiting for SpitterZombie)
+- `update(player)` - AI pathfinding (kiting for SpitterZombie, slime trail dropping for BlightZombie)
 - `draw()` - Complex rendering (variant-specific visuals)
   - Health bar rendering with configurable styles (gradient, solid, simple)
   - Health bar shown for 2 seconds after taking damage (if enabled)
   - Style controlled by `enemyHealthBarStyle` setting
+- `drawNameTag(context, yOffset)` - Renders a color-coded type label pill above the zombie
+  - Display names: Zombie, Runner, Tank, Bomber, Ghost, Spitter, Flyer, Blight, Crawler, BOSS
+  - Each type has a unique color matching its visual theme
+  - Controlled by `video.enemyNameTags` setting (default: on)
+  - Called automatically by `EntityRenderSystem` post-draw hook (no per-subclass integration needed)
 - `takeDamage(bulletDamage)` - Damage handling
 
 **Burning State** (Base Zombie):
@@ -1000,20 +1006,22 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 
 **Methods**:
 - `drawEntities(gameState, ctx, viewport)` - Main rendering method that draws all entities
-- `drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx)` - Generic helper for drawing entity arrays
+- `drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx, postDraw)` - Generic helper for drawing entity arrays
+  - `postDraw` (optional) - Callback `(entity, ctx)` invoked after each entity draw; used for zombie name tags
 
 **Features**:
 - Viewport culling for all entities
 - Visibility culling for small entities (shells, bullets)
 - Optimized loops (for loops instead of forEach)
 - Handles different draw method signatures (some entities take ctx parameter, others don't)
+- Post-draw hook system for entity overlays (e.g. zombie name tags via `drawNameTag`)
 
 **Rendered Entities**:
 - Shells, bullets, grenades, acid projectiles, acid pools
 - All pickup types (health, ammo, damage, nuke, speed, rapidfire, shield, adrenaline)
-- Zombies
+- Zombies (with automatic name tag post-draw via `drawNameTag`)
 
-**Dependencies**: `utils/gameUtils.js` (isInViewport, isVisibleOnScreen)
+**Dependencies**: `utils/gameUtils.js` (isInViewport, isVisibleOnScreen), `core/canvas.js` (ctx fallback)
 
 #### PickupSpawnSystem.js
 **Purpose**: Handles spawning of health, ammo, and powerup pickups based on game conditions and timers

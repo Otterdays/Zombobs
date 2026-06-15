@@ -40,9 +40,10 @@ export class MeleeSystem {
         // Play melee sound (using damage sound as placeholder)
         playDamageSound();
 
-        // Check for zombies in melee range
+        // Check for zombies in melee range (iterate backwards to safely splice)
         let hitCount = 0;
-        gameState.zombies.forEach((zombie, zombieIndex) => {
+        for (let zombieIndex = gameState.zombies.length - 1; zombieIndex >= 0; zombieIndex--) {
+            const zombie = gameState.zombies[zombieIndex];
             if (this.isInMeleeRange(zombie.x, zombie.y, zombie.radius, player.x, player.y, player.angle)) {
                 const impactAngle = Math.atan2(zombie.y - player.y, zombie.x - player.x);
 
@@ -95,7 +96,7 @@ export class MeleeSystem {
                 }
                 hitCount++;
             }
-        });
+        }
 
         // Screen shake on melee (stronger if hit something)
         if (hitCount > 0) {

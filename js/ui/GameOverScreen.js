@@ -76,6 +76,33 @@ export class GameOverScreen {
             }
         }
 
+        // Display battlepass progress
+        if (gameState.sessionResults && gameState.sessionResults.battlepassProgress) {
+            const bpProgress = gameState.sessionResults.battlepassProgress;
+            yOffset += 30 * scale;
+
+            const bpFontSize = Math.max(14, Math.round(16 * scale));
+            this.ctx.font = `${bpFontSize}px "Roboto Mono", monospace`;
+            this.ctx.fillStyle = '#4fc3f7';
+            this.ctx.fillText(`Battlepass XP: +${bpProgress.xpGained}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
+
+            if (bpProgress.tierUp) {
+                yOffset += 22 * scale;
+                this.ctx.fillStyle = '#ffd700';
+                this.ctx.shadowBlur = 10 * scale;
+                this.ctx.shadowColor = '#ffd700';
+                this.ctx.fillText(`BATTLEPASS TIER UP! Tier ${bpProgress.newTier}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
+                this.ctx.shadowBlur = 0;
+            }
+
+            if (bpProgress.claimedRewards && bpProgress.claimedRewards.length > 0) {
+                yOffset += 22 * scale;
+                this.ctx.fillStyle = '#81c784';
+                const rewardText = bpProgress.claimedRewards.map(cr => `Tier ${cr.tier}`).join(', ');
+                this.ctx.fillText(`Rewards Claimed: ${rewardText}`, this.canvas.width / 2, this.canvas.height / 2 + yOffset);
+            }
+        }
+
         // Quick Stats Display (V0.8.0)
         yOffset += 40 * scale;
         this.drawQuickStats(yOffset, scale);

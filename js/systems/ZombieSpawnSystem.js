@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { canvas } from '../core/canvas.js';
-import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, CrawlerZombie } from '../entities/Zombie.js';
+import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, BlightZombie, CrawlerZombie } from '../entities/Zombie.js';
 import { BossZombie } from '../entities/BossZombie.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
 
@@ -21,6 +21,7 @@ export class ZombieSpawnSystem {
             'ghost': GhostZombie,
             'spitter': SpitterZombie,
             'flying': FlyingZombie,
+            'blight': BlightZombie,
             'crawler': CrawlerZombie,
             'boss': BossZombie
         };
@@ -193,8 +194,12 @@ export class ZombieSpawnSystem {
                 else if (gameState.wave >= 4 && rand >= 0.58 && rand < 0.66) {
                     ZombieClass = CrawlerZombie;
                 }
-                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying/crawler)
-                else if (gameState.wave >= 3 && rand >= 0.66) {
+                // Wave 1+ (debug): Introduce Blight zombies (~7% chance)
+                else if (gameState.wave >= 1 && rand >= 0.66 && rand < 0.73) {
+                    ZombieClass = BlightZombie;
+                }
+                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying/crawler/blight)
+                else if (gameState.wave >= 3 && rand >= 0.73) {
                     const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
                     if (Math.random() < armoredChance) {
                         ZombieClass = ArmoredZombie;

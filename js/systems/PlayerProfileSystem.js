@@ -48,11 +48,14 @@ export class PlayerProfileSystem {
                 battlepassXP: 0,
                 currentTier: 1,
                 unlockedTiers: [],
+                claimedTiers: [],
+                hasPremium: false,
                 completedChallenges: [],
                 dailyChallenges: [],
                 weeklyChallenges: [],
                 lastDailyReset: null,
-                lastWeeklyReset: null
+                lastWeeklyReset: null,
+                gamesPlayedThisWeek: 0
             },
             stats: {
                 totalGamesPlayed: 0,
@@ -138,11 +141,14 @@ export class PlayerProfileSystem {
                     battlepassXP: 0,
                     currentTier: 1,
                     unlockedTiers: [],
+                    claimedTiers: [],
+                    hasPremium: false,
                     completedChallenges: [],
                     dailyChallenges: [],
                     weeklyChallenges: [],
                     lastDailyReset: null,
-                    lastWeeklyReset: null
+                    lastWeeklyReset: null,
+                    gamesPlayedThisWeek: 0
                 };
             }
             if (!profile.stats) {
@@ -178,6 +184,13 @@ export class PlayerProfileSystem {
         if (!profile.stats.galleryVisits) profile.stats.galleryVisits = 0;
         if (!profile.stats.gameRestarts) profile.stats.gameRestarts = 0;
         if (!profile.stats.gamePauses) profile.stats.gamePauses = 0;
+
+        // Migrate battlepass v2 fields
+        if (profile.battlepass) {
+            if (!profile.battlepass.claimedTiers) profile.battlepass.claimedTiers = [];
+            if (profile.battlepass.hasPremium === undefined) profile.battlepass.hasPremium = false;
+            if (!profile.battlepass.gamesPlayedThisWeek) profile.battlepass.gamesPlayedThisWeek = 0;
+        }
     }
 
     /**
@@ -301,8 +314,20 @@ export class PlayerProfileSystem {
         const bpWaveXP = (sessionStats.wave || 0) * 10;
         const bpBaseXP = 25;
         const totalBPXP = bpScoreXP + bpWaveXP + bpBaseXP;
-        
+
         const battlepassProgress = battlepassSystem.addXP(totalBPXP);
+
+        // Auto-claim newly unlocked tier rewards
+        const claimedRewards = [];
+        if (battlepassProgress.newlyUnlocked && battlepassProgress.newlyUnlocked.length > 0) {
+            battlepassProgress.newlyUnlocked.forEach(tier => {
+                const rewards = battlepassSystem.claimTierReward(tier);
+                if (rewards) {
+                    claimedRewards.push({ tier, rewards });
+                }
+            });
+        }
+        battlepassProgress.claimedRewards = claimedRewards;
 
         // Save profile
         this.saveProfile();

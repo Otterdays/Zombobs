@@ -58,6 +58,7 @@ const TOOLTIPS = {
     'video.damageNumberScale': 'Damage number size multiplier.',
     'video.lowHealthWarning': 'Red screen flash when health is critical.',
     'video.enemyHealthBars': 'Show health bars above zombies.',
+    'video.enemyNameTags': 'Show zombie type name tags above enemies.',
     'video.enemyHealthBarStyle': 'Enemy health bar visual style.',
     'video.reloadBar': 'Show reload progress bar on HUD.',
     'video.showDebugStats': 'Show FPS, entity counts, and performance info.',
@@ -570,6 +571,7 @@ export class SettingsPanel {
         y = this.drawSlider("Damage Number Scale", "video", "damageNumberScale", 0.5, 2.0, y, mouse);
         y = this.drawToggle("Low Health Warning", "video", "lowHealthWarning", y, mouse);
         y = this.drawToggle("Enemy Health Bars", "video", "enemyHealthBars", y, mouse);
+        y = this.drawToggle("Enemy Name Tags", "video", "enemyNameTags", y, mouse);
         y = this.drawDropdown("Enemy Health Bar Style", "video", "enemyHealthBarStyle", ['gradient', 'solid', 'simple'], y, mouse);
         y = this.drawToggle("Reload Bar", "video", "reloadBar", y, mouse);
         y = this.drawToggle("Show Debug Stats", "video", "showDebugStats", y, mouse);

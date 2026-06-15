@@ -233,8 +233,8 @@
 - [ ] **Cross-Platform Sync** - Synchronize game state across different platforms 🔴
 - [ ] **Guilds & Clans** - Form groups with other survivors 🔴
 - [ ] **Online Leaderboards** - Integrate a service to display global high scores 🔴
-- [ ] **Achievements System** - Add in-game achievements for completing specific challenges 🟡
-- [ ] **Daily/Weekly Challenges** - Offer special challenges with currency rewards (e.g., "Survive 5 waves with only a pistol") 🟡
+- [x] **Achievements System** - Add in-game achievements for completing specific challenges ✅
+- [x] **Daily/Weekly Challenges** - Offer special challenges with currency rewards (e.g., "Survive 5 waves with only a pistol") ✅
 - [ ] **Battle Royale Mode** - PvP mode where players fight to be the last survivor amidst the horde 🔴
 - [ ] **Global Event System** - Live server-side events affecting all ongoing games (e.g., "Blood Moon") 🔴
 - [ ] **Spectator Mode** - Watch other players' games in real-time after dying 🟢

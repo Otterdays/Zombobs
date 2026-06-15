@@ -1,4 +1,5 @@
 import { isInViewport, isVisibleOnScreen } from '../utils/gameUtils.js';
+import { ctx as canvasCtx } from '../core/canvas.js';
 
 /**
  * EntityRenderSystem handles rendering of all game entities with viewport culling
@@ -41,7 +42,12 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.adrenalinePickups, ctx, viewport, false, false);
         
         // Zombies with culling (most important for performance) - optimized loop, no ctx parameter
-        this.drawEntityArray(gameState.zombies, ctx, viewport, false, false);
+        // Post-draw: render name tags above each zombie
+        this.drawEntityArray(gameState.zombies, ctx, viewport, false, false, (entity, context) => {
+            if (typeof entity.drawNameTag === 'function') {
+                entity.drawNameTag(context);
+            }
+        });
     }
 
     /**
@@ -51,8 +57,9 @@ export class EntityRenderSystem {
      * @param {Object} viewport - Viewport bounds {left, top, right, bottom}
      * @param {boolean} checkVisibility - Whether to also check visibility (for small entities like shells/bullets)
      * @param {boolean} needsCtx - Whether the entity's draw method requires ctx as a parameter
+     * @param {Function} [postDraw] - Optional callback(entity, ctx) called after each entity draw
      */
-    drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx) {
+    drawEntityArray(entities, ctx, viewport, checkVisibility, needsCtx, postDraw) {
         const viewportLeft = viewport.left;
         const viewportTop = viewport.top;
         const viewportRight = viewport.right;
@@ -78,10 +85,14 @@ export class EntityRenderSystem {
             } else {
                 entity.draw();
             }
+
+            // Post-draw hook (e.g. zombie name tags)
+            if (postDraw) {
+                postDraw(entity, ctx || canvasCtx);
+            }
         }
     }
 }
 
 // Export singleton instance
 export const entityRenderSystem = new EntityRenderSystem();
-

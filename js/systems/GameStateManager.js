@@ -68,6 +68,7 @@ export class GameStateManager {
                 sessionCombo: gameState.killStreak,
                 pickupsCollected: gameState.pickupsCollected,
                 headshots: gameState.headshots,
+                maxKillStreak: gameState.maxKillStreak,
                 coopWin: gameState.isCoop && gameState.wave > 1 // Consider it a win if survived past wave 1
             };
 

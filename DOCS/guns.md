@@ -2,7 +2,7 @@
 
 ## Overview
 
-The zombie survival game features a weapon system with **4 unique firearms**, each with distinct characteristics designed for different combat situations. All weapons use weapon-specific ammo counters, persistent ammo tracking, and individual reload mechanics with background reload support.
+The zombie survival game features a weapon system with **8 unique firearms**, each with distinct characteristics designed for different combat situations. All weapons use weapon-specific ammo counters, persistent ammo tracking, and individual reload mechanics with background reload support.
 
 ---
 
@@ -16,6 +16,7 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - **Ammo Capacity**: `10` rounds per magazine
 - **Reload Time**: `1000ms` (1 second)
 - **Fire Pattern**: Single bullet, precise
+- **Trail Color**: Yellow (`#ffff00`)
 - **Best For**: Balanced combat, conserving ammo, medium-range engagements
 
 **Characteristics:**
@@ -34,11 +35,12 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - **Ammo Capacity**: `5` shells per magazine
 - **Reload Time**: `1000ms` (1 second)
 - **Fire Pattern**: **5 spread bullets** with random spread angle (0.5 radian spread)
+- **Trail Color**: Orange (`#ff8c00`)
 - **Best For**: Close-range combat, clearing groups, high burst damage
 
 **Unique Mechanics:**
 - Fires **5 bullets simultaneously** in a spread pattern
-- Each pellet does `3` damage independently
+- Each pellet does `6` damage independently
 - Spread angle: `±0.25 radians` (approximately ±14.3 degrees from center)
 - Lower ammo capacity but devastating up close
 - All pellets can hit the same target for maximum damage
@@ -53,14 +55,123 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - **Ammo Capacity**: `30` rounds per magazine
 - **Reload Time**: `1000ms` (1 second)
 - **Fire Pattern**: Single bullet, rapid fire
+- **Trail Color**: Light Blue (`#88ccff`)
 - **Best For**: Sustained fire, long-range precision, high-volume combat
 
 **Characteristics:**
-- Highest fire rate of all weapons
+- High fire rate for sustained DPS
 - Largest magazine capacity (30 rounds)
 - Slightly higher damage than pistol but less than shotgun per shot
 - Best for sustained engagements and clearing waves
-- Longest reload time due to magazine size
+
+---
+
+### 4. **Flamethrower** 🔥
+**Short-Range, High Fire Rate**
+
+- **Damage**: `1.0` points per tick (doubled from 0.5, damage over time)
+- **Fire Rate**: `50ms` between shots (20 shots/second)
+- **Ammo Capacity**: `100` rounds per tank
+- **Reload Time**: `2000ms` (2 seconds)
+- **Range**: `200px` (short range)
+- **Fire Pattern**: **3 flame particles** with spread pattern
+- **Trail Color**: Red-orange (`#ff5722`)
+- **Best For**: Close-range crowd control, applying burn effects, sustained damage
+
+**Unique Mechanics:**
+- Fires **3 flame particles** simultaneously with spread
+- Applies **burn effect**: Zombies take damage over time (3 seconds)
+- Burn damage: `bullet.damage * 2` over time
+- Very high fire rate compensates for low per-tick damage
+- Short range requires close positioning
+
+---
+
+### 5. **SMG** 🔫
+**Fast Fire Rate, High Ammo**
+
+- **Damage**: `1.6` points per shot (doubled from 0.8)
+- **Fire Rate**: `80ms` between shots (12.5 shots/second)
+- **Ammo Capacity**: `40` rounds per magazine
+- **Reload Time**: `1200ms` (1.2 seconds)
+- **Fire Pattern**: Single bullet with slight spread (0.1 radian)
+- **Trail Color**: Warm Yellow (`#ffe066`)
+- **Best For**: Aggressive close-to-mid range, sustained fire, ammo-efficient combat
+
+**Unique Mechanics:**
+- Fastest fire rate of all standard bullet weapons
+- Slight random spread per shot (less than shotgun, more than rifle)
+- 40-round magazine allows long sustained engagements
+- Slightly slower reload than pistol (1.2s vs 1.0s)
+- Higher total magazine damage than rifle (64 vs 120) but with spread tradeoff
+
+---
+
+### 6. **Sniper** 🎯
+**High Damage, Piercing Rounds**
+
+- **Damage**: `30` points per shot (doubled from 15)
+- **Fire Rate**: `1500ms` between shots (0.67 shots/second)
+- **Ammo Capacity**: `5` rounds per magazine
+- **Reload Time**: `2500ms` (2.5 seconds)
+- **Fire Pattern**: Single piercing bullet that passes through up to 3 enemies
+- **Trail Color**: Cyan (`#00e5ff`)
+- **Best For**: Long-range precision, lining up multiple zombies, high-value targets
+
+**Unique Mechanics:**
+- **Piercing rounds**: Bullet passes through up to **3 zombies** before disappearing
+- Extremely high per-shot damage (30 per hit)
+- Very fast bullet speed (25 px/frame vs standard 12 px/frame)
+- Long max range (2000px vs standard 1000px)
+- Slowest fire rate and reload of all weapons
+- 5-round magazine requires careful shot placement
+
+---
+
+### 7. **RPG** 🚀
+**Explosive Area Damage**
+
+- **Damage**: `0` direct impact (damage comes from explosion)
+- **Explosion Damage**: `120` points at epicenter (doubled from 60), falls off with distance
+- **Explosion Radius**: `150px`
+- **Fire Rate**: `2000ms` between shots (0.5 shots/second)
+- **Ammo Capacity**: `3` rockets per magazine
+- **Reload Time**: `3000ms` (3 seconds)
+- **Fire Pattern**: Accelerating rocket projectile with smoke/flame trail
+- **Trail Color**: N/A (rocket has custom sprite rendering)
+- **Best For**: Crowd control, boss damage, clearing dense zombie clusters
+
+**Unique Mechanics:**
+- Rocket **accelerates** from 2 px/frame to 15 px/frame
+- Creates a massive explosion on impact or at max range
+- Explosion damage decreases linearly with distance (50%-100% of 120)
+- Detailed visual rendering: body gradient, warhead cone, fins, engine glow
+- Smoke and flame particle trail follows rocket
+- Explodes on canvas boundary in non-arcade modes
+- Screen shake on explosion (15+ units based on size)
+
+---
+
+### 8. **Laser Gun** ⚡
+**Instant Raycast, High Sustained DPS**
+
+- **Damage**: `3` points per hit (rebalanced from 5 for balance)
+- **Fire Rate**: `60ms` between shots (16.7 shots/second)
+- **Ammo Capacity**: `60` rounds per magazine
+- **Reload Time**: `1500ms` (1.5 seconds)
+- **Range**: `800px` (instant raycast, no travel time)
+- **Fire Pattern**: Instant raycast beam with visual laser
+- **Trail Color**: Neon Pink (`#ff0055`)
+- **Best For**: Sustained damage, precision targeting, no bullet travel time
+
+**Unique Mechanics:**
+- **Instant hit**: No bullet travel time — damage applies immediately via raycast
+- Raycast checks all zombies along beam path, hits closest one
+- Visual beam rendered as `LaserBeam` entity (fades over ~7 frames)
+- Inner white core + colored outer glow + impact flare at hit point
+- No shell casings ejected (unlike all other weapons)
+- Beam visual is separate from damage logic (`laser_visual` vs `laser_hit` types)
+- Highest sustained DPS among standard weapons (~50 DPS)
 
 ---
 
@@ -68,13 +179,19 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 
 | Weapon | Damage | Fire Rate | Ammo | Reload | DPS* | Total Damage/Mag |
 |--------|--------|-----------|------|--------|------|------------------|
-| **Pistol** | 2 | 400ms | 10 | 1000ms | 5 | 20 |
-| **Shotgun** | 6×5 | 800ms | 5 | 1000ms | ~18.8 | 150 (ideal) |
-| **Rifle** | 4 | 200ms | 30 | 1000ms | 20 | 120 |
+| **Pistol** | 2 | 400ms | 10 | 1000ms | 5.0 | 20 |
+| **Shotgun** | 6×5 | 800ms | 5 | 1000ms | ~37.5 | 150 (ideal) |
+| **Rifle** | 4 | 200ms | 30 | 1000ms | 20.0 | 120 |
 | **Flamethrower** | 1.0×3 | 50ms | 100 | 2000ms | ~60 | 300 (plus burn DoT) |
+| **SMG** | 1.6 | 80ms | 40 | 1200ms | 20.0 | 64 |
+| **Sniper** | 30 | 1500ms | 5 | 2500ms | 20.0 | 150 (×3 piercing) |
+| **RPG** | 120 AOE | 2000ms | 3 | 3000ms | ~60 | 360 (AOE) |
+| **Laser Gun** | 3 | 60ms | 60 | 1500ms | 50.0 | 180 |
 
 *DPS calculated assuming all shots hit and accounting for fire rate only (not reload time)
 *Flamethrower DPS includes burn damage over time
+*Sniper DPS multiplied by piercing potential (up to 3×)
+*RPG DPS assumes explosion hits at least one zombie
 
 ---
 
@@ -85,6 +202,10 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - **Press `2`**: Switch to Shotgun  
 - **Press `3`**: Switch to Rifle
 - **Press `4`**: Switch to Flamethrower
+- **Press `5`**: Switch to SMG
+- **Press `6`**: Switch to Sniper
+- **Press `7`**: Switch to RPG
+- **Press `8`**: Switch to Laser Gun
 - **Scroll Wheel** (Up/Down): Cycle through weapons (toggleable in Settings)
 
 **Switching Behavior:**
@@ -124,19 +245,20 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 ### Bullet Properties
 ```javascript
 {
-    radius: 4 pixels,
-    speed: 8 pixels/frame,
+    radius: 3 pixels,
+    speed: 12 pixels/frame (Sniper: 25, Rocket: 2→15 accelerating),
     damage: (weapon-specific),
-    collision: circle-based (4px radius)
+    color: (weapon-specific trail color),
+    collision: circle-based (3px radius)
 }
 ```
 
 ### Bullet Behavior
-- Bullets travel at **8 pixels per frame** in the direction of the mouse cursor
+- Bullets travel at **12 pixels per frame** in the direction of the mouse cursor (weapon-specific speeds vary)
 - **Spawn position**: Slightly ahead of player (1.8× player radius)
 - Bullets retain weapon damage values from when they were fired
 - Bullets despawn on collision with zombies or when leaving screen bounds
-- Visual effect: Yellow/white glowing bullets with gradient core
+- **Weapon-specific trail colors**: Each weapon has a unique bullet trail color for visual distinction
 
 ### Shotgun Spread Mechanics
 - **Shotgun fires 5 bullets per shot**
@@ -154,6 +276,8 @@ The zombie survival game features a weapon system with **4 unique firearms**, ea
 - Visual intensity fades over `5 frames`
 - Positioned at gun barrel (1.8× player radius from center)
 - Directional based on shooting angle
+- **Weapon-specific colors**: Each weapon has unique flash color palette (core/mid/outer RGB layers)
+  - Pistol: white/yellow, Shotgun: orange, Rifle: blue-white, Sniper: cyan, Laser: pink-red
 
 ### Screen Shake
 - **Shooting**: `3 units` of shake
@@ -306,27 +430,6 @@ A close-range melee attack system that provides a fallback option when out of am
 
 ---
 
-### 4. **Flamethrower** 🔥
-**Short-Range, High Fire Rate**
-
-- **Damage**: `1.0` points per tick (doubled from 0.5, damage over time)
-- **Fire Rate**: `50ms` between shots (20 shots/second)
-- **Ammo Capacity**: `100` rounds per tank
-- **Reload Time**: `2000ms` (2 seconds)
-- **Range**: `200px` (short range)
-- **Fire Pattern**: **3 flame particles** with spread pattern
-- **Best For**: Close-range crowd control, applying burn effects, sustained damage
-
-**Unique Mechanics:**
-- Fires **3 flame particles** simultaneously with spread
-- Applies **burn effect**: Zombies take damage over time (3 seconds)
-- Burn damage: `bullet.damage * 2` over time
-- Very high fire rate compensates for low per-tick damage
-- Short range requires close positioning
-- Best for applying status effects and area denial
-
----
-
 ## Advanced Features
 
 ### Persistent Ammo System
@@ -360,15 +463,20 @@ A close-range melee attack system that provides a fallback option when out of am
 ## Future Enhancement Ideas
 
 - [ ] Weapon upgrades/perks system
-- [ ] Additional weapon types (SMG, sniper rifle, etc.)
+- [x] Additional weapon types (SMG, Sniper, RPG, Laser Gun — all implemented)
 - [ ] Weapon pickups from defeated zombies
-- [ ] Ammo drops/pickups
+- [x] Ammo drops/pickups (implemented)
 - [ ] Weapon attachments (scopes, silencers, extended mags)
 - [ ] Alternative fire modes (burst, full-auto toggle)
 - [ ] Weapon durability/wear system
 - [ ] Reload animations/UI feedback
-- [ ] Weapon-specific audio effects differentiation
+- [x] Weapon-specific audio effects differentiation (RPG has unique sound)
+- [x] Weapon-specific muzzle flash colors (implemented — per-weapon RGB palettes)
+- [x] Weapon-specific bullet trail colors (implemented)
 - [ ] Melee weapon variety (knife, bat, machete)
+- [ ] Crossbow weapon (silent, piercing bolts)
+- [ ] Tesla Gun (chain lightning)
+- [ ] Freeze Ray (slow effect)
 
 ---
 

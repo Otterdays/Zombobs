@@ -345,6 +345,62 @@ export class Zombie {
         }
     }
 
+    /**
+     * Draw a name tag above the zombie showing its type.
+     * Call this at the end of each subclass's draw() method.
+     */
+    drawNameTag(context, yOffset = 0) {
+        if (!settingsManager.getSetting('video', 'enemyNameTags')) return;
+
+        const typeLabels = {
+            'base':      { label: 'Zombie',  color: '#9acd32' },
+            'normal':    { label: 'Zombie',  color: '#9acd32' },
+            'fast':      { label: 'Runner',  color: '#ff6633' },
+            'armored':   { label: 'Tank',    color: '#90a4ae' },
+            'exploding': { label: 'Bomber',  color: '#ffa500' },
+            'ghost':     { label: 'Ghost',   color: '#80deea' },
+            'spitter':   { label: 'Spitter', color: '#66ff66' },
+            'flying':    { label: 'Flyer',   color: '#9c64c8' },
+            'blight':    { label: 'Blight',  color: '#e040fb' },
+            'crawler':   { label: 'Crawler', color: '#8d6e63' },
+            'boss':      { label: 'BOSS',    color: '#ff1744' }
+        };
+
+        const info = typeLabels[this.type] || typeLabels['base'];
+        const x = this.x;
+        const y = (this.y - this.radius - 18) + yOffset;
+        const fontSize = 10;
+        const padding = 4;
+
+        context.save();
+        context.font = `bold ${fontSize}px 'Rajdhani', sans-serif`;
+        const textWidth = context.measureText(info.label).width;
+        const pillW = textWidth + padding * 2;
+        const pillH = fontSize + padding;
+        const pillX = x - pillW / 2;
+        const pillY = y - pillH / 2;
+
+        // Background pill
+        context.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        context.beginPath();
+        const r = pillH / 2;
+        context.moveTo(pillX + r, pillY);
+        context.lineTo(pillX + pillW - r, pillY);
+        context.arc(pillX + pillW - r, pillY + r, r, -Math.PI / 2, Math.PI / 2);
+        context.lineTo(pillX + r, pillY + pillH);
+        context.arc(pillX + r, pillY + r, r, Math.PI / 2, -Math.PI / 2);
+        context.closePath();
+        context.fill();
+
+        // Text
+        context.fillStyle = info.color;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(info.label, x, y);
+
+        context.restore();
+    }
+
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
         this.lastDamageTime = Date.now();
@@ -1838,6 +1894,422 @@ export class FlyingZombie extends Zombie {
         this.health -= bulletDamage;
         this.lastDamageTime = Date.now();
         return this.health <= 0;
+    }
+}
+
+// Blight Zombie - Fungal support zombie that leaves toxic slime trails and explodes into spore clouds on death
+export class BlightZombie extends Zombie {
+    constructor(canvasWidth, canvasHeight) {
+        super(canvasWidth, canvasHeight);
+        this.type = 'blight';
+        this.speed *= 0.75; // Slow, lumbering
+        this.health = Math.floor(this.health * 1.3); // 30% more health — tanky
+        this.radius *= 1.1; // Slightly larger hitbox
+        this.lastSlimeTime = 0;
+        this.slimeCooldown = 900; // Drops a slime pool every ~900ms while moving
+        this.slimePoolRadius = 28; // Smaller than standard acid pools (40px)
+        this.sporeCloudRadius = 70; // Death burst radius
+        this.sporeCloudDamage = 20; // Damage dealt to players inside the death burst
+        this.fungalPulseOffset = Math.random() * 1000; // Unique pulse timing
+    }
+
+    update(player) {
+        // Store base speed for night cycle
+        if (!this.baseSpeed) {
+            this.baseSpeed = this.speed;
+        }
+
+        // Check if the slow effect has expired
+        if (this.slowedUntil && Date.now() > this.slowedUntil) {
+            this.speed = this.originalSpeed;
+            this.slowedUntil = undefined;
+            this.originalSpeed = undefined;
+        }
+
+        // Handle burning damage (inherited from base class)
+        if (this.burnTimer > 0) {
+            const now = Date.now();
+            if (!this.lastBurnTick || now - this.lastBurnTick >= RENDERING.BURN_TICK_INTERVAL) {
+                this.health -= this.burnDamage;
+                this.lastBurnTick = now;
+
+                if (gameState.particles.length < MAX_PARTICLES - 10) {
+                    const fireColor = `rgba(255, ${Math.floor(Math.random() * 100 + 100)}, 0, 0.8)`;
+                    createParticles(this.x, this.y, fireColor, 2);
+                }
+            }
+            this.burnTimer -= 16;
+            if (this.burnTimer <= 0) {
+                this.burnTimer = 0;
+                this.burnDamage = 0;
+                this.lastBurnTick = undefined;
+            }
+        }
+
+        // Track velocity for interpolation
+        this.lastX = this.x;
+        this.lastY = this.y;
+
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        const moveX = (dx / dist) * this.speed;
+        const moveY = (dy / dist) * this.speed;
+
+        this.x += moveX;
+        this.y += moveY;
+        this.vx = moveX;
+        this.vy = moveY;
+
+        // Update secondary lower body hitbox position
+        this.lowerBodyHitbox.x = this.x;
+        this.lowerBodyHitbox.y = this.y + 15;
+
+        // Drop toxic slime pool behind as it moves
+        const now = Date.now();
+        if (now - this.lastSlimeTime >= this.slimeCooldown) {
+            if (typeof window !== 'undefined' && window.AcidPool) {
+                gameState.acidPools = gameState.acidPools || [];
+                const pool = new window.AcidPool(this.x, this.y);
+                pool.radius = this.slimePoolRadius;
+                pool.life = 6000; // Slightly longer lasting (6s vs 5s)
+                pool.maxLife = 6000;
+                pool.isSlimePool = true; // Visual marker for slime color
+                pool.damagePerTick = 0.2; // Slightly less damage than regular acid
+                gameState.acidPools.push(pool);
+            }
+            this.lastSlimeTime = now;
+        }
+    }
+
+    drawStaticBody(ctx, x, y, radius) {
+        // Fungal body — deep purple/magenta with bulbous, bloated silhouette
+        const bodyGradient = ctx.createRadialGradient(x - 4, y - 4, 0, x, y, radius);
+        bodyGradient.addColorStop(0, '#ce93d8');   // Light purple center
+        bodyGradient.addColorStop(0.35, '#ab47bc'); // Medium purple
+        bodyGradient.addColorStop(0.65, '#7b1fa2'); // Deep purple
+        bodyGradient.addColorStop(1, '#4a148c');    // Very dark purple edge
+        ctx.fillStyle = bodyGradient;
+
+        // Bloated torso (wider, more swollen than normal)
+        ctx.beginPath();
+        ctx.ellipse(x, y + 16, radius * 1.35, radius * 1.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head (slightly oversized for fungal growths)
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 1.05, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fungal growths / mushroom caps on shoulders and head
+        const fungalTime = (Date.now() + this.fungalPulseOffset) / 500;
+        const fungalPulse = Math.sin(fungalTime) * 0.15 + 0.85; // Subtle size pulse
+
+        // Left shoulder mushroom
+        ctx.fillStyle = '#e040fb';
+        ctx.beginPath();
+        ctx.ellipse(x - radius * 0.9, y - radius * 0.5, 5 * fungalPulse, 4 * fungalPulse, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#aa00ff';
+        ctx.beginPath();
+        ctx.ellipse(x - radius * 0.9, y - radius * 0.5 + 2, 3, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right shoulder mushroom
+        ctx.fillStyle = '#e040fb';
+        ctx.beginPath();
+        ctx.ellipse(x + radius * 0.8, y - radius * 0.3, 4 * fungalPulse, 3 * fungalPulse, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#aa00ff';
+        ctx.beginPath();
+        ctx.ellipse(x + radius * 0.8, y - radius * 0.3 + 2, 2.5, 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Top-of-head mushroom cluster (larger, more prominent)
+        ctx.fillStyle = '#f06292';
+        ctx.beginPath();
+        ctx.ellipse(x + 2, y - radius * 0.95, 6 * fungalPulse, 4 * fungalPulse, 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c2185b';
+        ctx.beginPath();
+        ctx.ellipse(x + 2, y - radius * 0.95 + 2, 4, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small fungal nodules on body surface
+        ctx.fillStyle = 'rgba(224, 64, 251, 0.5)';
+        ctx.beginPath();
+        ctx.arc(x - 5, y + 12, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 6, y + 10, 2, 0, Math.PI * 2);
+        ctx.arc(x - 2, y + 18, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dripping pustules (small bright dots along lower body)
+        ctx.fillStyle = '#ea80fc';
+        ctx.beginPath();
+        ctx.arc(x - 7, y + 20, 1.5, 0, Math.PI * 2);
+        ctx.arc(x + 5, y + 22, 1.5, 0, Math.PI * 2);
+        ctx.arc(x + 1, y + 24, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body outline (dashed, fungal rough edges)
+        ctx.strokeStyle = '#4a148c';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([3, 2]);
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 1.05, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Arms (slightly thicker, fungal-encrusted)
+        ctx.strokeStyle = '#4a148c';
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - 9, y + 10);
+        ctx.lineTo(x - 17, y + 19);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + 9, y + 10);
+        ctx.lineTo(x + 17, y + 19);
+        ctx.stroke();
+    }
+
+    draw(context = ctx) {
+        // Shadow
+        if (graphicsSettings.shadows !== false) {
+            context.fillStyle = `rgba(0, 0, 0, ${RENDERING.SHADOW_ALPHA})`;
+            context.beginPath();
+            context.ellipse(this.x + 3, this.y + this.radius + 3, this.radius * 1.3, this.radius * 0.45, 0, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // Toxic purple/magenta spore aura — quality scaled
+        const auraQuality = graphicsSettings.getQualityValues('aura');
+        if (auraQuality.opacity > 0) {
+            const pulse = Math.sin((Date.now() + this.fungalPulseOffset) / 350) * 0.35 + 0.65;
+            const pulseMultiplier = auraQuality.pulseComplexity;
+            const baseOpacity = 0.5 * auraQuality.opacity;
+
+            if (auraQuality.hasMultiLayer) {
+                const outerAura = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.8);
+                outerAura.addColorStop(0, `rgba(156, 39, 176, ${baseOpacity * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.3, `rgba(123, 31, 162, ${baseOpacity * 0.7 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(0.6, `rgba(74, 20, 140, ${baseOpacity * 0.4 * pulse * pulseMultiplier})`);
+                outerAura.addColorStop(1, 'rgba(74, 20, 140, 0)');
+                context.fillStyle = outerAura;
+                context.beginPath();
+                context.arc(this.x, this.y, this.radius * 2.8, 0, Math.PI * 2);
+                context.fill();
+            }
+
+            const auraGradient = context.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius * 2.2);
+            auraGradient.addColorStop(0, `rgba(224, 64, 251, ${baseOpacity * pulse})`);
+            auraGradient.addColorStop(0.5, `rgba(171, 71, 188, ${baseOpacity * 0.6 * pulse})`);
+            auraGradient.addColorStop(1, 'rgba(123, 31, 162, 0)');
+            context.fillStyle = auraGradient;
+            context.beginPath();
+            context.arc(this.x, this.y, this.radius * 2.2, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        // Static Body (Direct rendering)
+        this.drawStaticBody(context, this.x, this.y, this.radius);
+
+        // Eye sockets (dark purple pits)
+        context.fillStyle = 'rgba(20, 0, 30, 0.85)';
+        context.beginPath();
+        context.ellipse(this.x - 5, this.y - 3, 4, 5, 0, 0, Math.PI * 2);
+        context.ellipse(this.x + 5, this.y - 3, 4, 5, 0, 0, Math.PI * 2);
+        context.fill();
+
+        // Glowing magenta eyes — quality scaled
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
+        const eyePulse = Math.sin(Date.now() / 180) * 0.3 + 0.7;
+        context.shadowBlur = eyeQuality.shadowBlur * eyePulse;
+        context.shadowColor = '#e040fb';
+
+        const createBlightEyeGradient = (ex, ey) => {
+            const gradient = context.createRadialGradient(ex, ey, 0, ex, ey, 3);
+            if (eyeQuality.gradientStops >= 5) {
+                gradient.addColorStop(0, `rgba(255, 200, 255, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.25, `rgba(224, 64, 251, ${eyeQuality.alpha * 0.9})`);
+                gradient.addColorStop(0.5, `rgba(171, 71, 188, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.75, `rgba(123, 31, 162, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(74, 20, 140, ${eyeQuality.alpha * 0.4})`);
+            } else if (eyeQuality.gradientStops >= 4) {
+                gradient.addColorStop(0, `rgba(224, 64, 251, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.33, `rgba(171, 71, 188, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.66, `rgba(123, 31, 162, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(74, 20, 140, ${eyeQuality.alpha * 0.4})`);
+            } else {
+                gradient.addColorStop(0, `rgba(224, 64, 251, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.5, `rgba(171, 71, 188, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(1, `rgba(74, 20, 140, ${eyeQuality.alpha * 0.6})`);
+            }
+            return gradient;
+        };
+
+        context.fillStyle = createBlightEyeGradient(this.x - 5, this.y - 3);
+        context.beginPath();
+        context.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = createBlightEyeGradient(this.x + 5, this.y - 3);
+        context.beginPath();
+        context.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
+        context.fill();
+
+        context.shadowBlur = 0;
+
+        // Jagged mouth (fungal, dripping)
+        context.strokeStyle = '#4a148c';
+        context.lineWidth = 2.5;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.moveTo(this.x - 6, this.y + 5);
+        context.quadraticCurveTo(this.x - 3, this.y + 8, this.x, this.y + 7);
+        context.quadraticCurveTo(this.x + 3, this.y + 8, this.x + 6, this.y + 5);
+        context.stroke();
+
+        // Fungal teeth (slightly discolored)
+        context.strokeStyle = '#e8d5b7';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.moveTo(this.x - 4, this.y + 5);
+        context.lineTo(this.x - 4, this.y + 7);
+        context.moveTo(this.x - 1, this.y + 6);
+        context.lineTo(this.x - 1, this.y + 8);
+        context.moveTo(this.x + 2, this.y + 6);
+        context.lineTo(this.x + 2, this.y + 8);
+        context.moveTo(this.x + 4, this.y + 5);
+        context.lineTo(this.x + 4, this.y + 7);
+        context.stroke();
+
+        // Health bar (if recently damaged and setting enabled)
+        if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
+            const timeSinceDamage = Date.now() - this.lastDamageTime;
+            if (timeSinceDamage < 2000 && this.maxHealth) {
+                const barWidth = this.radius * 2.5;
+                const barHeight = 3;
+                const barX = this.x - barWidth / 2;
+                const barY = this.y - this.radius - 8;
+
+                // Background
+                context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                context.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health fill
+                const healthPercent = Math.max(0, this.health / this.maxHealth);
+                const fillWidth = barWidth * healthPercent;
+
+                const healthBarStyle = settingsManager.getSetting('video', 'enemyHealthBarStyle') || 'gradient';
+
+                if (healthBarStyle === 'gradient') {
+                    const gradient = context.createLinearGradient(barX, barY, barX + barWidth, barY);
+                    if (healthPercent > 0.5) {
+                        gradient.addColorStop(0, '#ab47bc');
+                        gradient.addColorStop(1, '#ffeb3b');
+                    } else {
+                        gradient.addColorStop(0, '#ffeb3b');
+                        gradient.addColorStop(1, '#f44336');
+                    }
+                    context.fillStyle = gradient;
+                } else if (healthBarStyle === 'solid') {
+                    let color = '#ab47bc';
+                    if (healthPercent < 0.5) {
+                        color = healthPercent < 0.25 ? '#f44336' : '#ffeb3b';
+                    }
+                    context.fillStyle = color;
+                } else if (healthBarStyle === 'simple') {
+                    context.fillStyle = '#ffffff';
+                }
+
+                context.fillRect(barX, barY, fillWidth, barHeight);
+
+                // Border (only for gradient and solid styles)
+                if (healthBarStyle !== 'simple') {
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    context.lineWidth = 1;
+                    context.strokeRect(barX, barY, barWidth, barHeight);
+                }
+            }
+        }
+    }
+
+    /**
+     * On death, burst into a toxic spore cloud that damages nearby players.
+     */
+    takeDamage(bulletDamage) {
+        this.health -= bulletDamage;
+        this.lastDamageTime = Date.now();
+
+        if (this.health <= 0) {
+            // Spore cloud death burst
+            this._triggerSporeBurst();
+        }
+
+        return this.health <= 0;
+    }
+
+    _triggerSporeBurst() {
+        // Visual: large purple/pink particle burst
+        if (gameState.particles.length < MAX_PARTICLES - 30) {
+            for (let i = 0; i < 18; i++) {
+                const angle = (i / 18) * Math.PI * 2;
+                const dist = Math.random() * this.sporeCloudRadius * 0.6;
+                const px = this.x + Math.cos(angle) * dist;
+                const py = this.y + Math.sin(angle) * dist;
+                const colors = [
+                    'rgba(224, 64, 251, 0.8)',
+                    'rgba(171, 71, 188, 0.7)',
+                    'rgba(123, 31, 162, 0.6)',
+                    'rgba(74, 20, 140, 0.5)'
+                ];
+                createParticles(px, py, colors[i % colors.length], 1);
+            }
+        }
+
+        // Damage nearby players
+        const radiusSq = this.sporeCloudRadius * this.sporeCloudRadius;
+        for (let i = 0; i < gameState.players.length; i++) {
+            const player = gameState.players[i];
+            if (player.health <= 0) continue;
+
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq < radiusSq) {
+                // Apply damage — shield absorbs first, then health
+                if (player.shield > 0) {
+                    player.shield -= this.sporeCloudDamage;
+                    if (player.shield < 0) {
+                        player.health += player.shield;
+                        player.shield = 0;
+                    }
+                } else {
+                    player.health -= this.sporeCloudDamage;
+                }
+
+                // Trigger damage indicator
+                triggerDamageIndicator(player.x, player.y);
+            }
+        }
+
+        // Also drop a final slime pool at death location (larger, longer lasting)
+        if (typeof window !== 'undefined' && window.AcidPool) {
+            gameState.acidPools = gameState.acidPools || [];
+            const deathPool = new window.AcidPool(this.x, this.y);
+            deathPool.radius = this.sporeCloudRadius * 0.6;
+            deathPool.life = 8000; // 8 seconds
+            deathPool.maxLife = 8000;
+            deathPool.isSlimePool = true;
+            deathPool.damagePerTick = 0.25;
+            gameState.acidPools.push(deathPool);
+        }
+
+        playKillSound();
     }
 }
 

@@ -28,7 +28,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Reorganized HUD layout: Skills (bottom left), XP bar (bottom middle), Weapon info (bottom right)
   - XP progress bar showing level and XP with green gradient fill
   - Active skills display showing collected skills with icons and levels
-  - Enhanced keybind instructions showing all 7 weapons and sprint
+  - Enhanced keybind instructions showing all 8 weapons and sprint
 ✅ **Interactive Pause Menu** - Clickable buttons (Resume, Restart, Settings, Return to Menu) with hover effects
 ✅ **Custom Cursor System** - Custom drawn cursor for all menus and pause screen with automatic system cursor hiding
 ✅ **Multiplayer Lobby** - Modern glassmorphism lobby with animated background, player cards, and enhanced UI
@@ -38,7 +38,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **News Ticker** - Scrolling announcement bar on main menu displaying version highlights
 ✅ **Gallery Screen** - Full showcase gallery displaying zombies, weapons, and pickups
   - Gallery button on main menu (row 4)
-  - Three sections: Zombies (7 types), Weapons (7 types), Pickups (8 types)
+  - Three sections: Zombies (7 types), Weapons (8 types), Pickups (8 types)
   - Visual icons with stats, descriptions, and animations
   - Card-based layout with scrolling support
   - Glassmorphism styling matching lobby design
@@ -201,13 +201,18 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Automatic badge unlocking when requirements are met
   - Profile visit tracking for "Self Aware" badge
   - Dossier theme styling matching profile screen
-✅ **Battlepass/Expansion System** - Seasonal progression track with 50 tiers
-  - Season 1: Outbreak (60-day season)
-  - Free track available to all players
-  - Battlepass XP from match completion, daily/weekly challenges, achievements
-  - Horizontal scrollable tier track with reward previews
-  - Progress bar showing current tier and XP
-  - Season information display (name, days remaining)
+✅ **Battlepass/Expansion System** - Seasonal progression track with 50 tiers (overhauled)
+  - Season 2: Dead Zone (full-year 2026 season) — Season 1: Outbreak (legacy)
+  - Free track available to all players; premium track gated by `hasPremium` flag
+  - Battlepass XP from match completion (score/100 + wave×10 + 25 base), daily/weekly challenges
+  - Reward claim system — rankXP, titles, and emblems auto-claimed on tier unlock via `claimTierReward()`
+  - Expanded challenge pool: 15 daily (kills, score, pickups, headshots, killstreaks, waves) + 9 weekly
+  - Horizontal scrollable tier track with reward previews, claim buttons, and claimed state
+  - Progress bar showing current tier and XP (handles max tier gracefully)
+  - Season information display (name, days remaining / season ended)
+  - Game over screen shows battlepass XP gained, tier-ups, and claimed rewards
+  - Fisher-Yates unbiased challenge randomization
+  - Profile migration for new fields (`claimedTiers`, `hasPremium`, `gamesPlayedThisWeek`)
 ✅ **Enhanced Player Profile System** - Comprehensive player data management
   - Persistent player profile stored in localStorage
   - Unique player ID generation
@@ -323,7 +328,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Multi-gamepad support for local co-op
   - Controller support with analog sticks for movement and aiming
   - Virtual crosshair for controller aiming
-- **Weapon System** - 4 weapons with unique stats (Pistol, Shotgun, Rifle, Flamethrower), switching, reloading
+- **Weapon System** - 8 weapons with unique stats (Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG, Laser Gun), switching, reloading
 - **Ammo System** - Limited bullets, manual/auto reload, weapon-specific ammo
 - **Day/Night Cycle** - Dynamic time-based atmosphere with visual overlay and difficulty scaling
 - **Audio System** - Web Audio API sound generation
@@ -351,6 +356,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - Game running/paused states
 
 ## Recent Updates (v0.8.3.1)
+- **Battlepass System Overhaul (Unreleased)**: Complete rewrite — Season 2: Dead Zone (all of 2026), reward claim system with auto-claim, expanded daily/weekly challenge pools, Fisher-Yates shuffle, killstreak challenges, game over BP display, premium track gate, max tier edge case fix, profile migration.
 - **Audio Overhaul**: Replaced tonal SFX with visceral synthesized textures (meaty impacts, mechanical ticks).
 - **Procedural Music**: Dynamic background music system that scales intensity with gameplay.
 - **Zombie Visual Diversity**: 8 unique variants with clothing, accessories, and bone exposure.
@@ -365,6 +371,15 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 - **Armory Expansion (v0.8.3.2)**: Integrated the Laser Gun (Slot 8) with instant-hit raycast logic.
 
 ## Recent Updates (Unreleased)
+- **Weapon System Polish**: Comprehensive overhaul of all 8 weapon systems
+  - **Critical Bug Fix**: Added missing `weaponStates` for SMG, Sniper, RPG, and Laser weapons (ammo tracking and background reload now work correctly)
+  - **Collision Detection Fix**: Fixed 5 `return`→`continue`/`break` bugs in nested collision loops that were terminating collision checks prematurely
+  - **Melee System Fix**: Converted `forEach`+`splice` to backwards `for` loop, fixing index skipping when killing multiple zombies in one swipe
+  - **Laser Gun Rebalance**: Reduced damage from 5→3 (DPS ~83→~50) to preserve weapon diversity
+  - **Weapon-Specific Muzzle Flash**: Each weapon now has unique RGB flash palette (Pistol: white/yellow, Rifle: blue/white, Sniper: cyan, Laser: magenta)
+  - **Weapon-Specific Bullet Trails**: Bullets now render with weapon-unique trail colors for visual identification
+  - **HUD Update**: Added Laser Gun (key 8) to in-game instructions panel
+  - **AI Player Font Fix**: Fixed AI name rendering using wrong font (`Consolas`→`Roboto Mono`)
 - **Bug Fix**: Fixed stuck "GO!" screen when returning to lobby from dead multiplayer game
   - Issue: `isGameStarting` flag and `gameStartTime` weren't reset when clicking "Back to Lobby" from game over
   - Fix: Added state reset in `gameover_lobby` button handler: `isGameStarting = false` and `gameStartTime = 0`

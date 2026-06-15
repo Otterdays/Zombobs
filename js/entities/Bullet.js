@@ -2,6 +2,7 @@ import { gameState } from '../core/gameState.js';
 import { canvas, ctx } from '../core/canvas.js';
 import { spawnParticle } from '../systems/ParticleSystem.js';
 import { triggerExplosion } from '../utils/combatUtils.js';
+import { WEAPONS, BULLET_TRAIL_COLORS } from '../core/constants.js';
 
 // Helper to check if we're in single player arcade mode
 function isSinglePlayerArcade() {
@@ -16,7 +17,9 @@ export class Bullet {
         this.speed = 12; // Default speed
         this.damage = weapon.damage;
         this.radius = 3;
-        this.color = '#ffff00';
+        // Weapon-specific trail color
+        const weaponKey = Object.keys(WEAPONS).find(k => WEAPONS[k] === weapon) || 'pistol';
+        this.color = BULLET_TRAIL_COLORS[weaponKey] || '#ffff00';
         this.distanceTraveled = 0;
         this.maxDistance = 1000; // Max range
         this.markedForRemoval = false;

@@ -48,7 +48,11 @@ export function createPlayer(x, y, colorIndex = 0) {
             pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
             shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
             rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
-            flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+            flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 },
+            smg: { ammo: WEAPONS.smg.ammo, lastHolsteredTime: 0 },
+            sniper: { ammo: WEAPONS.sniper.ammo, lastHolsteredTime: 0 },
+            rocketLauncher: { ammo: WEAPONS.rocketLauncher.ammo, lastHolsteredTime: 0 },
+            laser: { ammo: WEAPONS.laser.ammo, lastHolsteredTime: 0 }
         },
 
         // Melee state
@@ -328,7 +332,11 @@ export function resetGameState(canvasWidth, canvasHeight) {
                 pistol: { ammo: WEAPONS.pistol.ammo, lastHolsteredTime: 0 },
                 shotgun: { ammo: WEAPONS.shotgun.ammo, lastHolsteredTime: 0 },
                 rifle: { ammo: WEAPONS.rifle.ammo, lastHolsteredTime: 0 },
-                flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 }
+                flamethrower: { ammo: WEAPONS.flamethrower.ammo, lastHolsteredTime: 0 },
+                smg: { ammo: WEAPONS.smg.ammo, lastHolsteredTime: 0 },
+                sniper: { ammo: WEAPONS.sniper.ammo, lastHolsteredTime: 0 },
+                rocketLauncher: { ammo: WEAPONS.rocketLauncher.ammo, lastHolsteredTime: 0 },
+                laser: { ammo: WEAPONS.laser.ammo, lastHolsteredTime: 0 }
             };
 
             // Position players in a circle around center
@@ -356,8 +364,6 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.shieldPickups = [];
     gameState.adrenalinePickups = [];
     gameState.grenades = [];
-    gameState.acidProjectiles = [];
-    gameState.acidPools = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];
     gameState.spawnIndicators = [];

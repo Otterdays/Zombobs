@@ -3,7 +3,8 @@ import { canvas, ctx } from '../core/canvas.js';
 import {
     PLAYER_BASE_SPEED, PLAYER_SPRINT_SPEED,
     PLAYER_STAMINA_MAX, PLAYER_STAMINA_DRAIN, PLAYER_STAMINA_REGEN, PLAYER_STAMINA_REGEN_DELAY,
-    MAX_LOCAL_PLAYERS
+    MAX_LOCAL_PLAYERS,
+    WEAPONS, MUZZLE_FLASH_COLORS
 } from '../core/constants.js';
 import { settingsManager } from './SettingsManager.js';
 import { graphicsSettings } from './GraphicsSystem.js';
@@ -419,7 +420,7 @@ export class PlayerSystem {
             // Player Name (for AI)
             if (player.name && player.inputSource === 'ai') {
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 12px Consolas, monospace';
+                ctx.font = "bold 12px 'Roboto Mono', monospace";
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'bottom';
                 ctx.shadowColor = 'black';
@@ -428,7 +429,7 @@ export class PlayerSystem {
                 ctx.shadowBlur = 0;
             }
 
-            // Muzzle flash - quality scaled
+            // Muzzle flash - quality scaled, weapon-specific colors
             if (player.muzzleFlash.active) {
                 const flashQuality = cachedGraphicsSettings.getQualityValues('muzzleFlash');
                 const baseSize = 8 + (player.muzzleFlash.intensity * 12);
@@ -437,16 +438,24 @@ export class PlayerSystem {
                 const flashX = player.muzzleFlash.x + Math.cos(player.muzzleFlash.angle) * flashOffset;
                 const flashY = player.muzzleFlash.y + Math.sin(player.muzzleFlash.angle) * flashOffset;
 
+                // Resolve weapon-specific flash colors
+                const weaponKey = Object.keys(WEAPONS).find(k => WEAPONS[k] === player.currentWeapon) || 'pistol';
+                const fc = MUZZLE_FLASH_COLORS[weaponKey] || MUZZLE_FLASH_COLORS.pistol;
+                const [cr, cg, cb] = fc.core;
+                const [mr, mg, mb] = fc.mid;
+                const [or, og, ob] = fc.outer;
+                const intensity = player.muzzleFlash.intensity;
+
                 if (flashQuality.gradientLayers >= 3) {
                     // Ultra quality: Multi-layer flash with glow
                     ctx.shadowBlur = flashSize * 0.5;
-                    ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
+                    ctx.shadowColor = `rgba(${cr}, ${cg}, ${cb}, 0.8)`;
 
                     // Outer glow layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.5);
-                    outerGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.3})`);
-                    outerGradient.addColorStop(0.5, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.2})`);
-                    outerGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                    outerGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.3})`);
+                    outerGradient.addColorStop(0.5, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.2})`);
+                    outerGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = outerGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.5, 0, Math.PI * 2);
@@ -454,10 +463,10 @@ export class PlayerSystem {
 
                     // Middle layer
                     const middleGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.2);
-                    middleGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.6})`);
-                    middleGradient.addColorStop(0.4, `rgba(255, 255, 150, ${player.muzzleFlash.intensity * 0.5})`);
-                    middleGradient.addColorStop(0.8, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                    middleGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                    middleGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.6})`);
+                    middleGradient.addColorStop(0.4, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.5})`);
+                    middleGradient.addColorStop(0.8, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.3})`);
+                    middleGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = middleGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.2, 0, Math.PI * 2);
@@ -465,13 +474,13 @@ export class PlayerSystem {
                 } else if (flashQuality.gradientLayers >= 2) {
                     // High quality: Two-layer flash
                     ctx.shadowBlur = flashSize * 0.3;
-                    ctx.shadowColor = 'rgba(255, 255, 200, 0.6)';
+                    ctx.shadowColor = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
 
                     // Outer layer
                     const outerGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize * 1.3);
-                    outerGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.4})`);
-                    outerGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.3})`);
-                    outerGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    outerGradient.addColorStop(0, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.4})`);
+                    outerGradient.addColorStop(0.6, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.3})`);
+                    outerGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                     ctx.fillStyle = outerGradient;
                     ctx.beginPath();
                     ctx.arc(flashX, flashY, flashSize * 1.3, 0, Math.PI * 2);
@@ -481,21 +490,21 @@ export class PlayerSystem {
                 // Main flash (all quality levels)
                 const flashGradient = ctx.createRadialGradient(flashX, flashY, 0, flashX, flashY, flashSize);
                 if (flashQuality.gradientLayers >= 3) {
-                    flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.95})`);
-                    flashGradient.addColorStop(0.2, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.85})`);
-                    flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.7})`);
-                    flashGradient.addColorStop(0.8, `rgba(255, 150, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.95})`);
+                    flashGradient.addColorStop(0.2, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.85})`);
+                    flashGradient.addColorStop(0.5, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.7})`);
+                    flashGradient.addColorStop(0.8, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.4})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 } else if (flashQuality.gradientLayers >= 2) {
-                    flashGradient.addColorStop(0, `rgba(255, 255, 255, ${player.muzzleFlash.intensity * 0.9})`);
-                    flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.7})`);
-                    flashGradient.addColorStop(0.6, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.4})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${cr}, ${cg}, ${cb}, ${intensity * 0.9})`);
+                    flashGradient.addColorStop(0.3, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.7})`);
+                    flashGradient.addColorStop(0.6, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.4})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 } else {
                     // Low/Medium: Simple gradient
-                    flashGradient.addColorStop(0, `rgba(255, 255, 200, ${player.muzzleFlash.intensity * 0.8})`);
-                    flashGradient.addColorStop(0.5, `rgba(255, 200, 0, ${player.muzzleFlash.intensity * 0.5})`);
-                    flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    flashGradient.addColorStop(0, `rgba(${mr}, ${mg}, ${mb}, ${intensity * 0.8})`);
+                    flashGradient.addColorStop(0.5, `rgba(${or}, ${og}, ${ob}, ${intensity * 0.5})`);
+                    flashGradient.addColorStop(1, `rgba(${or}, ${og}, ${ob}, 0)`);
                 }
 
                 ctx.fillStyle = flashGradient;
@@ -506,9 +515,9 @@ export class PlayerSystem {
                 // Reset shadow
                 ctx.shadowBlur = 0;
 
-                // Ultra quality: Add particle trail
+                // Ultra quality: Add particle trail (weapon-colored)
                 if (flashQuality.hasTrail && Math.random() < 0.3) {
-                    spawnParticle(flashX, flashY, '#ffff00', {
+                    spawnParticle(flashX, flashY, `rgb(${or}, ${og}, ${ob})`, {
                         radius: 2,
                         vx: Math.cos(player.muzzleFlash.angle) * 3,
                         vy: Math.sin(player.muzzleFlash.angle) * 3,

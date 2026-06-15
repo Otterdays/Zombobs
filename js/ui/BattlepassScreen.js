@@ -1,4 +1,5 @@
 import { battlepassSystem } from '../systems/BattlepassSystem.js';
+import { playerProfileSystem } from '../systems/PlayerProfileSystem.js';
 import { gameState } from '../core/gameState.js';
 import { PLAYER_SKINS } from '../core/constants.js';
 
@@ -148,13 +149,21 @@ export class BattlepassScreen {
         }
 
         if (this.progressText) {
-            this.progressText.textContent = `Tier ${progress.currentTier} / ${progress.maxTier} - ${progress.battlepassXP} XP`;
+            if (progress.currentTier >= progress.maxTier) {
+                this.progressText.textContent = `MAX TIER! - ${progress.battlepassXP} XP`;
+            } else {
+                this.progressText.textContent = `Tier ${progress.currentTier} / ${progress.maxTier} - ${progress.battlepassXP} XP`;
+            }
         }
 
         // Update subtitle
         const subtitle = this.container?.querySelector('.overlay-subtitle');
         if (subtitle) {
-            subtitle.textContent = `${seasonInfo.daysRemaining} days remaining`;
+            if (seasonInfo.daysRemaining > 0) {
+                subtitle.textContent = `${seasonInfo.daysRemaining} days remaining`;
+            } else {
+                subtitle.textContent = 'Season ended';
+            }
         }
         
         // Refresh challenges display to show progress updates
@@ -241,19 +250,22 @@ export class BattlepassScreen {
 
         this.track.innerHTML = '';
 
-        const seasonInfo = battlepassSystem.getSeasonInfo();
         const progress = battlepassSystem.getProgress();
-        const totalTiers = 50; // Season 1 has 50 tiers
+        const totalTiers = progress.maxTier;
 
         for (let tier = 1; tier <= totalTiers; tier++) {
             const tierReward = battlepassSystem.getTierReward(tier);
             const isUnlocked = battlepassSystem.isTierUnlocked(tier);
+            const isClaimed = battlepassSystem.isTierClaimed(tier);
             const isCurrent = tier === progress.currentTier;
 
             const card = document.createElement('div');
             card.className = 'tier-card';
             if (isUnlocked) {
                 card.classList.add('unlocked');
+                if (isClaimed) {
+                    card.classList.add('claimed');
+                }
             } else if (isCurrent) {
                 card.classList.add('current');
             } else {
@@ -274,15 +286,31 @@ export class BattlepassScreen {
             if (tierReward && tierReward.freeReward) {
                 this.createRewardElement(tierReward.freeReward, rewardsContainer, false);
             }
-            
+
             // Premium Reward
             if (tierReward && tierReward.premiumReward) {
                 this.createRewardElement(tierReward.premiumReward, rewardsContainer, true);
             } else {
-                // Empty slot for alignment if needed, or just let it stack
+                // Empty slot for alignment
                 const empty = document.createElement('div');
                 empty.className = 'tier-reward empty';
                 rewardsContainer.appendChild(empty);
+            }
+
+            // Claim button for unlocked but unclaimed tiers
+            if (isUnlocked && !isClaimed) {
+                const claimBtn = document.createElement('button');
+                claimBtn.className = 'btn-claim';
+                claimBtn.textContent = 'CLAIM';
+                claimBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const rewards = battlepassSystem.claimTierReward(tier);
+                    if (rewards) {
+                        playerProfileSystem.saveProfile();
+                        this.renderTiers();
+                    }
+                });
+                card.appendChild(claimBtn);
             }
 
             card.appendChild(rewardsContainer);
@@ -348,14 +376,18 @@ export class BattlepassScreen {
         cards.forEach((card, index) => {
             const tier = index + 1;
             const isUnlocked = battlepassSystem.isTierUnlocked(tier);
+            const isClaimed = battlepassSystem.isTierClaimed(tier);
             const isCurrent = tier === progress.currentTier;
 
             // Reset classes
-            card.classList.remove('unlocked', 'current', 'locked');
+            card.classList.remove('unlocked', 'current', 'locked', 'claimed');
 
             // Apply appropriate class
             if (isUnlocked) {
                 card.classList.add('unlocked');
+                if (isClaimed) {
+                    card.classList.add('claimed');
+                }
             } else if (isCurrent) {
                 card.classList.add('current');
             } else {

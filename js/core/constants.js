@@ -193,7 +193,7 @@ export const WEAPONS = {
     },
     laser: {
         name: "Laser Gun",
-        damage: 5,
+        damage: 3, // Rebalanced from 5 — was ~83 DPS, now ~50 DPS (still top-tier sustained)
         fireRate: 60, // Very fast
         ammo: 60,
         maxAmmo: 60,
@@ -201,4 +201,27 @@ export const WEAPONS = {
         range: 800,
         type: 'laser'
     }
+};
+
+// Weapon-specific muzzle flash color palettes (RGB arrays: [core, mid, outer])
+// Used by PlayerSystem.js to tint the flash gradient per weapon type
+export const MUZZLE_FLASH_COLORS = {
+    pistol:         { core: [255, 255, 255], mid: [255, 255, 200], outer: [255, 200, 0]   },
+    shotgun:        { core: [255, 255, 220], mid: [255, 200, 100], outer: [255, 120, 0]   },
+    rifle:          { core: [255, 255, 255], mid: [200, 220, 255], outer: [100, 150, 255] },
+    flamethrower:   { core: [255, 255, 200], mid: [255, 160, 50],  outer: [255, 80, 0]    },
+    smg:            { core: [255, 255, 240], mid: [255, 240, 180], outer: [255, 180, 50]  },
+    sniper:         { core: [220, 255, 255], mid: [100, 220, 255], outer: [0, 180, 255]   },
+    rocketLauncher: { core: [255, 255, 200], mid: [255, 180, 80],  outer: [255, 100, 0]   },
+    laser:          { core: [255, 220, 240], mid: [255, 50, 120],  outer: [200, 0, 80]    }
+};
+
+// Per-weapon bullet trail color (used by Bullet.draw)
+export const BULLET_TRAIL_COLORS = {
+    pistol:   '#ffff00',
+    shotgun:  '#ff8c00',
+    rifle:    '#88ccff',
+    smg:      '#ffe066',
+    sniper:   '#00e5ff',
+    laser:    '#ff0055'
 };

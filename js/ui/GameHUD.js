@@ -967,7 +967,8 @@ export class GameHUD {
             { key: controls.weapon4 || '4', weapon: WEAPONS.flamethrower },
             { key: controls.weapon5 || '5', weapon: WEAPONS.smg },
             { key: controls.weapon6 || '6', weapon: WEAPONS.sniper },
-            { key: controls.weapon7 || '7', weapon: WEAPONS.rocketLauncher }
+            { key: controls.weapon7 || '7', weapon: WEAPONS.rocketLauncher },
+            { key: controls.weapon8 || '8', weapon: WEAPONS.laser }
         ];
 
         const weaponString = weaponKeybinds.map(w => `${w.key}=${w.weapon.name}`).join(' ');

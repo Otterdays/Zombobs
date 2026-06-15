@@ -612,14 +612,14 @@ export function handleBulletZombieCollisions() {
 
             // We need to check if zombie is still in gameState.zombies to be safe, 
             // or just check health > 0.
-            if (zombie.health <= 0) return;
+            if (zombie.health <= 0) continue;
 
             // Also checking if bullet is still active (it might have hit another zombie in spread?)
             // The bullet loop continues? No, we usually splice bullet on impact.
-            if (bullet.hit) return; // Add a hit flag if we want to stop processing this bullet
+            if (bullet.hit) break; // Add a hit flag if we want to stop processing this bullet
 
             const zombieIndex = gameState.zombies.indexOf(zombie);
-            if (zombieIndex === -1) return; // Already removed
+            if (zombieIndex === -1) continue; // Already removed
 
             const collisionResult = checkZombieCollision(bullet, zombie);
             if (collisionResult.hit) {
@@ -631,7 +631,7 @@ export function handleBulletZombieCollisions() {
                     const rocketPlayer = bullet.player || gameState.players[0];
                     triggerExplosion(bullet.x, bullet.y, bullet.explosionRadius, bullet.explosionDamage, true, rocketPlayer);
                     bullet.markedForRemoval = true;
-                    return; // Stop processing this bullet
+                    break; // Stop processing this bullet, continue to next bullet
                 }
 
                 // Mark bullet as hit to prevent multiple collisions if it's not piercing
@@ -817,14 +817,14 @@ export function handleBulletZombieCollisions() {
                     }
 
                     bullet.markedForRemoval = true;
-                    return;
+                    break; // Flame bullet done, continue to next bullet
                 }
 
                 // Handle Piercing Bullets
                 if (bullet.type === 'piercing') {
                     // Check if this zombie has already been hit by this bullet (to prevent multi-hit per frame)
                     if (!bullet.hitZombies) bullet.hitZombies = [];
-                    if (bullet.hitZombies.includes(zombie)) return;
+                    if (bullet.hitZombies.includes(zombie)) continue;
 
                     bullet.hitZombies.push(zombie);
                     bullet.pierceCount--;

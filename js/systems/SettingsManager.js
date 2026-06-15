@@ -36,6 +36,7 @@ export class SettingsManager {
                 floatingText: true,
                 dynamicCrosshair: true,
                 enemyHealthBars: true,
+                enemyNameTags: true, // Show zombie type name tags above enemies
                 reloadBar: true,
                 crosshairStyle: 'default', // default, dot, cross, circle
                 crosshairColor: '#00ff00', // Hex color code

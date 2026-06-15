@@ -2,6 +2,39 @@
 
 All notable changes to the Zombie Survival Game project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Battlepass System Overhaul** — Complete rewrite of the battlepass progression system:
+  - **Season 2: Dead Zone** — New 50-tier season spanning all of 2026 with unique titles/emblems (Wasteland Scout, Patient Zero, Dead Zone Overlord, etc.)
+  - **Reward Claim System** — Tier rewards (rankXP, titles, emblems) now actually apply to the rank system. Auto-claims newly unlocked tiers on game over.
+  - **Expanded Challenge Pool** — 15 daily challenges (kills, score, pickups, headshots, killstreaks, waves) + 9 weekly challenges (including "play X games" type)
+  - **Claim UI** — "CLAIM" buttons on unlocked tiers in battlepass screen, visual "CLAIMED" state with green styling
+  - **GameOver Battlepass Display** — Battlepass XP gained, tier-ups, and claimed rewards now shown on game over screen
+  - **Premium Track Gate** — `hasPremium` flag added; premium cosmetics only unlock with premium status
+  - **Season Fallback Fix** — `getCurrentSeason()` now falls back to latest season instead of wiping progress when between seasons
+  - **Fisher-Yates Shuffle** — Replaced biased `.sort()` randomization with proper Fisher-Yates algorithm for challenge selection
+  - **Max Tier Edge Case** — Progress bar now handles tier 50 gracefully
+  - **Profile Migration** — Old profiles gracefully migrate `claimedTiers`, `hasPremium`, `gamesPlayedThisWeek`
+  - **Killstreak Challenge Support** — `maxKillStreak` now passed through session stats for killstreak-type challenges
+- **Weapon-Specific Muzzle Flash Colors** — Each weapon now has a unique RGB muzzle flash palette (Pistol: white/yellow, Rifle: blue/white, Sniper: cyan/blue, Laser: magenta/pink, etc.) for clearer visual feedback during rapid fire.
+- **Weapon-Specific Bullet Trail Colors** — Bullets now render with weapon-unique trail colors (Pistol: yellow, Shotgun: orange, Rifle: blue, Sniper: cyan, RPG: red, Laser: magenta) for better weapon identification during combat.
+- **Laser Gun HUD Keybind** — Added Laser Gun (key 8) to the in-game HUD instructions panel, completing the weapon keybind display for all 8 weapons.
+
+### Fixed
+- **Battlepass Progress Wipe Bug** — Season 1 expired (March 2025) causing `checkSeasonValidity()` to reset all player battlepass progress on every game launch. Fixed by falling back to latest season.
+- **Tier Rewards Never Applied** — `rankXP` and title/emblem rewards defined in tier definitions were never actually applied to the rank system. Implemented `claimTierReward()` with auto-claim on session end.
+- **Daily Challenge Memory Leak** — `completedChallenges` array grew indefinitely with instance IDs. Removed; completion now tracked on challenge objects directly.
+- **GameOver Missing Battlepass Info** — Battlepass XP/tier-ups were computed but never displayed on game over screen.
+- **Missing weaponStates for SMG, Sniper, RPG, Laser** — Critical bug: these 4 weapons had no ammo tracking or background reload because `weaponStates` only initialized Pistol, Shotgun, Rifle, and Flamethrower. Fixed in both `createPlayer()` and `resetGameState()`.
+- **Collision Detection Loop Control Flow** — Fixed 5 instances where `return` statements in nested collision loops were terminating the entire collision function instead of `continue`/`break`, causing bullets to stop checking collisions prematurely.
+- **Melee System Array Mutation Bug** — Fixed critical `forEach`+`splice` pattern that caused index skipping when killing multiple zombies in one melee swipe. Converted to backwards `for` loop for safe in-place array removal.
+- **AI Player Name Font** — Fixed AI player name rendering using wrong font (`Consolas` → `Roboto Mono`) for consistency with game's typography system.
+
+### Changed
+- **Laser Gun Damage Rebalance** — Reduced damage from 5 → 3 (DPS ~83 → ~50). Previous value was ~4× Rifle DPS, making other weapons obsolete. New value maintains Laser's role as high-DPS precision weapon while preserving weapon diversity.
+- **Updated `DOCS/guns.md`** — Complete rewrite with all 8 weapons, corrected statistics table, weapon-specific muzzle flash colors, updated controls section, and marked completed future enhancements.
+
 ## [v0.8.3.10] - 2026-04-06
 
 ### Added

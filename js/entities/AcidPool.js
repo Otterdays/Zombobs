@@ -63,36 +63,68 @@ export class AcidPool {
 
     draw() {
         const alpha = this.life / this.maxLife;
-        
-        // Acid pool glow
-        const glowGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-        glowGradient.addColorStop(0, `rgba(0, 255, 0, ${alpha * 0.4})`);
-        glowGradient.addColorStop(0.5, `rgba(50, 255, 50, ${alpha * 0.3})`);
-        glowGradient.addColorStop(1, `rgba(0, 255, 0, 0)`);
-        ctx.fillStyle = glowGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Acid pool surface
-        const poolGradient = ctx.createRadialGradient(this.x - 5, this.y - 5, 0, this.x, this.y, this.radius);
-        poolGradient.addColorStop(0, `rgba(100, 255, 100, ${alpha * 0.6})`);
-        poolGradient.addColorStop(0.5, `rgba(50, 200, 50, ${alpha * 0.5})`);
-        poolGradient.addColorStop(1, `rgba(0, 150, 0, ${alpha * 0.3})`);
-        ctx.fillStyle = poolGradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Bubbling effect
-        const bubbleTime = Date.now() / 200;
-        for (let i = 0; i < 3; i++) {
-            const bubbleX = this.x + Math.cos(bubbleTime + i * 2) * (this.radius * 0.5);
-            const bubbleY = this.y + Math.sin(bubbleTime + i * 2) * (this.radius * 0.5);
-            ctx.fillStyle = `rgba(200, 255, 200, ${alpha * 0.4})`;
+
+        if (this.isSlimePool) {
+            // Slime pool (BlightZombie) — purple/magenta fungal slime
+            const glowGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+            glowGradient.addColorStop(0, `rgba(171, 71, 188, ${alpha * 0.4})`);
+            glowGradient.addColorStop(0.5, `rgba(123, 31, 162, ${alpha * 0.3})`);
+            glowGradient.addColorStop(1, `rgba(74, 20, 140, 0)`);
+            ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(bubbleX, bubbleY, 3, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
+
+            const poolGradient = ctx.createRadialGradient(this.x - 5, this.y - 5, 0, this.x, this.y, this.radius);
+            poolGradient.addColorStop(0, `rgba(224, 64, 251, ${alpha * 0.6})`);
+            poolGradient.addColorStop(0.5, `rgba(171, 71, 188, ${alpha * 0.5})`);
+            poolGradient.addColorStop(1, `rgba(123, 31, 162, ${alpha * 0.3})`);
+            ctx.fillStyle = poolGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fungal bubbling effect
+            const bubbleTime = Date.now() / 250;
+            for (let i = 0; i < 3; i++) {
+                const bubbleX = this.x + Math.cos(bubbleTime + i * 2) * (this.radius * 0.5);
+                const bubbleY = this.y + Math.sin(bubbleTime + i * 2) * (this.radius * 0.5);
+                ctx.fillStyle = `rgba(240, 180, 240, ${alpha * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else {
+            // Acid pool glow (SpitterZombie)
+            const glowGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+            glowGradient.addColorStop(0, `rgba(0, 255, 0, ${alpha * 0.4})`);
+            glowGradient.addColorStop(0.5, `rgba(50, 255, 50, ${alpha * 0.3})`);
+            glowGradient.addColorStop(1, `rgba(0, 255, 0, 0)`);
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Acid pool surface
+            const poolGradient = ctx.createRadialGradient(this.x - 5, this.y - 5, 0, this.x, this.y, this.radius);
+            poolGradient.addColorStop(0, `rgba(100, 255, 100, ${alpha * 0.6})`);
+            poolGradient.addColorStop(0.5, `rgba(50, 200, 50, ${alpha * 0.5})`);
+            poolGradient.addColorStop(1, `rgba(0, 150, 0, ${alpha * 0.3})`);
+            ctx.fillStyle = poolGradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bubbling effect
+            const bubbleTime = Date.now() / 200;
+            for (let i = 0; i < 3; i++) {
+                const bubbleX = this.x + Math.cos(bubbleTime + i * 2) * (this.radius * 0.5);
+                const bubbleY = this.y + Math.sin(bubbleTime + i * 2) * (this.radius * 0.5);
+                ctx.fillStyle = `rgba(200, 255, 200, ${alpha * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 
