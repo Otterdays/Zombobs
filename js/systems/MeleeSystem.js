@@ -6,6 +6,7 @@ import { triggerExplosion } from '../utils/combatUtils.js';
 import { DamageNumber } from '../entities/Particle.js';
 import { settingsManager } from './SettingsManager.js';
 import { skillSystem } from './SkillSystem.js';
+import { pickupSpawnSystem } from './PickupSpawnSystem.js';
 
 /**
  * MeleeSystem - Handles melee attack logic and range checking
@@ -70,6 +71,8 @@ export class MeleeSystem {
                     if (isExploding) {
                         triggerExplosion(zombieX, zombieY, 60, 30, false);
                     }
+
+                    pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
 
                     gameState.score += 10;
                     gameState.zombiesKilled++;

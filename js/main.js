@@ -13,8 +13,7 @@ import { compactArray, compactArrayWithUpdate } from './utils/arrayUtils.js';
 import { canvas, ctx, gpuCanvas, uiCanvas, uiCtx, resizeCanvas, applyTextRenderingQualityToAll } from './core/canvas.js';
 import { gameState, resetGameState, createPlayer } from './core/gameState.js';
 import { settingsManager } from './systems/SettingsManager.js';
-import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, isAudioInitialized } from './systems/AudioSystem.js';
-import { setMusicIntensity, pauseArcadeMusic, resumeArcadeMusic } from './systems/ArcadeMusicSystem.js';
+import { initAudio, playFootstepSound, playDamageSound, playKillSound, playRestartSound, playMenuMusic, stopMenuMusic, pauseGameMusic, resumeGameMusic, isAudioInitialized } from './systems/AudioSystem.js';
 import { initGroundPattern, graphicsSettings } from './systems/GraphicsSystem.js';
 import { renderingCache } from './systems/RenderingCache.js';
 import { isInViewport, getViewportBounds, shouldUpdateEntity, isVisibleOnScreen } from './utils/gameUtils.js';
@@ -128,10 +127,9 @@ window.settingsPanel = settingsPanel; // Make globally accessible for text rende
 // Apply initial text rendering quality
 applyTextRenderingQualityToAll();
 
-// v0.8.1.2: Initialize ground texture system
-groundTextureSystem.init();
+// v0.8.1.2: Ground texture loads when arcade run starts (see GameStateManager.startGame)
 
-// Initialize volumetric blood simulation system
+// Initialize volumetric blood simulation settings only — grid allocates on first gameplay use
 bloodSimulationSystem.init();
 
 // Initialize Touch Controls
@@ -158,17 +156,20 @@ window.webgpuRenderer = webgpuRenderer;
 // Set initial gpuCanvas visibility (hidden until WebGPU is confirmed active)
 updateGpuCanvasVisibility();
 
-webgpuRenderer.init().then(initialized => {
-    if (initialized) {
+function scheduleWebGPUInit() {
+    webgpuRenderer.init().then(initialized => {
+        if (initialized) {
+            applyWebGPUSettings();
+        }
+        updateGpuCanvasVisibility();
+    });
+}
 
-        // Apply initial settings
-        applyWebGPUSettings();
-    } else {
-
-    }
-    // Update gpuCanvas visibility based on WebGPU availability
-    updateGpuCanvasVisibility();
-});
+if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(scheduleWebGPUInit, { timeout: 2500 });
+} else {
+    setTimeout(scheduleWebGPUInit, 500);
+}
 
 /**
  * Helper function to check if WebGPU is available and enabled
@@ -345,7 +346,7 @@ function togglePause() {
 function pauseGame() {
     gameState.gamePaused = true;
     gameHUD.showPauseMenu();
-    pauseArcadeMusic(); // Pause background music
+    pauseGameMusic();
 
     // Track pause for badge
     playerProfileSystem.trackGamePause();
@@ -359,7 +360,7 @@ function pauseGame() {
 function resumeGame() {
     gameState.gamePaused = false;
     gameHUD.hidePauseMenu();
-    resumeArcadeMusic(); // Resume background music
+    resumeGameMusic();
 
     // Notify server
     if (gameState.multiplayer.active && gameState.multiplayer.socket) {
@@ -675,6 +676,30 @@ function updateGame() {
     // Collisions
     handleBulletZombieCollisions();
     handlePlayerZombieCollisions();
+
+    // Update scrap pickups (magnetic pull toward nearest living player)
+    if (gameState.scrapPickups.length > 0) {
+        let nearestX = gameState.players[0].x;
+        let nearestY = gameState.players[0].y;
+        for (let i = 0; i < gameState.scrapPickups.length; i++) {
+            const scrap = gameState.scrapPickups[i];
+            let minDistSq = Infinity;
+            for (let p = 0; p < gameState.players.length; p++) {
+                const pl = gameState.players[p];
+                if (pl.health <= 0) continue;
+                const dx = pl.x - scrap.x;
+                const dy = pl.y - scrap.y;
+                const distSq = dx * dx + dy * dy;
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    nearestX = pl.x;
+                    nearestY = pl.y;
+                }
+            }
+            scrap.update(nearestX, nearestY, now);
+        }
+    }
+
     handlePickupCollisions();
 
     // Check for next wave
@@ -691,26 +716,6 @@ function updateGame() {
         }
     }
 
-    // Update music intensity based on game state
-    // Base intensity increases with wave number (0.0 to 0.5 over 20 waves)
-    let targetIntensity = Math.min(gameState.wave / 20, 0.5);
-
-    // Add intensity based on zombie count (tension rises with horde size)
-    // 0.0 to 0.5 over 50 zombies
-    targetIntensity += Math.min(gameState.zombies.length / 50, 0.5);
-
-    // Max intensity during boss battles
-    if (gameState.bossActive) {
-        targetIntensity = 1.0;
-    }
-
-    // Increase intensity if local player has low health (< 30%)
-    const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
-    if (localPlayer && localPlayer.health < localPlayer.maxHealth * 0.3) {
-        targetIntensity = Math.max(targetIntensity, 0.8);
-    }
-
-    setMusicIntensity(targetIntensity);
 }
 
 function drawGame() {
@@ -2255,7 +2260,11 @@ loadUsername();
 
 // Initialize Profile System (after username is loaded)
 playerProfileSystem.loadProfile();
-playerProfileSystem.initializeSystems();
+if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => playerProfileSystem.initializeSystems(), { timeout: 3000 });
+} else {
+    setTimeout(() => playerProfileSystem.initializeSystems(), 0);
+}
 
 // Sync username from profile if it exists
 const profile = playerProfileSystem.getProfile();
@@ -2265,9 +2274,9 @@ if (profile && profile.username) {
 loadMenuMusicMuted();
 loadMultiplierStats();
 checkServerHealth(); // Start checking server status
-gameHUD.leaderboardDisplay.fetch(); // Fetch initial leaderboard
+setTimeout(() => gameHUD.leaderboardDisplay.fetch(), 2000);
 
 // Make clearScoreboard available globally for console access
 window.clearScoreboard = clearScoreboard;
 
-gameEngine.start();
+requestAnimationFrame(() => gameEngine.start());

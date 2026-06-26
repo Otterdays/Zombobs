@@ -4,12 +4,14 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **In-game MP3 soundtrack (2026-06-25)** — Gameplay uses a two-track MP3 playlist (mountain + viacheslavstarostin); menu uses `Shadows of the Wasteland`. Procedural `ArcadeMusicSystem` no longer drives gameplay. Startup deferrals reduce index load hitch; flashlight lazy-init guard fixes black-screen crash.
 ✅ **Itch.io HTML build (2026-04-06)** - Verified working on itch after fixing Windows zip entry paths. **Always** run `ITCH/build-itch.ps1` from repo root; it enforces forward-slash paths and required files (build fails otherwise). See `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md` § Itch.io.
 ✅ **Playable** - Core gameplay loop is functional
 ✅ **Visual Polish** - Screen shake, muzzle flash, blood splatter, particles, damage indicators, bullet trails
 ✅ **Explosion Effects** - Grenade and rocket explosions with particle trails (Fixed 2025-11-24)
 ✅ **Audio System** - Advanced Web Audio API implementation
-  - **Procedural Music**: Dynamic 4-layer Arcade soundtrack (808 Bass, Pads, Arpeggio, Percussion)
+  - **In-Game Music**: Two-track MP3 playlist (loops track A → B → A) with pause/resume; replaces procedural arcade oscillators
+  - **Menu Music**: `Shadows of the Wasteland.mp3` (loop)
   - **Granular Mixer**: Independent volume controls for Master, Music, SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
   - **High-Fidelity SFX**: Multi-layered visceral impacts, noise-based "ticks", crystal shimmer multipliers, and **Laser "Zaps"**
   - **UI Sound**: Procedural "Pip" (click) and "Tick" (hover) sounds for full menu feedback

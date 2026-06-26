@@ -29,6 +29,13 @@ export const AMMO_PICKUP_AMOUNT = 15; // Ammo restored per pickup
 export const AMMO_PICKUP_SPAWN_INTERVAL = 20000; // ms between spawns
 export const MAX_AMMO_PICKUPS = 2;
 
+// Scrap pickups (v0.8.2.2: Scavenger Update)
+export const SCRAP_VALUE = 10;
+export const SCRAP_DROP_CHANCE = 0.2; // Regular zombies
+export const SCRAP_BOSS_VALUE = 30;
+export const MAX_SCRAP_PICKUPS = 8;
+export const SCRAP_MAGNETIC_RANGE = 250;
+
 // Low ammo threshold (25% of max ammo)
 export const LOW_AMMO_FRACTION = 0.25;
 
@@ -117,7 +124,18 @@ export const ZOMBIE_BASE_SCORES = {
 
 // Multiplayer settings
 export const MAX_LOCAL_PLAYERS = 4;
-export const SERVER_URL = "https://ottertondays-zombs.hf.space";
+
+function resolveServerUrl() {
+    if (typeof window !== 'undefined') {
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') {
+            return window.location.origin;
+        }
+    }
+    return 'https://ottertondays-zombs.hf.space';
+}
+
+export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
 export const NEWS_UPDATES = "NEW: V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun Weapon ⚡ | Menu Click Sounds 🎵 | V0.8.3.1 ALPHA: Arcade Music System 🎵 | Normal Zombie Variants with Animated Arms 👕 | Doubled Spawn Rate 💀 | V0.8.3.0 ALPHA: Campaign Mode Intro 🎬 | Flashlight System 🔦 | Audio Mixer 🎚️ | Improved Impact SFX 💥 | V0.8.2.1 ALPHA: WebGPU Screen Shake Sync 🫨 | Particle Sync Fix 🎨 | V0.8.2.0 ALPHA: Visual Polish Update ✨ | V0.8.0: Major Refactor 🚀 | And More...";

@@ -40,6 +40,7 @@ export class EntityRenderSystem {
         this.drawEntityArray(gameState.rapidFirePickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.shieldPickups, ctx, viewport, false, false);
         this.drawEntityArray(gameState.adrenalinePickups, ctx, viewport, false, false);
+        this.drawEntityArray(gameState.scrapPickups, ctx, viewport, false, false);
         
         // Zombies with culling (most important for performance) - optimized loop, no ctx parameter
         // Post-draw: render name tags above each zombie

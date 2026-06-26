@@ -10,6 +10,120 @@ let sfxGainNode = null; // SFX volume control
 let menuMusic = null; // HTMLAudioElement for menu music
 let menuMusicSource = null; // MediaElementSourceNode
 let menuMusicGain = null; // Gain node for menu music
+let gameMusicGain = null; // Shared gain node for in-game music
+let gameMusicTracks = []; // { audio, source } per playlist track
+let activeGameTrackIndex = -1;
+let gameMusicActive = false;
+let gunshotBufferScheduled = false;
+
+const MENU_MUSIC_SRC = 'assets/Shadows of the Wasteland.mp3';
+const GAME_MUSIC_TRACKS = [
+    'assets/the_mountain-game-game-music-508018.mp3',
+    'assets/viacheslavstarostin-game-gaming-video-game-music-471936.mp3'
+];
+
+function scheduleGunshotBufferCreation() {
+    if (gunshotBuffer || gunshotBufferScheduled) return;
+    gunshotBufferScheduled = true;
+
+    const create = () => createGunshotBuffer();
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(create, { timeout: 2000 });
+    } else {
+        setTimeout(create, 0);
+    }
+}
+
+export function preloadMenuMusicAsset() {
+    if (menuMusic) return;
+    menuMusic = new Audio(MENU_MUSIC_SRC);
+    menuMusic.loop = true;
+    menuMusic.preload = 'auto';
+}
+
+function ensureGameMusicTracks() {
+    if (gameMusicTracks.length > 0) return;
+
+    for (let i = 0; i < GAME_MUSIC_TRACKS.length; i++) {
+        const audio = new Audio(GAME_MUSIC_TRACKS[i]);
+        audio.preload = 'auto';
+        audio.loop = false;
+        audio.addEventListener('ended', () => {
+            if (!gameMusicActive || activeGameTrackIndex !== i) return;
+            playGameTrackAt(i + 1);
+        });
+        gameMusicTracks.push({ audio, source: null });
+    }
+}
+
+/** @deprecated Use preloadMenuMusicAsset — kept for callers that prewarm audio. */
+export function preloadMusicAssets() {
+    preloadMenuMusicAsset();
+}
+
+function pauseAllGameTracks() {
+    for (let i = 0; i < gameMusicTracks.length; i++) {
+        const audio = gameMusicTracks[i].audio;
+        if (!audio.paused) {
+            audio.pause();
+        }
+        audio.currentTime = 0;
+    }
+}
+
+function getActiveGameAudio() {
+    if (activeGameTrackIndex < 0 || activeGameTrackIndex >= gameMusicTracks.length) return null;
+    return gameMusicTracks[activeGameTrackIndex].audio;
+}
+
+function ensureGameMusicGain() {
+    if (!audioContext || gameMusicGain) return;
+
+    gameMusicGain = audioContext.createGain();
+    const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+    gameMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+    gameMusicGain.connect(masterGainNode || audioContext.destination);
+}
+
+function playGameTrackAt(index) {
+    preloadMenuMusicAsset();
+    ensureGameMusicTracks();
+
+    if (!audioContext) {
+        initAudio();
+    }
+    ensureGameMusicGain();
+
+    const trackCount = GAME_MUSIC_TRACKS.length;
+    const nextIndex = ((index % trackCount) + trackCount) % trackCount;
+    pauseAllGameTracks();
+
+    activeGameTrackIndex = nextIndex;
+    const track = gameMusicTracks[nextIndex];
+
+    if (audioContext && !track.source) {
+        try {
+            track.source = audioContext.createMediaElementSource(track.audio);
+            track.source.connect(gameMusicGain);
+        } catch (e) {
+            // Could not connect game music track to audio context
+        }
+    }
+
+    track.audio.currentTime = 0;
+    track.audio.play().catch(() => {
+        // Ignore AbortError (happens when restarting quickly)
+    });
+}
+
+if (typeof window !== 'undefined') {
+    const schedulePreload = () => preloadMenuMusicAsset();
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(schedulePreload, { timeout: 5000 });
+    } else {
+        setTimeout(schedulePreload, 500);
+    }
+}
 
 // Initialize audio context (needs user interaction first)
 export function initAudio() {
@@ -29,13 +143,16 @@ export function initAudio() {
             sfxGainNode.gain.value = sfxVol !== undefined ? sfxVol : 1.0;
             sfxGainNode.connect(masterGainNode);
 
-            // Pre-create the gunshot buffer once for performance
-            createGunshotBuffer();
+            scheduleGunshotBufferCreation();
 
             // Update music volume if it exists
+            const musicVol = settingsManager.getSetting('audio', 'musicVolume');
+            const resolvedMusicVol = musicVol !== undefined ? musicVol : 0.5;
             if (menuMusicGain) {
-                const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-                menuMusicGain.gain.value = (musicVol !== undefined ? musicVol : 0.5);
+                menuMusicGain.gain.value = resolvedMusicVol;
+            }
+            if (gameMusicGain) {
+                gameMusicGain.gain.value = resolvedMusicVol;
             }
 
         } catch (error) {
@@ -76,13 +193,18 @@ export function updateAudioSettings() {
         // Fallback if Web Audio API isn't fully connected for music
         menuMusic.volume = musicVol * masterVol;
     }
+    if (gameMusicGain) {
+        gameMusicGain.gain.value = musicVol;
+    } else {
+        const activeAudio = getActiveGameAudio();
+        if (activeAudio) {
+            activeAudio.volume = musicVol * masterVol;
+        }
+    }
 }
 
 export function playMenuMusic() {
-    if (!menuMusic) {
-        menuMusic = new Audio('assets/Shadows of the Wasteland.mp3');
-        menuMusic.loop = true;
-    }
+    preloadMenuMusicAsset();
 
     if (!audioContext) {
         initAudio();
@@ -114,6 +236,42 @@ export function stopMenuMusic() {
     if (menuMusic) {
         menuMusic.pause();
         menuMusic.currentTime = 0;
+    }
+}
+
+export function playGameMusic() {
+    ensureGameMusicTracks();
+    gameMusicActive = true;
+
+    const activeAudio = getActiveGameAudio();
+    if (activeGameTrackIndex < 0) {
+        playGameTrackAt(Math.floor(Math.random() * GAME_MUSIC_TRACKS.length));
+    } else if (activeAudio && activeAudio.paused) {
+        activeAudio.play().catch(() => {
+            // Ignore AbortError (happens when restarting quickly)
+        });
+    }
+}
+
+export function stopGameMusic() {
+    gameMusicActive = false;
+    activeGameTrackIndex = -1;
+    pauseAllGameTracks();
+}
+
+export function pauseGameMusic() {
+    const activeAudio = getActiveGameAudio();
+    if (activeAudio && !activeAudio.paused) {
+        activeAudio.pause();
+    }
+}
+
+export function resumeGameMusic() {
+    const activeAudio = getActiveGameAudio();
+    if (activeAudio && activeAudio.paused) {
+        activeAudio.play().catch(() => {
+            // Ignore AbortError (happens when restarting quickly)
+        });
     }
 }
 

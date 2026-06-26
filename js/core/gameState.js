@@ -98,6 +98,10 @@ export function createPlayer(x, y, colorIndex = 0) {
         dodgeKeyReleased: true,
         positionHistory: [],
 
+        // Scrap resource (v0.8.2.2: The Scrapen Update)
+        scrap: 0, // Scrap currency collected from zombies
+        scrapMultiplier: 1.0, // Multiplier for scrap gains (from skills)
+
         // Input
         inputSource: 'mouse', // 'mouse', 'keyboard_arrow', 'gamepad'
         gamepadIndex: null
@@ -149,6 +153,7 @@ export const gameState = {
     zombiesKilled: 0,
     pickupsCollected: 0, // v0.8.3.5: Tracks pickups in current session
     headshots: 0, // v0.8.3.5: Tracks headshots in current session
+    scrapCollected: 0, // v0.8.2.2: Scrap resource collected in current session
     zombiesPerWave: 5,
     zombiesSpawnedThisWave: 0,  // Actual number of zombies spawned for current wave
     highScore: 0,
@@ -186,6 +191,7 @@ export const gameState = {
     rapidFirePickups: [],
     shieldPickups: [],
     adrenalinePickups: [],
+    scrapPickups: [], // v0.8.2.2: Scrap resource pickup
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -295,6 +301,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesKilled = 0;
     gameState.pickupsCollected = 0;
     gameState.headshots = 0;
+    gameState.scrapCollected = 0;
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;
@@ -337,6 +344,8 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.ammoMultiplier = 1.0;
             player.critChance = 0;
             player.hasRegeneration = false;
+            player.scrap = 0;
+            player.scrapMultiplier = 1.0;
 
             // Reset weapon states
             player.weaponStates = {
@@ -374,6 +383,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.rapidFirePickups = [];
     gameState.shieldPickups = [];
     gameState.adrenalinePickups = [];
+    gameState.scrapPickups = [];
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];

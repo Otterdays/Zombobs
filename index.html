@@ -38,7 +38,8 @@
                     message.includes('monetization') ||
                     message.includes('xr-spatial-tracking') ||
                     message.includes('Permissions-Policy') ||
-                    message.includes('allowfullscreen')) {
+                    message.includes('allowfullscreen') ||
+                    message.includes('downloadable font:')) {
                     return; // Silently ignore
                 }
                 originalWarn.apply(console, args);

@@ -64,6 +64,8 @@ export class WebGPURenderer {
         // ZombobsFX spore cloud effect
         this.zombobsFX = null;
         this.zombobsFXEnabled = false;
+        this.zombobsFXInitPromise = null;
+        this.flashlightInitPromise = null;
 
         // Flashlight System
         this.flashlightEnabled = true;
@@ -592,18 +594,7 @@ export class WebGPURenderer {
                 primitive: { topology: 'triangle-list' },
             });
 
-            // Initialize ZombobsFX spore cloud effect
-            if (!this.fallbackMode) {
-                this.zombobsFX = new ZombobsFX();
-                try {
-                    await this.zombobsFX.init(this.device, this.context, this.format, gpuCanvas);
-                } catch (error) {
-                    this.zombobsFX = null;
-                }
-            }
-
-            // Initialize Flashlight
-            await this._initFlashlight();
+            // ZombobsFX and flashlight init deferred until first gameplay frame
 
             this.isInitialized = true;
             return true;
@@ -611,6 +602,25 @@ export class WebGPURenderer {
             console.error('Error initializing WebGPU:', error);
             this.fallbackMode = true;
             return false;
+        }
+    }
+
+    _ensureGameplayEffectsInit() {
+        if (this.fallbackMode || !this.isInitialized) return;
+
+        if (this.zombobsFXEnabled && !this.zombobsFX && !this.zombobsFXInitPromise) {
+            this.zombobsFX = new ZombobsFX();
+            this.zombobsFXInitPromise = this.zombobsFX.init(this.device, this.context, this.format, gpuCanvas)
+                .catch(() => {
+                    this.zombobsFX = null;
+                    this.zombobsFXInitPromise = null;
+                });
+        }
+
+        if (this.flashlightEnabled && !this.flashlightPipeline && !this.flashlightInitPromise) {
+            this.flashlightInitPromise = this._initFlashlight().catch(() => {
+                this.flashlightInitPromise = null;
+            });
         }
     }
 
@@ -622,6 +632,12 @@ export class WebGPURenderer {
         if (!this.context || !this.device) {
             return;
         }
+
+        if (!isGameplay) {
+            return;
+        }
+
+        this._ensureGameplayEffectsInit();
 
         try {
             // Update time
@@ -969,6 +985,10 @@ export class WebGPURenderer {
 
     updateFlashlight(player, zombies) {
         if (!this.flashlightEnabled || !this.isInitialized || this.fallbackMode) return;
+        if (!this.flashlightUniformBuffer || !this.zombieBuffer) {
+            this._ensureGameplayEffectsInit();
+            return;
+        }
 
         const active = player && player.flashlight && player.flashlight.active;
         const x = player ? player.x : 0;

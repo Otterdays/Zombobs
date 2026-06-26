@@ -15,12 +15,15 @@ export class GroundTextureSystem {
         this.imageLoaded = false;
         this.lastPlayerX = null;
         this.lastPlayerY = null;
+        this._initialized = false;
     }
 
     /**
      * Initialize the ground pattern and load the image
      */
     init() {
+        if (this._initialized) return;
+        this._initialized = true;
         this.groundPattern = initGroundPattern();
         
         // Load the image for direct drawing (needed for scrolling)

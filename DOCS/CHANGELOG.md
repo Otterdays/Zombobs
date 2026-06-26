@@ -6,6 +6,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **In-Game MP3 Soundtrack** — Replaced procedural oscillator arcade music with licensed MP3 tracks: two-track gameplay playlist (`the_mountain-game-game-music-508018.mp3`, `viacheslavstarostin-game-gaming-video-game-music-471936.mp3`) that alternates and loops; menu music remains `Shadows of the Wasteland.mp3`. Per-track preloaded `Audio` elements, pause/resume support, random start track on game begin.
+- **Scavenger Update — Scrap System (v0.8.2.2)** — Scrap currency drops from zombie deaths (bosses always, regular zombies 20% chance). Bronze/gold `ScrapPickup` entities with glint sparkle and magnetic pull toward players. Collected via walk-over in `handlePickupCollisions`. Scrap counter HUD stat (desktop bottom bar + mobile sidebar) with bronze/silver/gold accent tiers. Session `scrapCollected` + per-player `scrap` tracked in `gameState`.
 - **Molotov Cocktail Throwable** — Added a new throwable weapon class that detonates instantly on impact with the ground or directly colliding with zombies. Spawns a fiery pool (orange/red glow and crackling embers) that damages players and zombies alike. Applies a lingering 3-second burn DoT effect to zombies.
 - **Throwable Cycling & Inventory** — Mapped `Q` (keyboard) and `D-pad Down` (gamepad) to swap equipped throwables between Grenades and Molotovs. Upgraded the HUD to render the correct active icon and count dynamically, complete with a satisfying visual scale bounce animation upon switching.
 - **Perfect Dodge Visual Feedback** — Added a floating "DODGED!" combat text popup when a player uses dodge i-frames to successfully evade an attack that would have otherwise hit them (works for zombie melee, exploding barrels, exploding zombies, and acid pools).
@@ -29,6 +31,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Laser Gun HUD Keybind** — Added Laser Gun (key 8) to the in-game HUD instructions panel, completing the weapon keybind display for all 8 weapons.
 
 ### Fixed
+- **Index Load Hitch / Black Screen** — Deferred WebGPU init (idle), ZombobsFX + flashlight lazy init on first gameplay frame, blood-grid allocation on first sim tick, ground texture on game start, game loop + leaderboard fetch staggered. Guard `updateFlashlight()` until GPU buffers exist (fixed `GPUQueue.writeBuffer` crash and black screen). Removed `willReadFrequently` from HUD canvas context.
+- **Local Dev Cookie Warning** — `SERVER_URL` auto-resolves to `window.location.origin` on `localhost` / `127.0.0.1`; local `/health` sets `zombobs_user_id` cookie; health checks use `credentials: 'same-origin'`.
 - **combatUtils.js Syntax Error** — Extra closing brace in `handleBulletZombieCollisions()` quadtree init block closed the function early, causing `Unexpected token '}'` at load time and breaking all bullet–zombie collision logic.
 - **Co-op HUD Crash** — `drawCoopHUD()` referenced `xpBarWidth` without defining it (`ReferenceError` on co-op / multiplayer HUD draw). Added `const xpBarWidth = 280 * scale` to match single-player and desktop layouts.
 - **Deprecated PWA Meta Tag** — Added `<meta name="mobile-web-app-capable" content="yes">` alongside existing Apple tag in `index.html` to satisfy modern browser PWA hints.
@@ -42,6 +46,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **AI Player Name Font** — Fixed AI player name rendering using wrong font (`Consolas` → `Roboto Mono`) for consistency with game's typography system.
 
 ### Changed
+- **Startup Audio Preload** — Menu music only preloads on idle; gameplay tracks load when a run starts (avoids ~12 MB decode spike on index load).
+- **WebGPU Menu Idle** — Skips GPU render pass on non-gameplay screens; gameplay effects init deferred until arcade/co-op session.
 - **Laser Gun Aiming Raycast** — Raycast checks now intersect with active explosive barrels, allowing instant-hit laser beam damage and detonation.
 - **Quadtree Boundary Update** — Refactored mode check comparisons from hardcoded size checks to clean boolean properties (`collisionQuadtree.isArcade`) for efficiency.
 - **GameHUD UI Performance** — Cached `isMobile()` regex check and UI scale calculations to prevent redundant computations on frame ticks.

@@ -38,6 +38,7 @@ export class BloodSimulationSystem {
 
         // Performance tracking
         this.simulationTime = 0;
+        this._gridInitialized = false;
     }
     
     /**
@@ -48,21 +49,16 @@ export class BloodSimulationSystem {
     }
 
     /**
-     * Initialize blood simulation system
+     * Initialize blood simulation system (grid allocation deferred until gameplay)
      */
     init() {
-        // Check if blood simulation should be enabled
         this.updateQualitySettings();
+    }
 
-        if (!this.enabled) {
-
-            return;
-        }
-
-        // Initialize blood grid
+    ensureGridInitialized() {
+        if (this._gridInitialized || !this.enabled) return;
         this.initializeGrid();
-
-
+        this._gridInitialized = true;
     }
 
     /**
@@ -168,6 +164,8 @@ export class BloodSimulationSystem {
      */
     update(deltaTime) {
         if (!this.enabled) return;
+        this.ensureGridInitialized();
+        if (!this._gridInitialized) return;
 
         const now = performance.now();
 

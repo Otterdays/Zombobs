@@ -2,6 +2,17 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Scavenger Update — Scrap System (v0.8.2.2) [Active]
+- **Objective**: Wire scrap drops, magnetic pickup, HUD counter from zombie kills.
+- **Tasks**:
+  - [x] Normalize `gameState` scrap fields + reset on new game
+  - [x] `ScrapPickup` entity — magnetic pull, glint, death-spawn
+  - [x] Render + per-frame update in `EntityRenderSystem` / `main.js`
+  - [x] Collection via `handlePickupCollisions` (not `shootBullet`)
+  - [x] Zombie death drops via `PickupSpawnSystem.tryDropScrapFromZombie`
+  - [x] HUD scrap stat (desktop + mobile, Score preserved)
+- **Current Status**: ✅ Complete — manual browser test pending
+
 ### Campaign Zone: The Railyard [Active]
 - **Objective**: Build the first campaign map based on `CAMPAIGN_DESIGN.md`.
 - **Tasks**:
@@ -95,11 +106,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Runtime bugfixes (2026-06-14)**: Removed stray `}` in `combatUtils.js` quadtree init (syntax error at load); added missing `xpBarWidth` in `GameHUD.drawCoopHUD()`; added `mobile-web-app-capable` meta to `index.html`.
-2. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
-3. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
-4. **index.html QoL (2026-04-06)**: Boot overlay, meta, safe-area, noscript, font preload; `dismissBootOverlayOnce` on first draw.
-5. Vendored Socket.IO for itch CSP; narrowed `console.warn` filter in `index.html`.
+1. **In-game MP3 music + load perf (2026-06-25)**: Replaced procedural `ArcadeMusicSystem` with looping MP3 playlist (`the_mountain…`, `viacheslavstarostin…`); menu stays `Shadows of the Wasteland`. Deferred WebGPU ZombobsFX/flashlight init, blood grid, ground texture, game-loop start, leaderboard fetch; lazy menu-music preload only. Fixed local `SERVER_URL` auto-detect + `/health` cookie; guard `updateFlashlight` until GPU buffers exist (black-screen crash). Console filter for font warnings.
+2. **Scavenger Update scrap wiring (2026-06-25)**: Finished half-built scrap feature — zombie death drops, magnetic pickup update/render loop, `handlePickupCollisions` collection, HUD scrap stat, `gameState` reset. Removed random timer spawn stub.
+3. **Runtime bugfixes (2026-06-14)**: Removed stray `}` in `combatUtils.js` quadtree init (syntax error at load); added missing `xpBarWidth` in `GameHUD.drawCoopHUD()`; added `mobile-web-app-capable` meta to `index.html`.
+4. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
+5. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

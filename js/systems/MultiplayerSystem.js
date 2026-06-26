@@ -35,7 +35,9 @@ export class MultiplayerSystem {
         gameState.multiplayer.serverStatus = 'checking';
 
 
-        fetch(`${SERVER_URL}/health`, { credentials: 'include' })
+        fetch(`${SERVER_URL}/health`, {
+            credentials: 'same-origin'
+        })
             .then(response => {
                 if (response.ok) {
                     return response.json();
@@ -121,8 +123,8 @@ export class MultiplayerSystem {
 
             // CRITICAL FIX: Ensure cookie is set BEFORE Socket.io connection
             // Fetch /health endpoint first to get/set the user ID cookie
-            fetch(`${SERVER_URL}/health`, { 
-                credentials: 'include',
+            fetch(`${SERVER_URL}/health`, {
+                credentials: 'same-origin',
                 method: 'GET'
             })
             .then(() => {

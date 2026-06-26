@@ -26,7 +26,7 @@ import { initGroundPattern } from '../systems/GraphicsSystem.js';
 export class GameHUD {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d', { willReadFrequently: true });
+        this.ctx = canvas.getContext('2d');
         this.bossHealthBar = new BossHealthBar(canvas);
         this.rankDisplay = new RankDisplay(canvas);
         this.leaderboardDisplay = new LeaderboardDisplay(canvas);
@@ -133,7 +133,13 @@ export class GameHUD {
         let currentX = x;
         let currentY = y;
         let currentWidth = width;
-        
+
+        // Handle Scrap stat (special metallic styling)
+        if (label === 'Scrap') {
+            this.drawScrapStat(value, x, y, width, statHeight, scale);
+            return;
+        }
+
         const isCycling = (label === 'Grenades' || label === 'Molotovs') && this.throwableCycleAnimTimer > 0;
         if (isCycling) {
             const scaleFactor = 1 + (this.throwableCycleAnimTimer / 15) * 0.15; // Max 1.15x scale
@@ -410,6 +416,8 @@ export class GameHUD {
         this.drawStat('Kills', gameState.zombiesKilled, '💀', '#76ff03', killsX, statY, statWidth);
         // ===== END DIRECTIONAL COMPASS STATS =====
 
+        // Scrap stat will be drawn in mobile layout (handled separately)
+
         // Draw centralized multiplier indicator at top center (if active or building up)
         // Show if multiplier > 1.0 OR if player has any consecutive kills (progress bar)
         if (player.scoreMultiplier > 1.0 || player.consecutiveKills > 0) {
@@ -456,17 +464,15 @@ export class GameHUD {
             const sidebarSpacing = 15 * scale;
             const centerY = this.canvas.height / 2;
 
-            // Calculate total height to center the block
-            const leftBlockTotalHeight = sidebarHeight * 2 + sidebarSpacing;
-            const leftBlockStartY = centerY - (leftBlockTotalHeight / 2);
+        // Calculate total height to center the block (Left, Score, Scrap)
+        const leftBlockTotalHeight = sidebarHeight * 3 + sidebarSpacing * 2;
+        const leftBlockStartY = centerY - (leftBlockTotalHeight / 2);
 
-            const leftX = this.padding; // Hug the left wall
+        const leftX = this.padding;
 
-            // Draw "Left" (Zombies)
-            this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, leftBlockStartY, sidebarWidth, sidebarHeight);
-
-            // Draw "Score" (Below)
-            this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, leftBlockStartY + sidebarHeight + sidebarSpacing, sidebarWidth, sidebarHeight);
+        this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, leftBlockStartY, sidebarWidth, sidebarHeight);
+        this.drawStat('Score', gameState.score, '🏆', '#ffd700', leftX, leftBlockStartY + sidebarHeight + sidebarSpacing, sidebarWidth, sidebarHeight);
+        this.drawScrapStat(player.scrap || 0, leftX, leftBlockStartY + (sidebarHeight + sidebarSpacing) * 2, sidebarWidth, sidebarHeight, scale);
 
             // Right Sidebar (Center Vertical): Weapon, Grenade
             // Stacked vertically on the right wall
@@ -539,9 +545,11 @@ export class GameHUD {
             const leftStatHeight = 50 * scale;
             const leftX = this.padding;
             const scoreX = leftX + leftStatWidth + bottomSpacing;
+            const scrapX = scoreX + leftStatWidth + bottomSpacing;
 
             this.drawStat('Left', waveProgressText, '🧟', waveProgressColor, leftX, xpBarY, leftStatWidth, leftStatHeight);
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', scoreX, xpBarY, leftStatWidth, leftStatHeight);
+            this.drawScrapStat(player.scrap || 0, scrapX, xpBarY, leftStatWidth, leftStatHeight, scale);
 
             // Bottom right: Weapon and Grenade (side-by-side)
             const weaponWidth = 200 * scale;
@@ -712,6 +720,82 @@ export class GameHUD {
         }
 
         return currentY;
+    }
+
+    drawScrapStat(value, x, y, width, height, scale) {
+        const padding = 10 * scale;
+        const fontSize = this.getScaledFontSize();
+
+        let currentX = x;
+        let currentY = y;
+        let currentWidth = width;
+
+        // Glass Background (matching Stats UI)
+        this.ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+        this.ctx.fillRect(currentX, currentY, currentWidth, height);
+
+        // Texture overlay
+        const groundPattern = initGroundPattern();
+        if (groundPattern) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.15;
+            this.ctx.fillStyle = groundPattern;
+            this.ctx.fillRect(currentX, currentY, currentWidth, height);
+            this.ctx.restore();
+        }
+
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(currentX, currentY, currentWidth, height);
+
+        // Gold/Silver/Bronze accent based on value
+        let scrapColor;
+        if (value >= 100) {
+            scrapColor = '#ffd700';
+        } else if (value >= 25) {
+            scrapColor = '#c0c0c0';
+        } else {
+            scrapColor = '#cd9b6d';
+        }
+
+        // Vertical accent bar (gold/silver/bronze)
+        this.ctx.fillStyle = scrapColor;
+        this.ctx.shadowBlur = 10 * scale;
+        this.ctx.shadowColor = scrapColor;
+        this.ctx.fillRect(currentX, currentY, 4 * scale, height);
+        this.ctx.shadowBlur = 0;
+
+        // Icon (Scrap coin/treasure chest icon)
+        const iconSize = 22 * scale;
+        const iconX = currentX + 24 * scale;
+        const iconY = currentY + height * 0.5;
+        this.ctx.font = `${iconSize}px serif`; // Emoji font
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('💰', iconX, iconY);
+
+        // Label text (Top-left stacked)
+        const labelFontSize = Math.max(9, Math.round(11 * scale));
+        this.ctx.font = `bold ${labelFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = '#bfbfbf';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText('SCRAP', currentX + 46 * scale, currentY + 10 * scale);
+
+        // Value (Bottom-right stacked, prominent)
+        this.ctx.textAlign = 'right';
+        this.ctx.textBaseline = 'bottom';
+        const valueFontSize = Math.max(16, Math.round(24 * scale));
+        this.ctx.font = `bold ${valueFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillStyle = scrapColor;
+
+        // Glow for the value
+        this.ctx.shadowBlur = 12 * scale;
+        this.ctx.shadowColor = scrapColor;
+        this.ctx.fillText(value, currentX + currentWidth - 12 * scale, currentY + height - 8 * scale);
+        this.ctx.shadowBlur = 0;
+        this.ctx.textAlign = 'left'; // Reset alignment
     }
 
     drawXPBar(x, y, width) {

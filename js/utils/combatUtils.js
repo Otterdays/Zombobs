@@ -6,7 +6,7 @@ import {
     WEAPONS, GRENADE_COOLDOWN, GRENADE_EXPLOSION_RADIUS, GRENADE_DAMAGE,
     HEALTH_PICKUP_SPAWN_INTERVAL, MAX_HEALTH_PICKUPS, PLAYER_MAX_HEALTH, HEALTH_PICKUP_HEAL_AMOUNT,
     AMMO_PICKUP_SPAWN_INTERVAL, MAX_AMMO_PICKUPS, AMMO_PICKUP_AMOUNT, MAX_GRENADES,
-    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN
+    ZOMBIE_BASE_SCORES, MAX_MOLOTOVS, MOLOTOV_COOLDOWN, SCRAP_VALUE
 } from '../core/constants.js';
 import { playGunshotSound, playKillSound, playDamageSound, playExplosionSound, playRocketFireSound, playHitSound, playMultiplierUpSound, playMultiplierMaxSound, playMultiplierLostSound } from '../systems/AudioSystem.js';
 import { createExplosion, createBloodSplatter, createParticles, addParticle } from '../systems/ParticleSystem.js';
@@ -20,6 +20,7 @@ import { Prop } from '../entities/Prop.js';
 import { settingsManager } from '../systems/SettingsManager.js';
 import { skillSystem } from '../systems/SkillSystem.js';
 import { bloodSimulationSystem } from '../systems/BloodSimulationSystem.js';
+import { pickupSpawnSystem } from '../systems/PickupSpawnSystem.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
 let collisionQuadtree = null;
@@ -491,7 +492,10 @@ export function triggerExplosion(x, y, radius, damage, sourceIsPlayer = true, so
                 // Clean up state tracking for dead zombie (multiplayer sync)
                 gameState.lastZombieState.delete(zombie.id);
 
+                const dropX = zombie.x;
+                const dropY = zombie.y;
                 gameState.zombies.splice(zombieIndex, 1);
+                pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, dropX, dropY);
 
                 // Check if boss was killed
                 if (zombie.type === 'boss' || zombie === gameState.boss) {
@@ -771,6 +775,7 @@ export function handleBulletZombieCollisions() {
                         // const zombieX = zombie.x; // Already stored
                         // const zombieY = zombie.y;
                         gameState.zombies.splice(zombieIndex, 1);
+                        pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
 
                         if (zombie.type === 'boss' || zombie === gameState.boss) {
                             gameState.bossActive = false;
@@ -971,6 +976,7 @@ export function handleBulletZombieCollisions() {
 
                     // Remove zombie from array first
                     gameState.zombies.splice(zombieIndex, 1);
+                    pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombieX, zombieY);
 
                     // Handle Headshot Decapitation & Gore
                     if (isHeadshot) {
@@ -1440,6 +1446,33 @@ export function handlePickupCollisions() {
             return !collected;
         });
     }
+
+    // Check scrap pickup collisions (magnetic + walk-over)
+    if (gameState.scrapPickups.length > 0) {
+        gameState.scrapPickups = gameState.scrapPickups.filter(scrap => {
+            let collected = false;
+            for (const player of gameState.players) {
+                if (player.health <= 0) continue;
+                if (checkCollision(player, scrap)) {
+                    const scrapValue = scrap.value || SCRAP_VALUE;
+                    const multiplier = player.scrapMultiplier || 1.0;
+                    const gained = Math.floor(scrapValue * multiplier);
+                    player.scrap = (player.scrap || 0) + gained;
+                    gameState.scrapCollected += gained;
+                    gameState.score += gained;
+                    createParticles(scrap.x, scrap.y, '#cd9b6d', 8);
+                    if (showFloatingText) {
+                        gameState.damageNumbers.push(
+                            new DamageNumber(scrap.x, scrap.y - 20, `+${gained} SCRAP`, false, '#ffd700')
+                        );
+                    }
+                    collected = true;
+                    break;
+                }
+            }
+            return !collected;
+        });
+    }
 }
 
 function triggerNuke(x, y) {
@@ -1487,6 +1520,8 @@ function triggerNuke(x, y) {
             player.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
             player.adrenalineBoostActive = true;
         }
+
+        pickupSpawnSystem.tryDropScrapFromZombie(gameState, zombie, zombie.x, zombie.y);
 
         // Remove
         gameState.zombies.splice(i, 1);

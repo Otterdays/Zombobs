@@ -287,6 +287,8 @@ app.get('/dashboard/html', (req, res) => {
 
 // Health check endpoint for Hugging Face
 app.get('/health', (req, res) => {
+  getOrCreateUserId(req, res);
+
   res.json({
     status: 'ok',
     players: players.size,
