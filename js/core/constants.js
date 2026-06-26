@@ -155,7 +155,7 @@ function resolveServerUrl() {
 export const SERVER_URL = resolveServerUrl();
 
 // News ticker updates for main menu
-export const NEWS_UPDATES = "NEW: V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun Weapon ⚡ | Menu Click Sounds 🎵 | V0.8.3.1 ALPHA: Arcade Music System 🎵 | Normal Zombie Variants with Animated Arms 👕 | Doubled Spawn Rate 💀 | V0.8.3.0 ALPHA: Campaign Mode Intro 🎬 | Flashlight System 🔦 | Audio Mixer 🎚️ | Improved Impact SFX 💥 | V0.8.2.1 ALPHA: WebGPU Screen Shake Sync 🫨 | Particle Sync Fix 🎨 | V0.8.2.0 ALPHA: Visual Polish Update ✨ | V0.8.0: Major Refactor 🚀 | And More...";
+export const NEWS_UPDATES = "NEW: V0.8.4 ALPHA — The Chaos & Horde Update: Wave Chaos Mutators 🌊 | Scrap Shop Shrine 💰 | Scrap Kill Drops 💎 | Zombie Gaze & Organic Motion 👁️ | Torso Overlay VFX 🩸 | MP3 Soundtrack 🎵 | Controls in Settings ⚙️ | Touch Fix 📱 | Phase 4 Engine 🔧 | V0.8.3.3 ALPHA: UI Interaction Audio 🔊 | Improved HUD Visuals 🎨 | V0.8.3.2 ALPHA: Laser Gun ⚡ | V0.8.3.0 ALPHA: Campaign Intro 🎬 | Flashlight 🔦 | V0.8.0: Major Refactor 🚀 | And More...";
 
 // Player Skin Definitions
 export const PLAYER_SKINS = {

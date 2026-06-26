@@ -434,19 +434,16 @@ export class GameHUD {
         startY += (sharedStatHeight + itemSpacing) * 2 + itemSpacing; // Health + Shield (or just Health if no shield)
         const finalY = this.drawSharedStats(startX, startY);
 
-        // Calculate bottom UI positions (above instructions)
-        // Instructions box top is at canvas.height - 75 * scale (raised to avoid taskbar)
+        // Calculate bottom UI positions (bottom stat / weapon row)
         const isMobile = this.isMobile();
-        // Check for mobile layout
-        // const isMobile = this.isMobile(); // Already defined above at line 393
-        const instructionsTop = isMobile ? this.canvas.height : (this.canvas.height - (75 * scale));
+        const statRowHeight = 50 * scale;
+        const bottomRowTop = this.getBottomHudRowY(statRowHeight);
 
         // XP Bar Setup
         const xpBarWidth = 280 * scale;
         const xpBarHeight = 50 * scale;
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        // On mobile, push XP bar further down, it's just visual info
-        const xpBarY = instructionsTop - xpBarHeight - (isMobile ? this.padding : (1 * scale));
+        const xpBarY = bottomRowTop - xpBarHeight - (isMobile ? this.padding : (1 * scale));
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
 
         // Calculate Data
@@ -532,17 +529,10 @@ export class GameHUD {
             // === DESKTOP LAYOUT: BOTTOM BAR ===
 
             const bottomWidth = 160 * scale;
-            const xpBarWidth = 280 * scale;
-            const xpBarHeight = 50 * scale;
-            const bottomSpacing = 8 * scale;
-            const xpBarY = instructionsTop - xpBarHeight - (1 * scale);
-
-            // Recalculate xpBarX/Y/Width for closure here or rely on earlier calc?
-            // Let's just redraw bottom elements cleanly for desktop
-
-            // Bottom left: Zombies Left and Score (side-by-side)
             const leftStatWidth = 160 * scale;
             const leftStatHeight = 50 * scale;
+            const bottomSpacing = 8 * scale;
+
             const leftX = this.padding;
             const scoreX = leftX + leftStatWidth + bottomSpacing;
             const scrapX = scoreX + leftStatWidth + bottomSpacing;
@@ -551,7 +541,6 @@ export class GameHUD {
             this.drawStat('Score', gameState.score, '🏆', '#ffd700', scoreX, xpBarY, leftStatWidth, leftStatHeight);
             this.drawScrapStat(player.scrap || 0, scrapX, xpBarY, leftStatWidth, leftStatHeight, scale);
 
-            // Bottom right: Weapon and Grenade (side-by-side)
             const weaponWidth = 200 * scale;
             const weaponHeight = 50 * scale;
             const weaponSpacing = 8 * scale;
@@ -561,8 +550,6 @@ export class GameHUD {
 
             this.drawWeaponInfoHorizontal(player, weaponX, grenadeX, xpBarY, weaponWidth, weaponHeight);
         }
-
-        this.drawInstructions();
     }
 
     drawCoopHUD() {
@@ -618,16 +605,14 @@ export class GameHUD {
         const sharedStatsY = topY + statsHeight + itemSpacing;
         this.drawSharedStats(leftX, sharedStatsY);
 
-        // Calculate bottom UI positions (above instructions)
-        // Instructions box top is at canvas.height - 75 * scale (raised to avoid taskbar)
-        const instructionsTop = this.canvas.height - (75 * scale);
+        const statRowHeight = 50 * scale;
+        const bottomRowTop = this.getBottomHudRowY(statRowHeight);
         const bottomSpacing = 15 * scale;
-        const bottomUIBaseline = instructionsTop - bottomSpacing;
 
         const bottomWidth = 160 * scale;
         const xpBarWidth = 280 * scale;
-        const xpBarHeight = 50 * scale; // Synchronized to 50
-        const bottomHeight = 50 * scale; // For weapon info calculations
+        const xpBarHeight = 50 * scale;
+        const bottomHeight = 50 * scale;
 
         // Top right: Active Skills (moved from bottom left)
         const hpBarHeight = 50 * scale;
@@ -638,9 +623,8 @@ export class GameHUD {
         const skillsY = padding + webgpuHeight + webgpuSpacing + hpBarHeight + skillsSpacing;
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
 
-        // XP Bar - very close to instructions (tightened gap)
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = instructionsTop - xpBarHeight - (1 * scale); // Very tight gap above instructions
+        const xpBarY = bottomRowTop - xpBarHeight - (1 * scale);
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
 
         // Bottom right: Weapon and Grenade boxes - side by side, aligned with XP bar
@@ -653,6 +637,15 @@ export class GameHUD {
             const weaponX = grenadeX - weaponWidth - weaponSpacing;
             this.drawWeaponInfoHorizontal(localPlayer, weaponX, grenadeX, weaponY, weaponWidth, weaponHeight);
         }
+    }
+
+    getBottomHudRowY(statHeight) {
+        const scale = this.getUIScale();
+        if (this.isMobile()) {
+            return this.canvas.height;
+        }
+        // Bottom HUD row — no in-game controls panel (see Settings → Controls)
+        return this.canvas.height - statHeight - this.padding;
     }
 
     drawPlayerStats(player, x, y, labelPrefix = "") {
@@ -1082,86 +1075,6 @@ export class GameHUD {
         const throwableIcon = activeThrowable === 'grenade' ? '💣' : '🍾';
         const throwableColor = throwableCount > 0 ? (activeThrowable === 'grenade' ? '#ff9800' : '#ff4500') : '#666666';
         this.drawStat(throwableLabel, throwableCount, throwableIcon, throwableColor, grenadeX, y, width);
-    }
-
-    drawInstructions() {
-        if (this.isMobile()) return; // Hide on mobile
-
-        // Get keybinds from settings
-        const controls = settingsManager.settings.controls;
-        const sprintKey = controls.sprint || 'shift';
-        const grenadeKey = controls.grenade || 'g';
-        const meleeKey = controls.melee || 'v';
-        const flashlightKey = controls.flashlight || 'f';
-
-        // Build weapon keybind string
-        const weaponKeybinds = [
-            { key: controls.weapon1 || '1', weapon: WEAPONS.pistol },
-            { key: controls.weapon2 || '2', weapon: WEAPONS.shotgun },
-            { key: controls.weapon3 || '3', weapon: WEAPONS.rifle },
-            { key: controls.weapon4 || '4', weapon: WEAPONS.flamethrower },
-            { key: controls.weapon5 || '5', weapon: WEAPONS.smg },
-            { key: controls.weapon6 || '6', weapon: WEAPONS.sniper },
-            { key: controls.weapon7 || '7', weapon: WEAPONS.rocketLauncher },
-            { key: controls.weapon8 || '8', weapon: WEAPONS.laser }
-        ];
-
-        const weaponString = weaponKeybinds.map(w => `${w.key}=${w.weapon.name}`).join(' ');
-
-        // Format lines
-        const line1 = `WASD to move • Mouse to aim • Click to shoot • ${sprintKey.toUpperCase()} to sprint`;
-        const line2 = weaponString;
-        const cycleKey = controls.cycleThrowable || 'q';
-        const line3 = `${grenadeKey.toUpperCase()} for active throwable (${cycleKey.toUpperCase()} to cycle) • ${flashlightKey.toUpperCase()} for light • ${meleeKey.toUpperCase()} or Right-Click for melee`;
-
-        this.ctx.save();
-        const scale = this.getUIScale();
-        const fontSize = Math.max(8, Math.round(14 * scale));
-        this.ctx.font = `${fontSize}px "Roboto Mono", monospace`;
-        this.ctx.textAlign = 'center';
-
-        // Calculate max text width for all lines
-        const textWidth = Math.max(
-            this.ctx.measureText(line1).width,
-            this.ctx.measureText(line2).width,
-            this.ctx.measureText(line3).width
-        );
-
-        // WIDER and FLATTER box - raised to avoid Windows taskbar
-        const boxWidth = Math.min(this.canvas.width * 0.95, textWidth + 80 * scale); // 95% of screen width or text + padding
-        const boxHeight = 60 * scale; // Flatter height (was 80)
-        const boxY = this.canvas.height - (75 * scale); // Raised from bottom to avoid taskbar (was 45)
-
-        // Semi-transparent background - WIDER and FLATTER
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(this.canvas.width / 2 - boxWidth / 2, boxY, boxWidth, boxHeight);
-
-        // Border
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(this.canvas.width / 2 - boxWidth / 2, boxY, boxWidth, boxHeight);
-
-        // Divider lines between text rows
-        const dividerY1 = boxY + boxHeight / 3;
-        const dividerY2 = boxY + (boxHeight / 3) * 2;
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width / 2 - boxWidth / 2 + 10, dividerY1);
-        this.ctx.lineTo(this.canvas.width / 2 + boxWidth / 2 - 10, dividerY1);
-        this.ctx.stroke();
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width / 2 - boxWidth / 2 + 10, dividerY2);
-        this.ctx.lineTo(this.canvas.width / 2 + boxWidth / 2 - 10, dividerY2);
-        this.ctx.stroke();
-
-        // Text - evenly spaced in flatter box
-        this.ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
-        const textY = boxY + boxHeight / 6; // First line at 1/6 height
-        this.ctx.fillText(line1, this.canvas.width / 2, textY);
-        this.ctx.fillText(line2, this.canvas.width / 2, textY + boxHeight / 3);
-        this.ctx.fillText(line3, this.canvas.width / 2, textY + (boxHeight / 3) * 2);
-
-        this.ctx.restore();
     }
 
     drawTooltip(text, x, y) {

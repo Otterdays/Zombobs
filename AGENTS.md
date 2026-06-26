@@ -6,7 +6,7 @@ This file provides guidance to Qoder (qoder.com) when working with code in this 
 
 Zombobs is a top-down zombie survival shooter built entirely with **vanilla JavaScript (ES6+)**, HTML5 Canvas 2D, and WebGPU. **Zero external runtime dependencies** on the client — no frameworks, no bundlers, no build step. The multiplayer server uses Node.js + Express + Socket.IO.
 
-Version: 0.8.2.2 ALPHA. Proprietary/closed-source license.
+Version: 0.8.4 ALPHA. Proprietary/closed-source license.
 
 ## Commands
 

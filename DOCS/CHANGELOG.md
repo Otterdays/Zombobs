@@ -5,7 +5,12 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+## [v0.8.4] - 2026-06-25
+
+> **The Chaos & Horde Update** — Wave escalation, scrap economy shrine, zombie visual AI polish, MP3 soundtrack, and Phase 4 engine refactor.
+
 ### Added
+- **Zombie Torso Overlay VFX** — Additive Canvas 2D layers clipped to the torso ellipse on upright zombies (~70% spawn rate, deterministic per `id`). Five variants: `goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`. Uses `screen`/`lighter` blending; gated by aura quality preset. Disabled on ghost, blight, crawler, and flying types.
 - **Scrap Shop — Wave-Break Shrine (2026-06-25)** — Mid-run scrap spending during wave breaks (wave 4+). `ScrapShopSystem` rolls 45% shrine spawn; golden `ScrapShrine` pedestal near player with one random offer: **Ammo Cache** (20 scrap, full mag refill), **Armor Plate** (30 scrap, +25 shield), **Overclock** (40 scrap, 10s rapid fire via `rapidFireEndTime`). Press **E** when near; tooltip via `GameHUD.drawTooltip`. Shrine clears on purchase, next wave, or reset. Single-player + co-op; multiplayer gated. Key files: `js/entities/ScrapShrine.js`, `js/systems/ScrapShopSystem.js`, `js/systems/GameLoopSystem.js`, `js/core/constants.js`.
 - **Wave Chaos Escalation (2026-06-25)** — Dynamic shrinking wave breaks, faster burst spawns, five wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, brief-break UI, music intensity scaling. Key file: `js/systems/WaveChaosSystem.js`.
 - **Zombie Visual AI Polish** — Procedural organic motion in `js/entities/Zombie.js`:
@@ -60,6 +65,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **AI Player Name Font** — Fixed AI player name rendering using wrong font (`Consolas` → `Roboto Mono`) for consistency with game's typography system.
 
 ### Changed
+- **In-Game Controls Overlay Removed (2026-06-25)** — Deleted `GameHUD.drawInstructions()` bottom HUD panel; bottom stat/weapon row reclaimed via `getBottomHudRowY()`. All bindings now live in **Settings → Controls**: fixed mouse reference (aim, shoot, melee, scroll wheel), keyboard rebinds including **Cycle Throwable** (`Q`) and **Dodge Roll** (`SPACE`), renamed **Throw Throwable** label, gamepad stick reference + `cycleThrowable`/`dodge` entries. Mobile `SettingsManager` defaults synced.
 - **combatUtils.js size** — Reduced from ~1,417 to ~887 lines after bullet–zombie collision extraction; shooting, explosions, player/pickup collisions remain.
 - **Startup Audio Preload** — Menu music only preloads on idle; gameplay tracks load when a run starts (avoids ~12 MB decode spike on index load).
 - **WebGPU Menu Idle** — Skips GPU render pass on non-gameplay screens; gameplay effects init deferred until arcade/co-op session.
@@ -69,6 +75,16 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Zombie Aura Math** — Replaced `Math.sqrt` distance calculations in toxic/orange/green aura drawing with fast squared distance comparisons.
 - **Laser Gun Damage Rebalance** — Reduced damage from 5 → 3 (DPS ~83 → ~50). Previous value was ~4× Rifle DPS, making other weapons obsolete. New value maintains Laser's role as high-DPS precision weapon while preserving weapon diversity.
 - **Updated `DOCS/guns.md`** — Complete rewrite with all 8 weapons, corrected statistics table, weapon-specific muzzle flash colors, updated controls section, and marked completed future enhancements.
+
+### Version Bump
+- All version displays updated to **V0.8.4 ALPHA** (`MainMenuScreen`, `AboutScreen`, `landing.html`, `NEWS_UPDATES`, `launch.ps1`, server `package.json` files, itch copy).
+
+### Update Modality (player-facing)
+- **In-game news reel** (`NEWS_UPDATES` in `constants.js`): Scrolling main-menu ticker — primary live announcement channel.
+- **Landing version bubbles** (`landing.html`, `mobile/www/landing.html`): Nine bullets under *The Chaos & Horde Update* — web marketing mirror.
+- [AMENDED 2026-06-25]: Controls overlay removal + Settings → Controls hub added to news reel, landing bubble, and itch V0.8.4 block.
+- **Itch page** (`ITCH/page_description.md`): Dedicated V0.8.4 section + gameplay-system bullets; audio copy updated from procedural to MP3.
+- [AMENDED 2026-06-25]: Expanded modality with scrap economy loop, Phase 4 engine, touch fix, dynamic music intensity, shrine **E** key and 45% spawn detail.
 
 ## [v0.8.3.10] - 2026-04-06
 

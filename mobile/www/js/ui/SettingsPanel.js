@@ -708,6 +708,74 @@ export class SettingsPanel {
         return y;
     }
 
+    drawControlsReference(y, mouse) {
+        const scale = this.getEffectiveScale();
+        const controls = this.settingsManager.settings.controls;
+        const meleeKey = this.formatControlKey(controls.melee || 'v');
+        const scrollOn = this.settingsManager.getSetting('controls', 'scrollWheelSwitch');
+
+        y = this.drawSectionHeader('Mouse (fixed)', y);
+
+        const rows = [
+            { action: 'Aim', key: 'Mouse Move' },
+            { action: 'Shoot', key: 'Left Click' },
+            { action: 'Melee', key: `Right Click or ${meleeKey}` }
+        ];
+        if (scrollOn) {
+            rows.push({ action: 'Switch Weapon', key: 'Scroll Wheel' });
+        }
+        for (const row of rows) {
+            y = this.drawStaticControlRow(row.action, row.key, y);
+        }
+
+        y = this.drawSectionHeader('Keyboard', y);
+        return y;
+    }
+
+    drawGamepadReference(y) {
+        y = this.drawSectionHeader('Sticks (fixed)', y);
+        y = this.drawStaticControlRow('Move', 'Left Stick', y);
+        y = this.drawStaticControlRow('Aim', 'Right Stick', y);
+        y = this.drawSectionHeader('Controller', y);
+        return y;
+    }
+
+    drawStaticControlRow(label, keyText, y) {
+        const scale = this.getEffectiveScale();
+        const rowHeight = 35 * scale;
+        const labelX = this.panelX + this.padding + (10 * scale);
+        const keyWidth = 120 * scale;
+        const keyHeight = 28 * scale;
+        const keyX = this.panelX + this.panelWidth - this.padding - keyWidth - (10 * scale);
+        const keyY = y + (4 * scale);
+
+        this.ctx.textAlign = 'left';
+        this.ctx.fillStyle = COLORS.textMain;
+        const labelFontSize = Math.max(10, Math.round(13 * scale));
+        this.ctx.font = `${labelFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(label, labelX, y + 20 * scale);
+
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        this.ctx.lineWidth = 1;
+        this.ctx.fillRect(keyX, keyY, keyWidth, keyHeight);
+        this.ctx.strokeRect(keyX, keyY, keyWidth, keyHeight);
+
+        this.ctx.fillStyle = COLORS.textMuted;
+        this.ctx.textAlign = 'center';
+        const keyFontSize = Math.max(8, Math.round(11 * scale));
+        this.ctx.font = `${keyFontSize}px "Roboto Mono", monospace`;
+        this.ctx.fillText(keyText, keyX + keyWidth / 2, keyY + (18 * scale));
+
+        return y + rowHeight;
+    }
+
+    formatControlKey(key) {
+        if (!key || key === ' ') return 'SPACE';
+        if (key === 'shift') return 'SHIFT';
+        return key.toUpperCase();
+    }
+
     drawSectionHeader(title, y) {
         const scale = this.getEffectiveScale();
         const fontSize = Math.max(10, 12 * scale);
@@ -1325,6 +1393,12 @@ export class SettingsPanel {
 
         y += 50; // Reduced from 60
 
+        if (this.controlMode === 'keyboard') {
+            y = this.drawControlsReference(y, mouse);
+        } else {
+            y = this.drawGamepadReference(y);
+        }
+
         let labels;
         if (this.controlMode === 'keyboard') {
             labels = {
@@ -1333,9 +1407,12 @@ export class SettingsPanel {
                 moveLeft: 'Move Left',
                 moveRight: 'Move Right',
                 sprint: 'Sprint',
+                dodge: 'Dodge Roll',
                 reload: 'Reload',
-                grenade: 'Grenade',
+                grenade: 'Throw Throwable',
+                cycleThrowable: 'Cycle Throwable',
                 melee: 'Melee',
+                flashlight: 'Flashlight',
                 weapon1: 'Pistol',
                 weapon2: 'Shotgun',
                 weapon3: 'Rifle',
@@ -1343,17 +1420,18 @@ export class SettingsPanel {
                 weapon5: 'SMG',
                 weapon6: 'Sniper',
                 weapon7: 'RPG',
-                weapon8: 'Laser',
-                flashlight: 'Flashlight'
+                weapon8: 'Laser Gun'
             };
             // Toggle Switch for Scroll Wheel (only show for keyboard mode)
-            y = this.drawToggle("Scroll Switch", "controls", "scrollWheelSwitch", y, mouse);
+            y = this.drawToggle("Scroll Wheel Weapon Switch", "controls", "scrollWheelSwitch", y, mouse);
         } else {
             labels = {
                 fire: 'Fire',
                 reload: 'Reload',
-                grenade: 'Grenade',
+                grenade: 'Throw Throwable',
+                cycleThrowable: 'Cycle Throwable',
                 sprint: 'Sprint',
+                dodge: 'Dodge Roll',
                 melee: 'Melee',
                 prevWeapon: 'Prev Weapon',
                 nextWeapon: 'Next Weapon',
@@ -1368,7 +1446,7 @@ export class SettingsPanel {
             let boundKey = '---';
 
             if (this.controlMode === 'keyboard') {
-                boundKey = (controls[key] || '').toUpperCase();
+                boundKey = this.formatControlKey(controls[key] || '');
             } else {
                 boundKey = this.getGamepadButtonName(controls[key]);
             }
@@ -1413,7 +1491,7 @@ export class SettingsPanel {
             this.ctx.textAlign = 'center';
             const keyFontSize = Math.max(8, Math.round(12 * keybindScale));
             this.ctx.font = `${keyFontSize}px "Roboto Mono", monospace`;
-            this.ctx.fillText(isRebinding ? '...' : boundKey.toUpperCase(), btnX + btnWidth / 2, btnY + (18 * keybindScale));
+            this.ctx.fillText(isRebinding ? '...' : boundKey, btnX + btnWidth / 2, btnY + (18 * keybindScale));
 
             this.controls.push({
                 type: 'keybind',

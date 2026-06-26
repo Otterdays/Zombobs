@@ -1303,7 +1303,8 @@ This hybrid approach provides:
 - `drawXPBar()` - Render XP progress bar with level and XP display (bottom middle, 240px wide)
 - `drawActiveSkills()` - Render active skills display (bottom left, shows collected skills with icons/levels)
 - `drawWeaponInfo()` - Render weapon/ammo and grenades info (bottom right)
-- `drawInstructions()` - Render keybind instructions at bottom (3 lines, all weapons + sprint)
+- `getBottomHudRowY()` - Bottom HUD row Y without reserved controls panel space
+- [AMENDED 2026-06-25]: `drawInstructions()` removed — controls live in Settings → Controls
 - `drawLevelUpScreen()` - Render level-up screen with 3 skill choice cards
 - `checkLevelUpClick(x, y)` - Detect clicks on skill cards in level-up screen
 - `checkMenuButtonClick()` / `updateMenuHover()` - Hit testing for both menu and lobby states, including pause menu
@@ -1318,8 +1319,8 @@ This hybrid approach provides:
 - **Bottom Left**: Active Skills display (vertical list of collected skills with icons, names, and levels)
 - **Bottom Middle**: XP Bar (240px wide, shows level and XP progress with green gradient)
 - **Bottom Right**: Weapon/Ammo and Grenades info (current weapon, ammo count, reload progress, grenade count)
-- **Bottom Center**: Keybind instructions (3 lines showing movement, weapons, sprint, grenade, melee)
-- All bottom UI elements positioned above instruction text with proper spacing
+- [AMENDED 2026-06-25]: Bottom center keybind instructions removed; see SettingsPanel Controls tab
+- All bottom UI elements use `getBottomHudRowY()` for desktop layout
 - Layout adapts for both single-player and co-op modes
 
 **Off-Screen Zombie Indicator System**:
@@ -1415,12 +1416,15 @@ This hybrid approach provides:
   - Reduced cognitive load when working on specific screens
 
 #### SettingsPanel.js
-**Purpose**: Settings UI panel
+**Purpose**: Settings UI panel (includes **Controls** tab — canonical keybind reference and rebinding)
 
 **Exports**: `SettingsPanel` class
 
 **Methods**:
 - `draw(mouse)` - Render settings panel
+- `drawControlsSettings()` / `drawKeybinds()` - Keyboard & gamepad rebind UI
+- `drawControlsReference()` / `drawGamepadReference()` - Fixed mouse & stick reference rows (not rebindable)
+- `drawStaticControlRow()` / `formatControlKey()` - Static control display helpers
 - `handleClick(x, y)` - Handle mouse clicks
 - `handleMouseMove(x, y)` - Handle mouse movement
 - `updateSlider(x)` - Update volume slider

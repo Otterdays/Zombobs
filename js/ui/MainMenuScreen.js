@@ -849,7 +849,7 @@ export class MainMenuScreen {
 
     drawVersionBox() {
         if (this.isMobileLayout || !this.isWebGPUActive()) return;
-        const version = "V0.8.3.3 ALPHA";
+        const version = "V0.8.4 ALPHA";
         const padding = 15;
         const boxHeight = 24;
         const spacing = 8; // Space between WebGPU icon and version box
@@ -920,7 +920,7 @@ export class MainMenuScreen {
         const versionBoxHeight = 24;
         // Calculate version box width (same logic as drawVersionBox)
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const versionTextWidth = this.ctx.measureText("V0.8.3.3 ALPHA").width;
+        const versionTextWidth = this.ctx.measureText("V0.8.4 ALPHA").width;
         const versionBoxWidth = versionTextWidth + 24;
         // Position to the right of version box
         const panelX = padding + webgpuIconWidth + spacing + versionBoxWidth + spacing;

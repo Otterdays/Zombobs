@@ -1,5 +1,15 @@
 # My Thoughts
 
+## 2026-06-25 - Controls Panel → Settings (V0.8.4 follow-up)
+
+The bottom in-game controls box duplicated Settings and ate ~75px of HUD. Pulling it out keeps gameplay clean; **Settings → Controls** is now the canonical reference with fixed mouse rows (aim/shoot/melee/scroll), full keyboard rebinds (including cycle throwable + dodge), and gamepad stick map. News reel + landing bubble updated so players know where to look.
+
+## 2026-06-25 - V0.8.4 ALPHA Release (The Chaos & Horde Update)
+
+Cut release after aligning all version touchpoints per `VERSION_UPDATE_CHECKLIST.md`. **NEWS_UPDATES** (main-menu news reel) is the primary in-game announcement modality — leads with *The Chaos & Horde Update*, Wave Chaos, Scrap Shop, scrap drops, zombie polish, MP3 soundtrack, touch fix, Phase 4 engine. Landing page version bubbles mirror eight bullets for web visitors. Itch `page_description.md` has a dedicated V0.8.4 block and corrected audio copy (MP3 playlist, not procedural arcade). Server `package.json` and `launch.ps1` bumped to `0.8.4-ALPHA` with UI at `V0.8.4 ALPHA`.
+
+[AMENDED 2026-06-25]: Modality pass — shrine specifics (45%, wave 4+, **E** key, three offers), scrap economy loop, music intensity scaling, Phase 4 `GameLoopSystem` called out in landing + itch.
+
 ## 2026-06-25 - Scrap Shop / Wave-Break Shrine
 
 Mid-run scrap sink without meta-progression shop yet.
