@@ -4,6 +4,7 @@
 **Phase 1: COMPLETED** ✅ (2025-11-19)  
 **Phase 2: COMPLETED** ✅ (2025-11-19)
 **Phase 3: COMPLETED** ✅ (2025-01-XX)
+**Phase 4: COMPLETED** ✅ (2026-06-25)
 
 ## Objective
 Decompose the monolithic `zombie-game.html` file into separate HTML, CSS, and JavaScript files, then further modularize the JavaScript into ES6 modules to improve maintainability, readability, and development workflow.
@@ -130,6 +131,33 @@ Decompose the monolithic `zombie-game.html` file into separate HTML, CSS, and Ja
 - Systems can be tested independently
 - Consistent architecture pattern
 
+### Phase 4: Game Loop Extraction from main.js ✅ **COMPLETED** [2026-06-25]
+- [x] **Extract GameLoopSystem**
+  - [x] Create `js/systems/GameLoopSystem.js`
+  - [x] Extract `updateGame()` gameplay simulation (~325 lines)
+  - [x] Extract `drawGame()` world + HUD rendering (~590 lines)
+- [x] **Shared UI/mode helpers** in `js/utils/gameUtils.js`
+  - [x] `isSinglePlayerArcadeMode()`, `isGameplayBlocked()`, `isUICanvasInteractive()`, `isHTMLOverlayActive()`, `isMenuOrOverlayScreen()`
+- [x] **PickupSpawnSystem** — `updateScrapPickups()` (magnetic scrap pull moved from main)
+- [x] **Update main.js** — wire `gameLoopSystem.update()` / `gameLoopSystem.draw()`
+
+**Phase 4 Results:**
+- main.js reduced from ~1,977 lines to ~1,183 lines (~40% reduction vs pre-Phase-4)
+- Game loop update + render isolated in `GameLoopSystem.js` (~715 lines)
+- `main.js` now focused on init, input events, menu actions, and engine wiring
+
+### Phase 4b: Bullet–Zombie Collision Extraction ✅ **COMPLETED** [2026-06-25]
+- [x] **Extract bulletZombieCollisions.js**
+  - [x] Move `handleBulletZombieCollisions()` from `combatUtils.js` (~550 lines)
+  - [x] Internal helpers: `syncBulletCollisionQuadtree()`, `handleBulletPropCollision()`
+  - [x] Re-export from `combatUtils.js` for backward compatibility
+- [x] **Wire GameLoopSystem** — import collision handler from new module
+
+**Phase 4b Results:**
+- `combatUtils.js` reduced from ~1,417 to ~887 lines
+- Bullet collision + kill-reward logic isolated for future dedupe/refactor
+- No circular imports (`bulletZombieCollisions` imports score helpers from `combatUtils`)
+
 ## Detailed Refactor Plans
 
 ### 1. CSS Extraction
@@ -199,6 +227,18 @@ main.js
     ├── combatUtils.js → core/gameState.js, core/constants.js, systems/*, entities/*
     ├── gameUtils.js → core/gameState.js
     └── drawingUtils.js → core/gameState.js, core/canvas.js, core/constants.js, systems/SettingsManager.js
+```
+
+[AMENDED 2026-06-25 — Phase 4 / 4b additions:]
+```
+├── systems/
+│   ├── GameLoopSystem.js → GameEngine, GameHUD, combatUtils, bulletZombieCollisions, entity/system singletons, gameUtils
+│   ├── WaveChaosSystem.js → core/constants.js, gameState
+│   ├── ScrapShopSystem.js → ScrapShrine, gameState, constants, GameLoopSystem (wave-break spawn)
+│   └── TouchControlSystem.js → InputSystem (virtual gamepad); gated by gameUtils.isMobileDevice()
+└── utils/
+    ├── bulletZombieCollisions.js → combatUtils (score/explosion), gameUtils, Quadtree, systems/*
+    └── gameUtils.js — added mode/UI/mobile helpers (2026-06-25)
 ```
 
 ## Benefits Achieved

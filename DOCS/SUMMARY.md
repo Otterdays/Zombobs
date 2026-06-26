@@ -4,6 +4,11 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
+✅ **Scrap Shop — Wave-Break Shrine (2026-06-25)** — Spend session scrap during wave breaks (45% spawn after wave 4). Random offer per shrine: Ammo Cache (20), Armor Plate (30), Overclock (40). **E** to buy near pedestal; tooltip prompt; shrine clears on purchase or next wave. Files: `js/entities/ScrapShrine.js`, `js/systems/ScrapShopSystem.js`.
+✅ **Zombie Visual Polish — Torso Overlays + Organic Motion (2026-06-25)** — Procedural additive torso overlays (`goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`) on upright zombie types; gaze-tracking eyes; velocity lean/bob; cosmetic micro-behaviors (`lurch`/`stagger`/`hesitate`/`reach`); hit recoil flash; per-type motion profiles (fast/armored/exploding/spitter). All cosmetic — no combat or multiplayer packet changes. Key file: `js/entities/Zombie.js`.
+✅ **Phase 4 Refactor — GameLoopSystem + Combat Split (2026-06-25)** — `updateGame()` / `drawGame()` extracted to `js/systems/GameLoopSystem.js` (~715 lines). Bullet–zombie collision handler moved to `js/utils/bulletZombieCollisions.js` (~550 lines). `main.js` ~1,183 lines (was ~1,977 pre-Phase-4); `combatUtils.js` ~887 lines (was ~1,417). Shared helpers in `gameUtils.js`: `isSinglePlayerArcadeMode()`, `isGameplayBlocked()`, `isMobileDevice()`, UI overlay gates. Scrap magnetic update in `PickupSpawnSystem.updateScrapPickups()`. Touch controls gated to mobile UA only (fixes desktop overlay on touch-capable PCs).
+✅ **Wave Chaos Escalation (2026-06-25)** — Dynamic wave breaks, scaled spawn stagger/bursts, five wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, music intensity scaling via `WaveChaosSystem` + `GameLoopSystem._updateMusicIntensity()`.
+✅ **Scavenger Update — Scrap System (2026-06-25)** — Scrap drops from zombie deaths (bosses 100%, regular 20%). `ScrapPickup` entity with bronze glint + magnetic pull (250px). Collected via `handlePickupCollisions`; session `scrapCollected` + per-player `scrap` in `gameState`. HUD scrap stat on desktop bottom bar and mobile sidebar. Files: `js/entities/ScrapPickup.js`, `js/systems/PickupSpawnSystem.js`, `js/utils/bulletZombieCollisions.js`, `js/ui/GameHUD.js`.
 ✅ **In-game MP3 soundtrack (2026-06-25)** — Gameplay uses a two-track MP3 playlist (mountain + viacheslavstarostin); menu uses `Shadows of the Wasteland`. Procedural `ArcadeMusicSystem` no longer drives gameplay. Startup deferrals reduce index load hitch; flashlight lazy-init guard fixes black-screen crash.
 ✅ **Itch.io HTML build (2026-04-06)** - Verified working on itch after fixing Windows zip entry paths. **Always** run `ITCH/build-itch.ps1` from repo root; it enforces forward-slash paths and required files (build fails otherwise). See `ITCH/DOCS/ITCH_IO_GUIDE.md` and `DOCS/VERSION_UPDATE_CHECKLIST.md` § Itch.io.
 ✅ **Playable** - Core gameplay loop is functional
@@ -20,6 +25,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - **Stacked Design**: High-density info boxes separating labels from values (no text overlap)
   - **Visual Dynamics**: Vertical color-coded accent bars and glowing status indicators
   - **Consistent Layout**: Unified 50px height for all bottom-UI elements (XP, Stats, Weapons)
+  - **Scrap Counter**: Bronze/silver/gold accent stat showing per-run scrap total (desktop + mobile)
 ✅ **Homepage Theme** - Landing page now defaults to **Dark Mode** with optimized early loading (anti-FOUC)
 ✅ **Weapon System** - 8 weapon slots (Pistol, Shotgun, Rifle, Flamethrower, SMG, Sniper, RPG, **Laser**)
 ✅ **Ammo System** - Limited ammo, reloading, weapon-specific ammo counts, persistent ammo tracking
@@ -89,16 +95,17 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - System message support for future join/leave notifications
 ✅ **Modular Architecture** - ES6 modules with organized file structure
 ✅ **System Refactoring** - Large systems extracted from main.js into dedicated modules
+  - **Phase 4 (2026-06-25)**: `GameLoopSystem` — per-frame update + render (~715 lines); `bulletZombieCollisions.js` — bullet–zombie quadtree collisions (~550 lines)
   - ZombieUpdateSystem: Zombie AI, multiplayer sync, interpolation (~173 lines extracted)
   - EntityRenderSystem: Entity rendering with viewport culling (~102 lines extracted)
-  - PickupSpawnSystem: Pickup spawning logic (~52 lines extracted)
+  - PickupSpawnSystem: Pickup spawning + scrap magnetic update
   - MultiplayerSystem: Multiplayer networking, player sync, zombie sync (~545 lines extracted)
   - ZombieSpawnSystem: Zombie and boss spawning logic (~155 lines extracted)
   - PlayerSystem: Player updates, rendering, co-op lobby (~520 lines extracted)
   - GameStateManager: Game lifecycle (start, restart, game over) (~83 lines extracted)
   - MeleeSystem: Melee attack logic and range checking (~131 lines extracted)
   - drawingUtils: Drawing utilities (crosshair, wave UI, FPS counter) (~263 lines extracted)
-  - main.js reduced from ~2,536 to ~1,241 lines (51% reduction)
+  - main.js reduced from ~2,536 → ~1,183 lines (cumulative ~53% reduction)
 ✅ **Power-ups** - Double damage buff and nuke pickup system
 ✅ **Kill Streaks** - Combo tracking with visual feedback
 ✅ **Enemy Variety** - 8 zombie types (Normal, Fast, Exploding, Armored, Ghost, Spitter, Flying, Crawler)
@@ -249,7 +256,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 ├── css/
 │   └── style.css                 # Game styles
 ├── js/
-│   ├── main.js                   # Main game loop and initialization
+│   ├── main.js                   # Init, input events, menu actions, engine wiring (~1,183 lines)
 │   ├── core/
 │   │   ├── constants.js          # Game constants and configuration
 │   │   ├── canvas.js             # Canvas initialization and management
@@ -278,14 +285,17 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   │   ├── ZombieSpawnSystem.js  # Zombie and boss spawning logic
 │   │   ├── PlayerSystem.js       # Player updates, rendering, co-op lobby
 │   │   ├── GameStateManager.js   # Game lifecycle (start, restart, game over)
+│   │   ├── GameLoopSystem.js     # Per-frame gameplay update + world/HUD render (Phase 4)
+│   │   ├── WaveChaosSystem.js    # Dynamic wave breaks, mutators, spawn pacing
 │   │   └── MeleeSystem.js        # Melee attack logic and range checking
 │   ├── ui/
 │   │   ├── GameHUD.js            # In-game HUD component
 │   │   └── SettingsPanel.js      # Settings UI panel
 │   └── utils/
 │       ├── arrayUtils.js         # Zero-allocation array operations (in-place compaction)
-│       ├── combatUtils.js        # Combat functions (shooting, explosions, collisions)
-│       ├── gameUtils.js          # General game utilities
+│       ├── combatUtils.js        # Combat functions (shooting, explosions, player/pickup collisions)
+│       ├── bulletZombieCollisions.js  # Bullet–zombie quadtree collisions, kill rewards (Phase 4b)
+│       ├── gameUtils.js          # General game utilities + UI/mode/mobile helpers
 │       └── drawingUtils.js       # Drawing utilities (crosshair, wave UI, FPS counter)
 ├── LOCAL_SERVER/
 │   ├── server.js                 # Express + socket.io server
@@ -391,6 +401,23 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
   - Fix: Added state reset in `gameover_lobby` button handler: `isGameStarting = false` and `gameStartTime = 0`
   - Location: `js/main.js` - lines 1394-1396
   - Lobby now correctly displays normal interface instead of stuck countdown overlay
+
+## Recent Updates (2026-06-25)
+- **Scrap Shop — Wave-Break Shrine**: Mid-run scrap spending tied to wave breaks.
+  - `ScrapShrine` golden pedestal spawns near player (45% chance, wave 4+)
+  - One random offer: Ammo Cache (20), Armor Plate (+25 shield, 30), Overclock (10s rapid fire, 40)
+  - **E** to purchase when in range; `GameHUD.drawTooltip` prompt; floating feedback via `DamageNumber`
+  - `gameState.scrapShrines[]`; cleared on purchase, wave advance, coop/single reset
+  - Multiplayer gated (`gameState.multiplayer.active`); co-op + arcade supported
+  - Constants: `SCRAP_SHRINE_*`, `SCRAP_SHOP_*` in `js/core/constants.js`
+- **Scavenger Update — Scrap System**: Wired end-to-end scrap currency from zombie kills.
+  - `ScrapPickup` bronze coins spawn at death position via `PickupSpawnSystem.tryDropScrapFromZombie`
+  - Magnetic pull toward nearest living player; walk-over collection in `handlePickupCollisions`
+  - Boss drops always (30 scrap); regular zombies 20% chance (10 scrap); max 8 active pickups
+  - HUD: Left | Score | Scrap on desktop; three-stat mobile sidebar
+  - `gameState.scrapCollected`, `player.scrap`, `scrapPickups[]` reset on new game
+  - Constants: `SCRAP_VALUE`, `SCRAP_DROP_CHANCE`, `SCRAP_BOSS_VALUE`, `MAX_SCRAP_PICKUPS`, `SCRAP_MAGNETIC_RANGE` in `js/core/constants.js`
+- **In-Game MP3 Soundtrack**: Two-track gameplay playlist replaces procedural arcade music; menu track unchanged.
 
 ## Recent Updates (v0.8.2.1)
 - **WebGPU Screen Shake Sync**: Fixed immersion-breaking static particles during screen shake.

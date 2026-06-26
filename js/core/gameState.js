@@ -172,6 +172,8 @@ export const gameState = {
     isSpawningWave: false,
     waveBreakActive: false,
     waveBreakEndTime: 0,
+    waveMutator: null,       // Active mutator for current wave (swarm, elites, etc.)
+    waveStartTime: 0,        // When current wave spawns began (for fast-clear bonus)
 
     // Boss State
     bossActive: false,
@@ -192,6 +194,7 @@ export const gameState = {
     shieldPickups: [],
     adrenalinePickups: [],
     scrapPickups: [], // v0.8.2.2: Scrap resource pickup
+    scrapShrines: [], // Wave-break scrap shop shrines
     zombieSpawnTimeouts: [],
     shells: [],
     damageNumbers: [],
@@ -305,6 +308,10 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.zombiesPerWave = 5;
     gameState.zombiesSpawnedThisWave = 0;
     gameState.isSpawningWave = false;
+    gameState.waveBreakActive = false;
+    gameState.waveBreakEndTime = 0;
+    gameState.waveMutator = null;
+    gameState.waveStartTime = 0;
 
     // Reset XP & Skills
     gameState.xp = 0;
@@ -384,6 +391,7 @@ export function resetGameState(canvasWidth, canvasHeight) {
     gameState.shieldPickups = [];
     gameState.adrenalinePickups = [];
     gameState.scrapPickups = [];
+    gameState.scrapShrines = [];
     gameState.grenades = [];
     gameState.acidProjectiles = [];
     gameState.acidPools = [];

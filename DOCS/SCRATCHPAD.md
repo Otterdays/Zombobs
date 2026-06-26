@@ -2,16 +2,9 @@
 # SCRATCHPAD
 
 ## Active Tasks
-### Scavenger Update — Scrap System (v0.8.2.2) [Active]
-- **Objective**: Wire scrap drops, magnetic pickup, HUD counter from zombie kills.
-- **Tasks**:
-  - [x] Normalize `gameState` scrap fields + reset on new game
-  - [x] `ScrapPickup` entity — magnetic pull, glint, death-spawn
-  - [x] Render + per-frame update in `EntityRenderSystem` / `main.js`
-  - [x] Collection via `handlePickupCollisions` (not `shootBullet`)
-  - [x] Zombie death drops via `PickupSpawnSystem.tryDropScrapFromZombie`
-  - [x] HUD scrap stat (desktop + mobile, Score preserved)
-- **Current Status**: ✅ Complete — manual browser test pending
+### Wave Chaos Escalation [2026-06-25]
+- **Done**: Dynamic wave breaks, scaled spawn stagger/bursts, 5 wave mutators (SWARM/ELITES/VOLATILE/ENCIRCLE/RUSH), boss minions, music intensity scaling, brief-break UI.
+- **Next**: Browser QA waves 5–15; tune mutator rates if too punishing.
 
 ### Campaign Zone: The Railyard [Active]
 - **Objective**: Build the first campaign map based on `CAMPAIGN_DESIGN.md`.
@@ -33,6 +26,15 @@
 - **Current Status**: ⏳ In progress
 
 ## Compacted History
+- **Scrap Shop / Wave-Break Shrine (2026-06-25) ✅ COMPLETE**
+  - `ScrapShrine` + `ScrapShopSystem`; 45% spawn wave 4+ on break; E buy (Ammo 20 / Shield 30 / Overclock 40); tooltip; reset on wave start. Multiplayer gated.
+- **Zombie Visual Polish — Torso Overlays + Organic Motion (2026-06-25) ✅ COMPLETE**
+  - Additive torso overlays (5 types, ~70% spawn, id-deterministic) on upright zombies.
+  - Gaze-tracking eyes, velocity lean/bob, cosmetic micro-behaviors, hit recoil flash.
+  - Per-type `getMotionProfile()` for fast/armored/exploding/spitter; spitter throat pulse.
+  - Docs: `SUMMARY.md`, `CHANGELOG.md`, `ARCHITECTURE.md`, `My_Thoughts.md`.
+- **Scavenger Update — Scrap System (2026-06-25) ✅ COMPLETE**
+  - Zombie death drops (`tryDropScrapFromZombie`), magnetic `ScrapPickup` update/render, `handlePickupCollisions` collection, HUD scrap stat, `gameState` reset. Removed random timer spawn stub.
 - **Runtime bugfixes — combatUtils / GameHUD / index.html (2026-06-14) ✅ COMPLETE**
   - **combatUtils.js**: Removed stray `}` in quadtree init inside `handleBulletZombieCollisions()` — fixed module parse error (`Unexpected token '}'`).
   - **GameHUD.js**: Added missing `xpBarWidth = 280 * scale` in `drawCoopHUD()` — fixed co-op HUD `ReferenceError`.
@@ -106,11 +108,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **In-game MP3 music + load perf (2026-06-25)**: Replaced procedural `ArcadeMusicSystem` with looping MP3 playlist (`the_mountain…`, `viacheslavstarostin…`); menu stays `Shadows of the Wasteland`. Deferred WebGPU ZombobsFX/flashlight init, blood grid, ground texture, game-loop start, leaderboard fetch; lazy menu-music preload only. Fixed local `SERVER_URL` auto-detect + `/health` cookie; guard `updateFlashlight` until GPU buffers exist (black-screen crash). Console filter for font warnings.
-2. **Scavenger Update scrap wiring (2026-06-25)**: Finished half-built scrap feature — zombie death drops, magnetic pickup update/render loop, `handlePickupCollisions` collection, HUD scrap stat, `gameState` reset. Removed random timer spawn stub.
-3. **Runtime bugfixes (2026-06-14)**: Removed stray `}` in `combatUtils.js` quadtree init (syntax error at load); added missing `xpBarWidth` in `GameHUD.drawCoopHUD()`; added `mobile-web-app-capable` meta to `index.html`.
-4. **Itch.io ship verified (2026-04-06)**: User confirmed itch working; added zip **validation gate** to `build-itch.ps1` + mandatory script section in guide + checklist + SUMMARY/changelog.
-5. **Itch.io 403 fix (2026-04-06)**: Windows ZIP backslashes vs itch `/` paths; script builds POSIX entry names only.
+1. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
+2. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`; removed `maxTouchPoints` auto-enable (Windows laptops showed mobile overlay).
+3. **GameLoopSystem syntax fix (2026-06-25)**: Added missing `}` on `_updateMusicIntensity()` — fixed load crash at `draw()`.
+4. **Bullet-zombie collision split (2026-06-25)**: `handleBulletZombieCollisions()` → `js/utils/bulletZombieCollisions.js` (~550 lines). `combatUtils.js` ~887 lines.
+5. **Phase 4 — GameLoopSystem (2026-06-25)**: `updateGame()` + `drawGame()` → `js/systems/GameLoopSystem.js`. `main.js` ~1,183 lines. `gameUtils` mode/UI helpers; scrap update in `PickupSpawnSystem`.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

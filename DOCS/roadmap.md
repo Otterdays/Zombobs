@@ -280,11 +280,16 @@
 
 ### Currency System ("Scrap")
 
-- [ ] **Scrap Earnings** - Earn scrap from kills (scaled by zombie type) and wave completion bonuses 🟡
+- [x] **Scrap Earnings** - Earn scrap from kills (scaled by zombie type) and wave completion bonuses 🟡  
+  [AMENDED 2026-06-25]: Session scrap from zombie death drops implemented — bosses 30, regular 10 @ 20% chance. Wave bonuses not yet.
 - [ ] **Persistent Scrap Balance** - Save scrap balance across sessions using localStorage 🟡
-- [ ] **Visual Scrap Counter** - Display current scrap balance in HUD during gameplay 🟢
+- [x] **Visual Scrap Counter** - Display current scrap balance in HUD during gameplay 🟢  
+  [AMENDED 2026-06-25]: `drawScrapStat` on desktop bottom bar + mobile sidebar (`player.scrap`).
 - [ ] **Post-Game Scrap Summary** - Show scrap earned breakdown after each run ends 🟢
-- [ ] **Scrap Multiplier Upgrades** - Permanent upgrades that increase scrap earnings per kill 🟡
+- [ ] **Scrap Multiplier Upgrades** - Permanent upgrades that increase scrap earnings per kill 🟡  
+  [AMENDED 2026-06-25]: `player.scrapMultiplier` field exists; no permanent shop wired yet. Mid-run wave-break shrine spends scrap (see below).
+- [x] **Wave-Break Scrap Shrine** - Spend session scrap on one random mid-run upgrade during wave breaks (ammo refill, shield, rapid fire) 🟡  
+  [AMENDED 2026-06-25]: `ScrapShrine` + `ScrapShopSystem`; 45% spawn wave 4+; E to buy; multiplayer gated.
 - [ ] **Performance-Based Rewards** - Bonus XP/Scrap for achieving high GPU frame rates or maintaining 60 FPS during intense combat 🟡
 - [ ] **GPU Efficiency Bonuses** - Rewards for using efficient tactics that reduce GPU load, encouraging optimized gameplay 🟡
 - [ ] **Difficulty Scaling Rewards** - Higher rewards for playing at difficulty levels that maximize GPU utilization (challenge-based optimization) 🟡
@@ -350,7 +355,8 @@
 
 - [ ] **Survival Mode** - Resource management with hunger/thirst/temperature mechanics 🔴
 - [ ] **Trading System** - NPC merchants, economy, rare item marketplace 🔴
-- [ ] **In-Game Economy/Shop** - Buy/sell/trade items with currency earned 🟡
+- [ ] **In-Game Economy/Shop** - Buy/sell/trade items with currency earned 🟡  
+  [AMENDED 2026-06-25]: Partial — wave-break `ScrapShrine` mid-run upgrades only; no persistent between-run shop yet.
 
 ---
 

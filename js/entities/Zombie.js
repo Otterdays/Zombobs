@@ -7,6 +7,24 @@ import { createExplosion, createBloodSplatter, createParticles } from '../system
 import { settingsManager } from '../systems/SettingsManager.js';
 import { graphicsSettings } from '../systems/GraphicsSystem.js';
 
+// Additive torso overlay VFX — clipped to the torso ellipse, drawn above flesh / under limbs & head
+const TORSO_OVERLAY_TYPES = ['goreWetness', 'decayMold', 'tornRemnants', 'infectionPulse', 'slimeFilm'];
+
+function hashZombieId(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash);
+}
+
+function pickTorsoOverlay(zombieId) {
+    const hash = hashZombieId(zombieId);
+    if (hash % 100 < 30) return null;
+    return TORSO_OVERLAY_TYPES[hash % TORSO_OVERLAY_TYPES.length];
+}
+
 // Base Zombie class (shared behaviour for all zombie types)
 export class Zombie {
     constructor(canvasWidth, canvasHeight) {
@@ -51,6 +69,216 @@ export class Zombie {
 
         // Unique ID for multiplayer synchronization
         this.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+        // Per-zombie additive torso overlay (deterministic from id for multiplayer sync)
+        this.torsoOverlay = pickTorsoOverlay(this.id);
+        this.torsoOverlaySeed = hashZombieId(this.id);
+        this.torsoShape = { offsetY: 15, rxMult: 1.2, ryMult: 1.5 };
+
+        // Organic animation state (cosmetic — deterministic per id, no net sync needed)
+        this.animSeed = hashZombieId(this.id);
+        this.gazeX = 0;
+        this.gazeY = 0;
+        this.bodyLean = 0;
+        this.facingAngle = 0;
+        this.walkPhase = (this.animSeed % 1000) / 100;
+        this.armSwayOffset = (this.animSeed % 628) / 100;
+        this.hitReactUntil = 0;
+        this.behaviorState = 'chase';
+        this.behaviorUntil = 0;
+    }
+
+    /** Per-type motion tuning — subclasses override for variant polish */
+    getMotionProfile() {
+        return {
+            leanScale: 1,
+            bobScale: 1,
+            swayScale: 1,
+            gazeScale: 1,
+            walkPeriod: 150,
+            armPeriod: 250,
+            tremorScale: 0
+        };
+    }
+
+    /** Smooth gaze, walk phase, lean, and cosmetic micro-behavior state */
+    updateOrganicMotion(player, dx, dy, dist) {
+        const profile = this.getMotionProfile();
+        const invDist = 1 / (dist || 1);
+
+        const targetGazeX = (dx * invDist) * 1.8 * profile.gazeScale;
+        const targetGazeY = (dy * invDist) * 1.2 * profile.gazeScale;
+        this.gazeX += (targetGazeX - this.gazeX) * 0.18;
+        this.gazeY += (targetGazeY - this.gazeY) * 0.18;
+
+        const speedMag = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        this.walkPhase += speedMag * 0.14 + 0.025;
+        this.facingAngle = Math.atan2(dy, dx);
+
+        const targetLean = speedMag * 2.8 * profile.leanScale;
+        this.bodyLean += (targetLean - this.bodyLean) * 0.12;
+
+        const now = Date.now();
+        if (now > this.behaviorUntil) {
+            const bucket = Math.floor((now + this.animSeed) / 2400);
+            const roll = (this.animSeed + bucket * 31) % 100;
+            if (roll < 15) this.behaviorState = 'lurch';
+            else if (roll < 28) this.behaviorState = 'stagger';
+            else if (roll < 38) this.behaviorState = 'hesitate';
+            else if (roll < 50) this.behaviorState = 'reach';
+            else this.behaviorState = 'chase';
+            this.behaviorUntil = now + 400 + (this.animSeed % 600);
+        }
+    }
+
+    /** Pose offsets for lean, bob, sway, hit recoil, and tremor */
+    getPoseOffsets() {
+        const profile = this.getMotionProfile();
+        const now = Date.now();
+        const bob = Math.sin(this.walkPhase) * 2 * profile.bobScale;
+        const sway = Math.sin(this.walkPhase * 0.5 + this.armSwayOffset) * 2 * profile.swayScale;
+        const angle = this.facingAngle;
+
+        let leanX = Math.cos(angle) * this.bodyLean * 0.45;
+        let leanY = Math.sin(angle) * this.bodyLean * 0.3 + bob;
+        let armReach = 0;
+
+        switch (this.behaviorState) {
+            case 'lurch':
+                leanX += Math.cos(angle) * 3;
+                armReach = 5;
+                break;
+            case 'stagger':
+                leanX += Math.sin(now / 80 + this.animSeed) * 2.5;
+                break;
+            case 'hesitate':
+                leanX -= Math.cos(angle) * 2.5;
+                leanY -= Math.sin(angle) * 1;
+                break;
+            case 'reach':
+                armReach = 7;
+                leanX += Math.cos(angle) * 1.5;
+                break;
+        }
+
+        let hitRecoilX = 0;
+        let hitRecoilY = 0;
+        if (now < this.hitReactUntil) {
+            const t = (this.hitReactUntil - now) / 180;
+            hitRecoilX = -Math.cos(angle) * 3.5 * t;
+            hitRecoilY = -Math.sin(angle) * 2.5 * t;
+        }
+
+        let tremorX = 0;
+        let tremorY = 0;
+        if (profile.tremorScale > 0) {
+            tremorX = Math.sin(now / 40 + this.animSeed) * profile.tremorScale;
+            tremorY = Math.cos(now / 35 + this.animSeed) * profile.tremorScale;
+        }
+
+        return {
+            leanX, leanY, headBob: bob * 0.5, armSway: sway, armReach,
+            hitRecoilX, hitRecoilY, tremorX, tremorY
+        };
+    }
+
+    getDrawPosition() {
+        const pose = this.getPoseOffsets();
+        return {
+            x: this.x + pose.leanX + pose.hitRecoilX + pose.tremorX,
+            y: this.y + pose.leanY + pose.hitRecoilY + pose.tremorY,
+            pose
+        };
+    }
+
+    /** Eye draw options — subclasses override for variant colors */
+    getEyeDrawOptions() {
+        return {
+            leftX: -5,
+            rightX: 5,
+            y: -3,
+            size: 3,
+            shadowColor: '#ff0000',
+            glowRgb: '255, 0, 0'
+        };
+    }
+
+    drawEyes(context, x, y, radius) {
+        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
+        if (eyeQuality.opacity <= 0 && eyeQuality.shadowBlur <= 0) return;
+
+        const opts = this.getEyeDrawOptions();
+        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
+        const gx = this.gazeX || 0;
+        const gy = this.gazeY || 0;
+        const leftCx = x + opts.leftX + gx;
+        const leftCy = y + opts.y + gy;
+        const rightCx = x + opts.rightX + gx;
+        const rightCy = y + opts.y + gy;
+        const size = opts.size || 3;
+        const rgb = opts.glowRgb || '255, 0, 0';
+
+        context.shadowBlur = eyeQuality.shadowBlur * eyePulse;
+        context.shadowColor = opts.shadowColor || '#ff0000';
+
+        const createEyeGradient = (cx, cy) => {
+            const gradient = context.createRadialGradient(cx, cy, 0, cx, cy, size);
+            if (eyeQuality.gradientStops >= 5) {
+                gradient.addColorStop(0, `rgba(${rgb}, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.25, `rgba(${rgb}, ${eyeQuality.alpha * 0.9})`);
+                gradient.addColorStop(0.5, `rgba(${rgb}, ${eyeQuality.alpha * 0.75})`);
+                gradient.addColorStop(0.75, `rgba(${rgb}, ${eyeQuality.alpha * 0.55})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else if (eyeQuality.gradientStops >= 4) {
+                gradient.addColorStop(0, `rgba(${rgb}, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.33, `rgba(${rgb}, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(0.66, `rgba(${rgb}, ${eyeQuality.alpha * 0.6})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
+            } else {
+                gradient.addColorStop(0, `rgba(255, 102, 102, ${eyeQuality.alpha})`);
+                gradient.addColorStop(0.5, `rgba(${rgb}, ${eyeQuality.alpha * 0.8})`);
+                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.6})`);
+            }
+            return gradient;
+        };
+
+        context.fillStyle = createEyeGradient(leftCx, leftCy);
+        context.beginPath();
+        context.arc(leftCx, leftCy, size, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = createEyeGradient(rightCx, rightCy);
+        context.beginPath();
+        context.arc(rightCx, rightCy, size, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = 'rgba(255, 100, 100, 0.8)';
+        context.beginPath();
+        context.arc(leftCx - 1, leftCy - 1, 1, 0, Math.PI * 2);
+        context.arc(rightCx - 1, rightCy - 1, 1, 0, Math.PI * 2);
+        context.fill();
+
+        context.shadowBlur = 0;
+    }
+
+    drawHitReactFlash(context, x, y, radius) {
+        const now = Date.now();
+        if (now >= this.hitReactUntil) return;
+
+        const flash = (this.hitReactUntil - now) / 180;
+        const shape = this.torsoShape || { offsetY: 15, rxMult: 1.2, ryMult: 1.5 };
+
+        context.save();
+        context.globalCompositeOperation = 'screen';
+        context.fillStyle = `rgba(255, 60, 60, ${0.4 * flash})`;
+        context.beginPath();
+        context.ellipse(x, y + shape.offsetY, radius * shape.rxMult, radius * shape.ryMult, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = `rgba(255, 200, 200, ${0.25 * flash})`;
+        context.beginPath();
+        context.arc(x, y, radius * 0.85, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
     }
 
     update(player) {
@@ -112,9 +340,15 @@ export class Zombie {
         // Update velocity for interpolation (used in multiplayer)
         this.vx = moveX;
         this.vy = moveY;
+
+        this.updateOrganicMotion(player, dx, dy, dist);
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    drawStaticBody(ctx, x, y, radius, pose = null) {
+        const p = pose || this.getPoseOffsets();
+        const armSway = p.armSway || 0;
+        const armReach = p.armReach || 0;
+
         // Zombie torso (singular piece of body) - drawn BEFORE head for proper layering
         const bodyGradient = ctx.createRadialGradient(x - 4, y - 4, 0, x, y, radius);
         bodyGradient.addColorStop(0, '#9acd32');
@@ -126,13 +360,15 @@ export class Zombie {
         ctx.ellipse(x, y + 15, radius * 1.2, radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
+
         // Zombie arm (singular piece of body) - drawn BEFORE head for proper layering
         ctx.strokeStyle = '#1b3a00';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(x - 8, y + 10);
-        ctx.lineTo(x - 15, y + 18);
+        ctx.lineTo(x - 15 - armSway, y + 18 + armReach);
         ctx.stroke();
 
         // Decayed flesh body (head)
@@ -189,6 +425,156 @@ export class Zombie {
         ctx.stroke();
     }
 
+    /**
+     * Additive VFX layer clipped to the torso ellipse — flesh detail above base fill, below arms/head.
+     */
+    drawTorsoOverlayLayer(ctx, x, y, radius) {
+        if (!this.torsoOverlay) return;
+
+        const quality = graphicsSettings.getQualityValues('aura');
+        if (quality.opacity <= 0) return;
+
+        const shape = this.torsoShape || { offsetY: 15, rxMult: 1.2, ryMult: 1.5 };
+        const cx = x;
+        const cy = y + shape.offsetY;
+        const rx = radius * shape.rxMult;
+        const ry = radius * shape.ryMult;
+        const seed = this.torsoOverlaySeed || 0;
+        const intensity = quality.opacity * (graphicsSettings.effectIntensity ?? 1);
+        const now = Date.now();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.clip();
+
+        switch (this.torsoOverlay) {
+            case 'goreWetness': {
+                ctx.fillStyle = `rgba(90, 10, 10, ${0.35 * intensity})`;
+                ctx.beginPath();
+                ctx.ellipse(cx - 4, cy + 2, rx * 0.35, ry * 0.55, -0.15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = `rgba(120, 0, 0, ${0.25 * intensity})`;
+                ctx.fillRect(cx - 2, cy - ry * 0.4, 3, ry * 0.75);
+
+                ctx.globalCompositeOperation = 'screen';
+                const wetPulse = Math.sin((now + seed * 13) / 420) * 0.15 + 0.85;
+                ctx.fillStyle = `rgba(255, 80, 80, ${0.22 * intensity * wetPulse})`;
+                ctx.beginPath();
+                ctx.ellipse(cx + 5, cy - 3, 4, 3, 0, 0, Math.PI * 2);
+                ctx.ellipse(cx - 7, cy + 6, 3, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (quality.hasMultiLayer) {
+                    ctx.fillStyle = `rgba(255, 180, 180, ${0.12 * intensity * wetPulse})`;
+                    ctx.beginPath();
+                    ctx.ellipse(cx + 2, cy - ry * 0.15, rx * 0.45, ry * 0.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+            case 'decayMold': {
+                const moldSpots = [
+                    { ox: -6, oy: -4, r: 4 },
+                    { ox: 7, oy: 2, r: 3.5 },
+                    { ox: -2, oy: 8, r: 3 }
+                ];
+                ctx.fillStyle = `rgba(35, 45, 20, ${0.45 * intensity})`;
+                for (let i = 0; i < moldSpots.length; i++) {
+                    const spot = moldSpots[i];
+                    ctx.beginPath();
+                    ctx.arc(cx + spot.ox, cy + spot.oy, spot.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = `rgba(140, 200, 60, ${0.18 * intensity})`;
+                ctx.beginPath();
+                ctx.arc(cx - 5, cy - 3, 2.5, 0, Math.PI * 2);
+                ctx.arc(cx + 6, cy + 4, 2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            }
+            case 'tornRemnants': {
+                const fabricHue = 120 + (seed % 80);
+                ctx.fillStyle = `hsla(${fabricHue}, 18%, 28%, ${0.55 * intensity})`;
+                ctx.beginPath();
+                ctx.moveTo(cx - rx * 0.55, cy - ry * 0.15);
+                ctx.lineTo(cx - rx * 0.35, cy + ry * 0.35);
+                ctx.lineTo(cx - rx * 0.1, cy + ry * 0.2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = `hsla(${fabricHue}, 12%, 18%, ${0.45 * intensity})`;
+                ctx.beginPath();
+                ctx.moveTo(cx + rx * 0.2, cy - ry * 0.05);
+                ctx.lineTo(cx + rx * 0.5, cy + ry * 0.25);
+                ctx.lineTo(cx + rx * 0.15, cy + ry * 0.4);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.globalCompositeOperation = 'screen';
+                ctx.strokeStyle = `rgba(200, 190, 170, ${0.15 * intensity})`;
+                ctx.lineWidth = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(cx - rx * 0.4, cy + ry * 0.1);
+                ctx.lineTo(cx - rx * 0.15, cy + ry * 0.28);
+                ctx.stroke();
+                break;
+            }
+            case 'infectionPulse': {
+                const pulse = Math.sin((now + seed * 7) / 280) * 0.35 + 0.65;
+                ctx.strokeStyle = `rgba(80, 0, 20, ${0.5 * intensity})`;
+                ctx.lineWidth = 1.2;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - ry * 0.2);
+                ctx.quadraticCurveTo(cx - 8, cy + 2, cx - 5, cy + ry * 0.35);
+                ctx.moveTo(cx + 2, cy - ry * 0.15);
+                ctx.quadraticCurveTo(cx + 9, cy + 4, cx + 4, cy + ry * 0.3);
+                ctx.stroke();
+
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.strokeStyle = `rgba(255, 40, 80, ${0.35 * intensity * pulse})`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - ry * 0.2);
+                ctx.quadraticCurveTo(cx - 8, cy + 2, cx - 5, cy + ry * 0.35);
+                ctx.stroke();
+                if (quality.hasMultiLayer) {
+                    ctx.fillStyle = `rgba(255, 60, 100, ${0.12 * intensity * pulse})`;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 3 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+            case 'slimeFilm': {
+                const shimmer = Math.sin((now + seed * 11) / 500) * 0.2 + 0.8;
+                ctx.fillStyle = `rgba(60, 120, 90, ${0.22 * intensity})`;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rx * 0.85, ry * 0.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalCompositeOperation = 'screen';
+                ctx.fillStyle = `rgba(120, 255, 180, ${0.16 * intensity * shimmer})`;
+                ctx.beginPath();
+                ctx.ellipse(cx - rx * 0.2, cy - ry * 0.25, rx * 0.35, ry * 0.15, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                const dripPhase = ((now + seed * 17) / 80) % 12;
+                if (dripPhase < 8) {
+                    ctx.fillStyle = `rgba(100, 220, 150, ${0.35 * intensity})`;
+                    ctx.beginPath();
+                    ctx.ellipse(cx + 4, cy + ry * 0.45 + dripPhase * 0.4, 1.2, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+        }
+
+        ctx.restore();
+    }
+
     draw(context = ctx) {
         // Shadow (larger and more ominous) - only if shadows enabled
         if (graphicsSettings.shadows !== false) {
@@ -228,65 +614,19 @@ export class Zombie {
             context.fill();
         }
 
-        // Static Body (Direct rendering)
-        this.drawStaticBody(context, this.x, this.y, this.radius);
+        // Static Body (Direct rendering) with organic pose
+        const { x: drawX, y: drawY, pose } = this.getDrawPosition();
+        this.drawStaticBody(context, drawX, drawY, this.radius, pose);
 
-        // Glowing zombie eyes (animated intensity) - quality scaled
-        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
-        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
-        context.shadowBlur = eyeQuality.shadowBlur * eyePulse;
-        context.shadowColor = '#ff0000';
-
-        // Eye glow gradient with quality-based stops
-        const createEyeGradient = (x, y) => {
-            const gradient = context.createRadialGradient(x, y, 0, x, y, 3);
-            if (eyeQuality.gradientStops >= 5) {
-                // Ultra quality: 5 stops
-                gradient.addColorStop(0, `rgba(255, 200, 200, ${eyeQuality.alpha})`);
-                gradient.addColorStop(0.25, `rgba(255, 150, 150, ${eyeQuality.alpha * 0.9})`);
-                gradient.addColorStop(0.5, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
-                gradient.addColorStop(0.75, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
-                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
-            } else if (eyeQuality.gradientStops >= 4) {
-                // High quality: 4 stops
-                gradient.addColorStop(0, `rgba(255, 150, 150, ${eyeQuality.alpha})`);
-                gradient.addColorStop(0.33, `rgba(255, 100, 100, ${eyeQuality.alpha * 0.8})`);
-                gradient.addColorStop(0.66, `rgba(255, 50, 50, ${eyeQuality.alpha * 0.6})`);
-                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.4})`);
-            } else {
-                // Low/Medium quality: 3 stops
-                gradient.addColorStop(0, `rgba(255, 102, 102, ${eyeQuality.alpha})`);
-                gradient.addColorStop(0.5, `rgba(255, 0, 0, ${eyeQuality.alpha * 0.8})`);
-                gradient.addColorStop(1, `rgba(153, 0, 0, ${eyeQuality.alpha * 0.6})`);
-            }
-            return gradient;
-        };
-
-        context.fillStyle = createEyeGradient(this.x - 5, this.y - 3);
-        context.beginPath();
-        context.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
-        context.fill();
-
-        context.fillStyle = createEyeGradient(this.x + 5, this.y - 3);
-        context.beginPath();
-        context.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
-        context.fill();
-
-        // Eye highlights
-        context.fillStyle = 'rgba(255, 100, 100, 0.8)';
-        context.beginPath();
-        context.arc(this.x - 6, this.y - 4, 1, 0, Math.PI * 2);
-        context.arc(this.x + 4, this.y - 4, 1, 0, Math.PI * 2);
-        context.fill();
-
-        context.shadowBlur = 0;
+        this.drawHitReactFlash(context, drawX, drawY, this.radius);
+        this.drawEyes(context, drawX, drawY, this.radius);
 
         // Dripping effect (zombie drool/decay)
         const dripAnim = (Date.now() / 50 + this.x) % 10;
         if (dripAnim < 5) {
             context.fillStyle = 'rgba(100, 150, 50, 0.6)';
             context.beginPath();
-            context.ellipse(this.x + 7, this.y + 8 + dripAnim * 0.5, 1, 2, 0, 0, Math.PI * 2);
+            context.ellipse(drawX + 7, drawY + 8 + dripAnim * 0.5, 1, 2, 0, 0, Math.PI * 2);
             context.fill();
         }
 
@@ -404,6 +744,7 @@ export class Zombie {
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
         this.lastDamageTime = Date.now();
+        this.hitReactUntil = Date.now() + 180;
         return this.health <= 0;
     }
 }
@@ -532,7 +873,23 @@ export class NormalZombie extends Zombie {
         this.visualVariant = NORMAL_ZOMBIE_VARIANTS[Math.floor(Math.random() * NORMAL_ZOMBIE_VARIANTS.length)];
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    getEyeDrawOptions() {
+        const hex = this.visualVariant?.eyeColor || '#ff0000';
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return {
+            leftX: -5,
+            rightX: 5,
+            y: -3,
+            size: 3,
+            shadowColor: hex,
+            glowRgb: `${r}, ${g}, ${b}`
+        };
+    }
+
+    drawStaticBody(ctx, x, y, radius, pose = null) {
+        const p = pose || this.getPoseOffsets();
         const variant = this.visualVariant;
         const colors = variant.skinColors;
 
@@ -554,27 +911,25 @@ export class NormalZombie extends Zombie {
         ctx.ellipse(x, y + 15, radius * 1.2, radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // -- ANIMATED FEET (Added v0.8.4.1) --
-        // Simple walking animation using time-based sine wave
-        const walkCycle = Math.sin(Date.now() / 150);
-        const footOffset = 4; // Distance feet move back and forth
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
 
-        ctx.fillStyle = '#1a1a1a'; // Dark shoes/feet base
+        // Animated feet — per-zombie walk phase (desynced shuffle)
+        const walkCycle = Math.sin(this.walkPhase);
+        const footOffset = 4;
 
-        // Left Foot
+        ctx.fillStyle = '#1a1a1a';
+
         ctx.beginPath();
-        // Positioned lower (y + 38) and drawn in front of body
         ctx.ellipse(x - 6, y + 38 + (walkCycle * footOffset), 4, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Right Foot (Opposite phase)
         ctx.beginPath();
         ctx.ellipse(x + 6, y + 38 - (walkCycle * footOffset), 4, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // -- ANIMATED ARMS (Replaced static arm v0.8.4.1) --
-        // Arms sway slightly as the zombie shuffles
-        const armSway = Math.sin(Date.now() / 250) * 2;
+        // Animated arms — velocity sway + micro-behavior reach
+        const armSway = Math.sin(this.walkPhase * 0.5 + this.armSwayOffset) * 2 + (p.armSway || 0);
+        const armReach = p.armReach || 0;
 
         // Determine arm color (Sleeves vs Bare)
         // Punk vest is sleeveless. Others get cohesive colored sleeves as requested.
@@ -603,10 +958,10 @@ export class NormalZombie extends Zombie {
         };
 
         // Left Arm (Reaching forward/down)
-        drawArm(x - 14, y + 8, x - 22 - armSway, y + 18, x - 12 - armSway, y + 32);
+        drawArm(x - 14, y + 8, x - 22 - armSway, y + 18, x - 12 - armSway, y + 32 + armReach);
 
         // Right Arm (Reaching forward/down)
-        drawArm(x + 14, y + 8, x + 22 - armSway, y + 18, x + 12 - armSway, y + 32);
+        drawArm(x + 14, y + 8, x + 22 - armSway, y + 18, x + 12 - armSway, y + 32 + armReach);
 
         // Head
         ctx.fillStyle = bodyGradient;
@@ -956,9 +1311,21 @@ export class ArmoredZombie extends Zombie {
         this.radius += 2;   // Slightly larger visual silhouette
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    getMotionProfile() {
+        return {
+            leanScale: 0.55,
+            bobScale: 0.45,
+            swayScale: 0.6,
+            gazeScale: 0.9,
+            walkPeriod: 220,
+            armPeriod: 320,
+            tremorScale: 0
+        };
+    }
+
+    drawStaticBody(ctx, x, y, radius, pose = null) {
         // Draw base zombie body first
-        super.drawStaticBody(ctx, x, y, radius);
+        super.drawStaticBody(ctx, x, y, radius, pose);
 
         // Overlay metal armor plates
         ctx.save();
@@ -1008,6 +1375,7 @@ export class ArmoredZombie extends Zombie {
         if (remaining > 0) {
             this.health -= remaining;
             this.lastDamageTime = Date.now();
+            this.hitReactUntil = Date.now() + 220;
         }
 
         return this.health <= 0;
@@ -1022,9 +1390,33 @@ export class FastZombie extends Zombie {
         this.speed *= 1.6; // 1.6x faster
         this.health = Math.floor(this.health * 0.6); // 60% health
         this.radius *= 0.8; // Smaller hitbox
+        this.torsoShape = { offsetY: 12, rxMult: 1.0, ryMult: 1.2 };
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    getMotionProfile() {
+        return {
+            leanScale: 1.45,
+            bobScale: 0.75,
+            swayScale: 1.35,
+            gazeScale: 1.25,
+            walkPeriod: 95,
+            armPeriod: 140,
+            tremorScale: 0
+        };
+    }
+
+    getEyeDrawOptions() {
+        return {
+            leftX: -4,
+            rightX: 4,
+            y: -2,
+            size: 2.5,
+            shadowColor: '#ff0000',
+            glowRgb: '255, 80, 0'
+        };
+    }
+
+    drawStaticBody(ctx, x, y, radius, pose = null) {
         // Body with reddish tint
         const bodyGradient = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, radius);
         bodyGradient.addColorStop(0, '#ff8c42');
@@ -1035,6 +1427,8 @@ export class FastZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(x, y + 12, radius * 1.0, radius * 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
 
         // Head
         ctx.fillStyle = bodyGradient;
@@ -1088,34 +1482,12 @@ export class FastZombie extends Zombie {
             context.fill();
         }
 
-        // Static Body (Direct rendering)
-        this.drawStaticBody(context, this.x, this.y, this.radius);
+        // Static Body with organic pose
+        const { x: drawX, y: drawY, pose } = this.getDrawPosition();
+        this.drawStaticBody(context, drawX, drawY, this.radius, pose);
 
-        // Glowing red eyes (brighter for fast zombie) - quality scaled
-        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
-        const eyePulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
-        context.shadowBlur = eyeQuality.shadowBlur * 1.2 * eyePulse; // 20% brighter for fast zombie
-        context.shadowColor = '#ff0000';
-
-        const eyeGradient = context.createRadialGradient(this.x - 4, this.y - 2, 0, this.x - 4, this.y - 2, 2.5);
-        eyeGradient.addColorStop(0, '#ff8888');
-        eyeGradient.addColorStop(0.5, '#ff0000');
-        eyeGradient.addColorStop(1, '#990000');
-        context.fillStyle = eyeGradient;
-        context.beginPath();
-        context.arc(this.x - 4, this.y - 2, 2.5, 0, Math.PI * 2);
-        context.fill();
-
-        const eyeGradient2 = context.createRadialGradient(this.x + 4, this.y - 2, 0, this.x + 4, this.y - 2, 2.5);
-        eyeGradient2.addColorStop(0, '#ff8888');
-        eyeGradient2.addColorStop(0.5, '#ff0000');
-        eyeGradient2.addColorStop(1, '#990000');
-        context.fillStyle = eyeGradient2;
-        context.beginPath();
-        context.arc(this.x + 4, this.y - 2, 2.5, 0, Math.PI * 2);
-        context.fill();
-
-        context.shadowBlur = 0;
+        this.drawHitReactFlash(context, drawX, drawY, this.radius);
+        this.drawEyes(context, drawX, drawY, this.radius);
 
         // Trail particles (speed lines)
         if (Math.random() < 0.3) {
@@ -1147,7 +1519,31 @@ export class ExplodingZombie extends Zombie {
         this.explosionDamage = 30; // Less damage than grenade
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    getMotionProfile() {
+        const base = super.getMotionProfile();
+        const healthRatio = this.maxHealth ? Math.max(0, this.health / this.maxHealth) : 1;
+        const tremor = healthRatio < 0.5 ? (1 - healthRatio) * 2.8 : 0;
+        return {
+            ...base,
+            leanScale: 0.9,
+            bobScale: 0.85,
+            tremorScale: tremor,
+            gazeScale: 1.15
+        };
+    }
+
+    getEyeDrawOptions() {
+        return {
+            leftX: -5,
+            rightX: 5,
+            y: -3,
+            size: 3,
+            shadowColor: '#ff6600',
+            glowRgb: '255, 120, 0'
+        };
+    }
+
+    drawStaticBody(ctx, x, y, radius, pose = null) {
         // Body with orange/yellow tint
         const bodyGradient = ctx.createRadialGradient(x - 4, y - 4, 0, x, y, radius);
         bodyGradient.addColorStop(0, '#ffa500');
@@ -1158,6 +1554,8 @@ export class ExplodingZombie extends Zombie {
         ctx.beginPath();
         ctx.ellipse(x, y + 15, radius * 1.2, radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
 
         // Head
         ctx.fillStyle = bodyGradient;
@@ -1224,39 +1622,18 @@ export class ExplodingZombie extends Zombie {
             context.fill();
         }
 
-        // Static Body (Direct rendering)
-        this.drawStaticBody(context, this.x, this.y, this.radius);
+        // Static Body with organic pose + danger tremor
+        const { x: drawX, y: drawY, pose } = this.getDrawPosition();
+        this.drawStaticBody(context, drawX, drawY, this.radius, pose);
 
-        // Glowing orange eyes - quality scaled
-        const eyeQuality = graphicsSettings.getQualityValues('eyeGlow');
-        const eyePulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
-        context.shadowBlur = eyeQuality.shadowBlur * eyePulse;
-        context.shadowColor = '#ff6600';
-
-        const eyeGradient = context.createRadialGradient(this.x - 5, this.y - 3, 0, this.x - 5, this.y - 3, 3);
-        eyeGradient.addColorStop(0, '#ffaa66');
-        eyeGradient.addColorStop(0.5, '#ff6600');
-        eyeGradient.addColorStop(1, '#cc4400');
-        context.fillStyle = eyeGradient;
-        context.beginPath();
-        context.arc(this.x - 5, this.y - 3, 3, 0, Math.PI * 2);
-        context.fill();
-
-        const eyeGradient2 = context.createRadialGradient(this.x + 5, this.y - 3, 0, this.x + 5, this.y - 3, 3);
-        eyeGradient2.addColorStop(0, '#ffaa66');
-        eyeGradient2.addColorStop(0.5, '#ff6600');
-        eyeGradient2.addColorStop(1, '#cc4400');
-        context.fillStyle = eyeGradient2;
-        context.beginPath();
-        context.arc(this.x + 5, this.y - 3, 3, 0, Math.PI * 2);
-        context.fill();
-
-        context.shadowBlur = 0;
+        this.drawHitReactFlash(context, drawX, drawY, this.radius);
+        this.drawEyes(context, drawX, drawY, this.radius);
     }
 
     takeDamage(bulletDamage) {
         this.health -= bulletDamage;
         this.lastDamageTime = Date.now();
+        this.hitReactUntil = Date.now() + 200;
         return this.health <= 0;
     }
 }
@@ -1266,6 +1643,7 @@ export class GhostZombie extends Zombie {
     constructor(canvasWidth, canvasHeight) {
         super(canvasWidth, canvasHeight);
         this.type = 'ghost';
+        this.torsoOverlay = null;
         this.speed *= 1.3;
         this.health = Math.floor(this.health * 0.8);
         this.radius *= 0.9;
@@ -1353,6 +1731,29 @@ export class SpitterZombie extends Zombie {
         this.optimalRange = 400; // Sweet spot distance (300-500px)
     }
 
+    getMotionProfile() {
+        return {
+            leanScale: 0.85,
+            bobScale: 0.9,
+            swayScale: 1.0,
+            gazeScale: 1.15,
+            walkPeriod: 170,
+            armPeriod: 260,
+            tremorScale: 0
+        };
+    }
+
+    getEyeDrawOptions() {
+        return {
+            leftX: -5,
+            rightX: 5,
+            y: -3,
+            size: 3,
+            shadowColor: '#00ff00',
+            glowRgb: '0, 255, 80'
+        };
+    }
+
     update(player) {
         // Store base speed for night cycle
         if (!this.baseSpeed) {
@@ -1390,6 +1791,9 @@ export class SpitterZombie extends Zombie {
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
+        this.lastX = this.x;
+        this.lastY = this.y;
+
         // Kiting AI: Maintain optimal range
         if (dist < 300) {
             // Too close - move away
@@ -1418,9 +1822,15 @@ export class SpitterZombie extends Zombie {
             }
             this.lastSpitTime = now;
         }
+
+        this.vx = this.x - this.lastX;
+        this.vy = this.y - this.lastY;
+        this.lowerBodyHitbox.x = this.x;
+        this.lowerBodyHitbox.y = this.y + 15;
+        this.updateOrganicMotion(player, dx, dy, dist);
     }
 
-    drawStaticBody(ctx, x, y, radius) {
+    drawStaticBody(ctx, x, y, radius, pose = null) {
         // Body (Toxic green)
         const bodyGradient = ctx.createRadialGradient(x - 4, y - 4, 0, x, y, radius);
         bodyGradient.addColorStop(0, '#66ff66');
@@ -1432,6 +1842,8 @@ export class SpitterZombie extends Zombie {
         ctx.ellipse(x, y + 15, radius * 1.2, radius * 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        this.drawTorsoOverlayLayer(ctx, x, y, radius);
+
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
@@ -1440,6 +1852,13 @@ export class SpitterZombie extends Zombie {
         ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
         ctx.beginPath();
         ctx.arc(x, y + 8, radius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Throat / torso acid pulse (organic breathing)
+        const throatPulse = Math.sin(this.walkPhase * 1.5) * 0.25 + 0.75;
+        ctx.fillStyle = `rgba(150, 255, 150, ${0.35 * throatPulse})`;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 10, radius * 0.5 * throatPulse, radius * 0.35, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body outline
@@ -1488,16 +1907,12 @@ export class SpitterZombie extends Zombie {
             context.fill();
         }
 
-        // Static Body (Direct rendering)
-        this.drawStaticBody(context, this.x, this.y, this.radius);
+        // Static Body with organic pose
+        const { x: drawX, y: drawY, pose } = this.getDrawPosition();
+        this.drawStaticBody(context, drawX, drawY, this.radius, pose);
 
-        // Eyes (Bright green)
-        const eyePulse = Math.sin(Date.now() / 167) * 0.3 + 0.7;
-        context.fillStyle = `rgba(0, 255, 0, ${eyePulse})`;
-        context.beginPath();
-        context.arc(this.x - this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
-        context.arc(this.x + this.radius * 0.4, this.y - this.radius * 0.25, this.radius * 0.25, 0, Math.PI * 2);
-        context.fill();
+        this.drawHitReactFlash(context, drawX, drawY, this.radius);
+        this.drawEyes(context, drawX, drawY, this.radius);
 
         // Health bar (if recently damaged and setting enabled)
         if (settingsManager.getSetting('video', 'enemyHealthBars') !== false) {
@@ -1563,6 +1978,7 @@ export class FlyingZombie extends Zombie {
     constructor(canvasWidth, canvasHeight) {
         super(canvasWidth, canvasHeight);
         this.type = 'flying';
+        this.torsoOverlay = null;
         this.speed *= 1.2; // 1.2x faster than normal
         this.health = Math.floor(this.health * 0.7); // 70% health
         this.radius *= 0.9; // 90% radius (smaller hitbox)
@@ -1902,6 +2318,7 @@ export class BlightZombie extends Zombie {
     constructor(canvasWidth, canvasHeight) {
         super(canvasWidth, canvasHeight);
         this.type = 'blight';
+        this.torsoOverlay = null;
         this.speed *= 0.75; // Slow, lumbering
         this.health = Math.floor(this.health * 1.3); // 30% more health — tanky
         this.radius *= 1.1; // Slightly larger hitbox
@@ -2318,6 +2735,7 @@ export class CrawlerZombie extends Zombie {
     constructor(canvasWidth, canvasHeight) {
         super(canvasWidth, canvasHeight);
         this.type = 'crawler';
+        this.torsoOverlay = null;
         this.speed *= 1.3; // 1.3x faster (crawling can be quick)
         this.health = Math.floor(this.health * 0.6); // 60% health (smaller target, easier to kill)
         this.radius *= 0.7; // 0.7x radius (smaller hitbox, harder to hit)

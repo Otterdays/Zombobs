@@ -93,6 +93,7 @@ A global grain effect applied to the viewport to reduce banding and add texture.
 *Styling implemented via Canvas API Context 2D*
 
 - **Zombies**: Radial gradients for "toxic aura" and body.
+  - [AMENDED 2026-06-25]: Upright zombies use additive torso overlay layers (`screen`/`lighter`, clipped to torso ellipse) and procedural organic motion (gaze-offset eyes, velocity lean, per-id `walkPhase`). Extra glow layers respect `graphicsSettings.getQualityValues('aura'|'eyeGlow')`.
 - **Projectiles**: High contrast cores (white/yellow) with colored outer glows.
 - **Lighting**: Additive blending (implicit in some particle effects) and radial gradient overlays for vignettes.
 - **Shadows**: Dark ellipses offset below entities (zombies and players) when shadows enabled.

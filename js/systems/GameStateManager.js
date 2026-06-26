@@ -3,7 +3,6 @@ import { canvas } from '../core/canvas.js';
 import { PLAYER_MAX_HEALTH, PLAYER_STAMINA_MAX, SERVER_URL } from '../core/constants.js';
 import { playRestartSound, playMenuMusic, stopMenuMusic, playGameMusic, stopGameMusic } from '../systems/AudioSystem.js';
 import { saveHighScore, saveMultiplierStats, saveScoreboardEntry } from '../utils/gameUtils.js';
-import { triggerWaveNotification } from '../utils/gameUtils.js';
 import { playerProfileSystem } from './PlayerProfileSystem.js';
 import { propSpawnSystem } from './PropSpawnSystem.js';
 import { groundTextureSystem } from './GroundTextureSystem.js';
@@ -159,11 +158,13 @@ export class GameStateManager {
             gameState.acidProjectiles = [];
             gameState.acidPools = [];
             gameState.props = []; // v0.8.1.2: Reset props for coop mode
+            gameState.scrapShrines = [];
 
             // Reset all players (including AI)
             gameState.players.forEach((p, index) => {
                 p.health = PLAYER_MAX_HEALTH;
                 p.stamina = PLAYER_STAMINA_MAX;
+                p.scrap = 0;
                 // Spawn players with slight offset to avoid overlap
                 p.x = canvas.width / 2 + (index * 50);
                 p.y = canvas.height / 2;
@@ -181,7 +182,6 @@ export class GameStateManager {
 
         gameState.showMainMenu = false;
 
-        triggerWaveNotification();
         this.spawnZombiesCallback(gameState.zombiesPerWave);
     }
 

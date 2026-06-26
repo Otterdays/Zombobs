@@ -1,5 +1,43 @@
 # My Thoughts
 
+## 2026-06-25 - Scrap Shop / Wave-Break Shrine
+
+Mid-run scrap sink without meta-progression shop yet.
+
+- **Wave-break timing** — Shrine only during `waveBreakActive`, not ambient world spawn. Breather = decision moment; pairs with Wave Chaos shorter breaks.
+- **One random offer per shrine** — Keeps scope small; no full menu. Player reads tooltip + presses E.
+- **Reuse existing buffs** — Overclock hooks `rapidFireEndTime`; armor uses `player.shield`; ammo refills `weaponStates`. No new combat systems.
+- **Multiplayer gated** — No sync protocol yet; co-op + single-player arcade only.
+- **Follow-up** — Touch buy button for mobile; optional 1/2/3 key picks if we show all three offers later.
+
+## 2026-06-25 - Zombie Torso Overlays + Visual AI Polish
+
+**Torso overlays** — Additive clipped layers sit above the flesh ellipse but below arms/head, so detail reads without breaking silhouette. ~30% of zombies get no overlay to avoid visual noise in large swarms. Deterministic from `id` so the same zombie always looks the same within a session.
+
+**Organic motion without a sprite rig** — Gaze, lean, bob, and micro-behaviors are pure pose offsets computed in `update()` / `getPoseOffsets()`. No animation framework, no assets, no multiplayer packet changes. Micro-behaviors (`lurch`, `stagger`, etc.) only affect draw pose — never `speed` — so leader/non-leader sync stays intact.
+
+**Per-zombie desync** — Replacing global `Date.now()` sine waves with `walkPhase` + `animSeed` was the biggest perceived improvement; synchronized shuffling made hordes look like a single unit.
+
+**Variant profiles over subclass duplication** — `getMotionProfile()` lets fast/armored/exploding/spitter tune feel without forking draw code. Spitter needed `updateOrganicMotion()` wired into its custom kiting `update()` since it doesn't call `super.update()`.
+
+## 2026-06-25 - Phase 4 Refactor + Touch Control Gate
+
+**GameLoopSystem extraction** — `main.js` had regrown to ~2k lines after Phase 3 docs claimed ~1,241. Moving `updateGame()` / `drawGame()` into a dedicated system restores the coordinator pattern: `main.js` wires init and DOM input; `GameLoopSystem` owns the per-frame simulation and render pipeline.
+
+**bulletZombieCollisions split** — The ~600-line collision handler was the largest remaining chunk in `combatUtils.js`. Keeping score helpers in `combatUtils` and importing them avoids a circular module graph. Re-export preserves any stale `combatUtils` import paths.
+
+**Touch controls on desktop** — `navigator.maxTouchPoints > 0` is true on many Windows laptops without a usable touchscreen UX intent. Mobile overlay visibility must match the HUD's UA-based `isMobile()` gate, not hardware touch capability alone. Centralized as `isMobileDevice()` in `gameUtils.js`.
+
+## 2026-06-25 - Scavenger Update Scrap System
+
+Finished wiring the half-built scrap feature from a prior agent pass. Key decisions:
+
+- **Death-driven drops** over passive timer spawn — scrap should feel earned from kills, not ambient RNG.
+- **Collection in `handlePickupCollisions`** — same pattern as health/ammo pickups; magnetic pull via `PickupSpawnSystem.updateScrapPickups()` (called from `GameLoopSystem.update()`).
+- [AMENDED 2026-06-25]: Was documented as `ScrapPickup.update()` in `main.js`; moved to `PickupSpawnSystem` during Phase 4.
+- **Session-only currency for now** — `player.scrap` + `gameState.scrapCollected` reset each run; persistent between-run shop remains roadmap. [AMENDED 2026-06-25]: Mid-run wave-break `ScrapShrine` added as in-session spend sink.
+- **Conservative drop rates** — 20% regular / 100% boss keeps economy from flooding before meta-progression exists.
+
 ## 2025-12-27 - V0.8.2.2 ALPHA Bug Fix
 
 Addressed visual issues where WebGPU particles (Snow and ZombobsFX spore clouds) were incorrectly rendering on the main menu.

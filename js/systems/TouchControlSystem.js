@@ -43,12 +43,6 @@ export class TouchControlSystem {
 
         this.initEvents();
         this.resize();
-
-        // Detect touch capability
-        this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        if (this.isTouchDevice) {
-            this.active = true;
-        }
     }
 
     initEvents() {

@@ -14,6 +14,7 @@ let gameMusicGain = null; // Shared gain node for in-game music
 let gameMusicTracks = []; // { audio, source } per playlist track
 let activeGameTrackIndex = -1;
 let gameMusicActive = false;
+let gameMusicIntensity = 0.5;
 let gunshotBufferScheduled = false;
 
 const MENU_MUSIC_SRC = 'assets/Shadows of the Wasteland.mp3';
@@ -273,6 +274,21 @@ export function resumeGameMusic() {
             // Ignore AbortError (happens when restarting quickly)
         });
     }
+}
+
+/** Scale in-game music volume by chaos intensity (0–1). */
+export function setGameMusicIntensity(intensity) {
+    gameMusicIntensity = Math.max(0, Math.min(1, intensity));
+    if (!gameMusicGain) return;
+
+    const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+    const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
+    const scale = 0.72 + gameMusicIntensity * 0.28;
+    gameMusicGain.gain.value = baseVol * masterVol * scale;
+}
+
+export function getGameMusicIntensity() {
+    return gameMusicIntensity;
 }
 
 // Create and cache the gunshot sound buffer (called once)

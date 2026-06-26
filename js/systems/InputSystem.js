@@ -1,3 +1,5 @@
+import { isMobileDevice } from '../utils/gameUtils.js';
+
 export class GamepadState {
     constructor() {
         this.buttons = {
@@ -161,7 +163,7 @@ export class InputSystem {
 
     getAnyGamepad() {
         if (this.gamepadStates.size > 0) return this.gamepadStates.values().next().value;
-        if (this.virtualState) return this.virtualState;
+        if (this.virtualState && isMobileDevice()) return this.virtualState;
         return null;
     }
     // New helper to get all active indices

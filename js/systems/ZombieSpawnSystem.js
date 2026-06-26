@@ -3,55 +3,195 @@ import { canvas } from '../core/canvas.js';
 import { NormalZombie, FastZombie, ExplodingZombie, ArmoredZombie, GhostZombie, SpitterZombie, FlyingZombie, BlightZombie, CrawlerZombie } from '../entities/Zombie.js';
 import { BossZombie } from '../entities/BossZombie.js';
 import { triggerWaveNotification } from '../utils/gameUtils.js';
+import {
+    rollWaveMutator,
+    applyMutatorToCount,
+    getSpawnTiming,
+    getSpawnPackSize,
+    selectZombieClass,
+    getEncircleSide,
+    applyMutatorHealth,
+    getBossMinionCount
+} from './WaveChaosSystem.js';
+
+const ZOMBIE_CLASS_MAP = {
+    normal: NormalZombie,
+    fast: FastZombie,
+    armored: ArmoredZombie,
+    exploding: ExplodingZombie,
+    ghost: GhostZombie,
+    spitter: SpitterZombie,
+    flying: FlyingZombie,
+    blight: BlightZombie,
+    crawler: CrawlerZombie,
+    boss: BossZombie
+};
 
 /**
  * ZombieSpawnSystem - Handles zombie and boss spawning logic
- * Manages wave spawning, boss waves, and zombie type selection
+ * Manages wave spawning, boss waves, wave mutators, and zombie type selection
  */
 export class ZombieSpawnSystem {
-    /**
-     * Get zombie class by type string
-     */
     getZombieClassByType(type) {
-        const typeMap = {
-            'normal': NormalZombie,
-            'fast': FastZombie,
-            'armored': ArmoredZombie,
-            'exploding': ExplodingZombie,
-            'ghost': GhostZombie,
-            'spitter': SpitterZombie,
-            'flying': FlyingZombie,
-            'blight': BlightZombie,
-            'crawler': CrawlerZombie,
-            'boss': BossZombie
-        };
-        return typeMap[type] || NormalZombie;
+        return ZOMBIE_CLASS_MAP[type] || NormalZombie;
     }
 
-    /**
-     * Spawn a boss zombie
-     */
+    _isSinglePlayerArcade() {
+        return !gameState.isCoop && !gameState.multiplayer.active;
+    }
+
+    _getLocalPlayer() {
+        return gameState.players.find(p => p.inputSource === 'mouse');
+    }
+
+    _computeSpawnPosition(isSinglePlayerArcade, localPlayer, side) {
+        if (isSinglePlayerArcade && localPlayer) {
+            const spawnDistance = Math.max(canvas.width, canvas.height) * 0.6;
+            switch (side) {
+                case 0:
+                    return {
+                        x: localPlayer.x + (Math.random() - 0.5) * canvas.width,
+                        y: localPlayer.y - spawnDistance
+                    };
+                case 1:
+                    return {
+                        x: localPlayer.x + spawnDistance,
+                        y: localPlayer.y + (Math.random() - 0.5) * canvas.height
+                    };
+                case 2:
+                    return {
+                        x: localPlayer.x + (Math.random() - 0.5) * canvas.width,
+                        y: localPlayer.y + spawnDistance
+                    };
+                default:
+                    return {
+                        x: localPlayer.x - spawnDistance,
+                        y: localPlayer.y + (Math.random() - 0.5) * canvas.height
+                    };
+            }
+        }
+
+        switch (side) {
+            case 0: return { x: Math.random() * canvas.width, y: -20 };
+            case 1: return { x: canvas.width + 20, y: Math.random() * canvas.height };
+            case 2: return { x: Math.random() * canvas.width, y: canvas.height + 20 };
+            default: return { x: -20, y: Math.random() * canvas.height };
+        }
+    }
+
+    _resolveSide(index, mutator, packSize) {
+        if (mutator === 'encircle') {
+            return getEncircleSide(index, packSize);
+        }
+        return Math.floor(Math.random() * 4);
+    }
+
+    _createAndPushZombie(ZombieClass, spawnX, spawnY, mutator, multiplayerSocket) {
+        const zombie = new ZombieClass(canvas.width, canvas.height);
+        zombie.x = spawnX;
+        zombie.y = spawnY;
+        applyMutatorHealth(zombie, mutator);
+        gameState.zombies.push(zombie);
+
+        if (gameState.multiplayer.active && multiplayerSocket && gameState.multiplayer.isLeader) {
+            multiplayerSocket.emit('zombie:spawn', {
+                id: zombie.id,
+                type: zombie.type || 'normal',
+                x: zombie.x,
+                y: zombie.y,
+                health: zombie.health
+            });
+        }
+        return zombie;
+    }
+
+    _scheduleSpawn(index, count, spawnX, spawnY, mutator, multiplayerSocket, isLast) {
+        const timing = getSpawnTiming(gameState.wave, mutator, index);
+        const { indicatorDelay, spawnDelay, showIndicator } = timing;
+        const indicatorLead = spawnDelay - indicatorDelay;
+        const indicatorId = `ind_${index}_${Date.now()}_${Math.random()}`;
+
+        if (showIndicator) {
+            const indicatorTimeout = setTimeout(() => {
+                gameState.spawnIndicators.push({
+                    id: indicatorId,
+                    x: spawnX,
+                    y: spawnY,
+                    startTime: Date.now(),
+                    duration: indicatorLead
+                });
+            }, indicatorDelay);
+            gameState.zombieSpawnTimeouts.push(indicatorTimeout);
+        }
+
+        const timeout = setTimeout(() => {
+            const typeKey = selectZombieClass(gameState.wave, mutator, Math.random());
+            const ZombieClass = this.getZombieClassByType(typeKey);
+            this._createAndPushZombie(ZombieClass, spawnX, spawnY, mutator, multiplayerSocket);
+
+            if (showIndicator) {
+                const indicatorIndex = gameState.spawnIndicators.findIndex(ind => ind.id === indicatorId);
+                if (indicatorIndex !== -1) {
+                    gameState.spawnIndicators.splice(indicatorIndex, 1);
+                }
+            }
+
+            if (isLast) {
+                gameState.isSpawningWave = false;
+            }
+        }, spawnDelay);
+
+        gameState.zombieSpawnTimeouts.push(timeout);
+    }
+
+    _spawnBossMinions(multiplayerSocket) {
+        const minionCount = getBossMinionCount(gameState.wave);
+        if (minionCount <= 0) return;
+
+        gameState.zombiesSpawnedThisWave += minionCount;
+        const isSinglePlayerArcade = this._isSinglePlayerArcade();
+        const localPlayer = this._getLocalPlayer();
+
+        for (let i = 0; i < minionCount; i++) {
+            const side = Math.floor(Math.random() * 4);
+            const { x: spawnX, y: spawnY } = this._computeSpawnPosition(isSinglePlayerArcade, localPlayer, side);
+            const delay = 400 + i * 350;
+            const isLast = i === minionCount - 1;
+
+            const timeout = setTimeout(() => {
+                const typeKey = selectZombieClass(gameState.wave, null, Math.random());
+                const ZombieClass = this.getZombieClassByType(typeKey);
+                this._createAndPushZombie(ZombieClass, spawnX, spawnY, null, multiplayerSocket);
+                if (isLast) {
+                    gameState.isSpawningWave = false;
+                }
+            }, delay);
+            gameState.zombieSpawnTimeouts.push(timeout);
+        }
+    }
+
     spawnBoss(multiplayerSocket) {
-        // In multiplayer, only the leader spawns the boss
         if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-            return; // Non-leader clients will receive zombie:spawn event
+            return;
         }
 
         gameState.isSpawningWave = true;
         gameState.bossActive = true;
-        gameState.zombiesSpawnedThisWave = 1;  // Boss wave = 1 enemy
+        gameState.waveMutator = null;
+        gameState.waveStartTime = Date.now();
 
-        // v0.8.1.2: In single player arcade mode, spawn boss relative to player position in world space
-        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
-        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        const minionCount = getBossMinionCount(gameState.wave);
+        gameState.zombiesSpawnedThisWave = 1 + minionCount;
 
-        let bossX, bossY;
+        const isSinglePlayerArcade = this._isSinglePlayerArcade();
+        const localPlayer = this._getLocalPlayer();
+
+        let bossX;
+        let bossY;
         if (isSinglePlayerArcade && localPlayer) {
-            // Spawn boss above player in world space
             bossX = localPlayer.x;
             bossY = localPlayer.y - Math.max(canvas.width, canvas.height) * 0.6;
         } else {
-            // Original spawn logic (screen space)
             bossX = canvas.width / 2;
             bossY = -50;
         }
@@ -60,7 +200,6 @@ export class ZombieSpawnSystem {
         gameState.boss = boss;
         gameState.zombies.push(boss);
 
-        // Broadcast boss spawn to other clients (leader only)
         if (gameState.multiplayer.active && multiplayerSocket && gameState.multiplayer.isLeader) {
             multiplayerSocket.emit('zombie:spawn', {
                 id: boss.id,
@@ -71,174 +210,46 @@ export class ZombieSpawnSystem {
             });
         }
 
-        triggerWaveNotification("BOSS WAVE!", 180); // Longer notification
+        triggerWaveNotification('BOSS WAVE!', 180);
 
-        // Play boss sound (if we had one)
-        // playBossRoar();
-
-        gameState.isSpawningWave = false;
+        if (minionCount > 0) {
+            this._spawnBossMinions(multiplayerSocket);
+        } else {
+            gameState.isSpawningWave = false;
+        }
     }
 
-    /**
-     * Spawn zombies for a wave
-     */
     spawnZombies(count, multiplayerSocket) {
-        // In multiplayer, only the leader spawns zombies
         if (gameState.multiplayer.active && !gameState.multiplayer.isLeader) {
-            return; // Non-leader clients will receive zombie:spawn events
+            return;
         }
 
-        // Clear any pending zombie spawn timeouts
         gameState.zombieSpawnTimeouts.forEach(timeout => clearTimeout(timeout));
         gameState.zombieSpawnTimeouts = [];
 
-        // Check for Boss Wave (Every 5 waves)
         if (gameState.wave % 5 === 0) {
             this.spawnBoss(multiplayerSocket);
             return;
         }
 
-        // Increase spawn count by 3x for regular zombies (not bosses) - doubled from 1.5x for harder difficulty
+        gameState.waveMutator = rollWaveMutator(gameState.wave);
+        gameState.waveStartTime = Date.now();
+
         count = Math.floor(count * 3.0);
-
-        // Track actual zombies spawned this wave for HUD display
+        count = applyMutatorToCount(count, gameState.waveMutator);
         gameState.zombiesSpawnedThisWave = count;
-
-        // Mark that we're spawning a wave
         gameState.isSpawningWave = true;
+        triggerWaveNotification();
 
-        // v0.8.1.2: In single player arcade mode, spawn zombies relative to player position in world space
-        const isSinglePlayerArcade = !gameState.isCoop && !gameState.multiplayer.active;
-        const localPlayer = gameState.players.find(p => p.inputSource === 'mouse');
+        const isSinglePlayerArcade = this._isSinglePlayerArcade();
+        const localPlayer = this._getLocalPlayer();
+        const mutator = gameState.waveMutator;
+        const packSize = getSpawnPackSize(gameState.wave);
 
-        // Spawn zombies with staggered timing
         for (let i = 0; i < count; i++) {
-            // Calculate spawn position
-            let spawnX, spawnY;
-
-            if (isSinglePlayerArcade && localPlayer) {
-                // Spawn at edges of viewport in world space (relative to player)
-                const side = Math.floor(Math.random() * 4);
-                const spawnDistance = Math.max(canvas.width, canvas.height) * 0.6; // Spawn at viewport edges
-                switch (side) {
-                    case 0: // Top
-                        spawnX = localPlayer.x + (Math.random() - 0.5) * canvas.width;
-                        spawnY = localPlayer.y - spawnDistance;
-                        break;
-                    case 1: // Right
-                        spawnX = localPlayer.x + spawnDistance;
-                        spawnY = localPlayer.y + (Math.random() - 0.5) * canvas.height;
-                        break;
-                    case 2: // Bottom
-                        spawnX = localPlayer.x + (Math.random() - 0.5) * canvas.width;
-                        spawnY = localPlayer.y + spawnDistance;
-                        break;
-                    case 3: // Left
-                        spawnX = localPlayer.x - spawnDistance;
-                        spawnY = localPlayer.y + (Math.random() - 0.5) * canvas.height;
-                        break;
-                }
-            } else {
-                // Original spawn logic (screen space)
-                const side = Math.floor(Math.random() * 4);
-                switch (side) {
-                    case 0: spawnX = Math.random() * canvas.width; spawnY = -20; break;
-                    case 1: spawnX = canvas.width + 20; spawnY = Math.random() * canvas.height; break;
-                    case 2: spawnX = Math.random() * canvas.width; spawnY = canvas.height + 20; break;
-                    case 3: spawnX = -20; spawnY = Math.random() * canvas.height; break;
-                }
-            }
-
-            // Create spawn indicator 1 second before zombie spawns
-            const indicatorDelay = i * 500;
-            const spawnDelay = indicatorDelay + 1000; // 1 second after indicator
-
-            // Create indicator with unique ID for removal
-            const indicatorId = `ind_${i}_${Date.now()}_${Math.random()}`;
-            setTimeout(() => {
-                gameState.spawnIndicators.push({
-                    id: indicatorId,
-                    x: spawnX,
-                    y: spawnY,
-                    startTime: Date.now(),
-                    duration: 1000 // 1 second
-                });
-            }, indicatorDelay);
-
-            // Spawn zombie after delay
-            const timeout = setTimeout(() => {
-                let ZombieClass = NormalZombie; // Default
-                const rand = Math.random();
-
-                // Wave 3+: Introduce Fast zombies (~15% chance)
-                if (gameState.wave >= 3 && rand < 0.15) {
-                    ZombieClass = FastZombie;
-                }
-                // Wave 5+: Introduce Exploding zombies (~10% chance, but only if not fast)
-                else if (gameState.wave >= 5 && rand >= 0.15 && rand < 0.25) {
-                    ZombieClass = ExplodingZombie;
-                }
-                // Wave 4+: Introduce Ghost zombies (~10% chance)
-                else if (gameState.wave >= 4 && rand >= 0.25 && rand < 0.35) {
-                    ZombieClass = GhostZombie;
-                }
-                // Wave 6+: Introduce Spitter zombies (~8% chance)
-                else if (gameState.wave >= 6 && rand >= 0.35 && rand < 0.43) {
-                    ZombieClass = SpitterZombie;
-                }
-                // Wave 5+: Introduce Flying zombies (~15% chance)
-                else if (gameState.wave >= 5 && rand >= 0.43 && rand < 0.58) {
-                    ZombieClass = FlyingZombie;
-                }
-                // Wave 4+: Introduce Crawler zombies (~8% chance)
-                else if (gameState.wave >= 4 && rand >= 0.58 && rand < 0.66) {
-                    ZombieClass = CrawlerZombie;
-                }
-                // Wave 1+ (debug): Introduce Blight zombies (~7% chance)
-                else if (gameState.wave >= 1 && rand >= 0.66 && rand < 0.73) {
-                    ZombieClass = BlightZombie;
-                }
-                // Wave 3+: Armored zombies (chance increases with wave, but only if not fast/exploding/ghost/spitter/flying/crawler/blight)
-                else if (gameState.wave >= 3 && rand >= 0.73) {
-                    const armoredChance = Math.min(0.1 + (gameState.wave - 3) * 0.03, 0.5); // 10%+ and caps at 50%
-                    if (Math.random() < armoredChance) {
-                        ZombieClass = ArmoredZombie;
-                    }
-                }
-
-                // Create zombie at the pre-determined spawn location
-                // Note: Zombie constructor sets random position, so we override it
-                const zombie = new ZombieClass(canvas.width, canvas.height);
-                // Override with our predetermined spawn position
-                zombie.x = spawnX;
-                zombie.y = spawnY;
-
-                gameState.zombies.push(zombie);
-
-                // Broadcast zombie spawn to other clients (leader only)
-                if (gameState.multiplayer.active && multiplayerSocket && gameState.multiplayer.isLeader) {
-                    multiplayerSocket.emit('zombie:spawn', {
-                        id: zombie.id,
-                        type: zombie.type || 'normal',
-                        x: zombie.x,
-                        y: zombie.y,
-                        health: zombie.health
-                    });
-                }
-
-                // Remove the corresponding indicator by ID
-                const indicatorIndex = gameState.spawnIndicators.findIndex(ind => ind.id === indicatorId);
-                if (indicatorIndex !== -1) {
-                    gameState.spawnIndicators.splice(indicatorIndex, 1);
-                }
-
-                // After the last zombie spawns, clear the flag
-                if (i === count - 1) {
-                    gameState.isSpawningWave = false;
-                }
-            }, spawnDelay);
-            gameState.zombieSpawnTimeouts.push(timeout);
+            const side = this._resolveSide(i, mutator, packSize);
+            const { x: spawnX, y: spawnY } = this._computeSpawnPosition(isSinglePlayerArcade, localPlayer, side);
+            this._scheduleSpawn(i, count, spawnX, spawnY, mutator, multiplayerSocket, i === count - 1);
         }
     }
 }
-

@@ -243,26 +243,35 @@ export function drawCrosshair(mouse) {
 export function drawWaveBreak() {
     if (!gameState.waveBreakActive) return;
 
-    const remainingTime = Math.ceil((gameState.waveBreakEndTime - Date.now()) / 1000);
-    if (remainingTime < 0) return;
+    const remainingMs = gameState.waveBreakEndTime - Date.now();
+    if (remainingMs < 0) return;
+
+    const remainingTime = Math.ceil(remainingMs / 1000);
+    const isBrief = remainingMs <= 1200;
 
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font = 'bold 40px Creepster, system-ui';
-    ctx.fillStyle = '#ffc107';
+    ctx.font = isBrief ? 'bold 48px Creepster, system-ui' : 'bold 40px Creepster, system-ui';
+    ctx.fillStyle = isBrief ? '#ff5252' : '#ffc107';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 10;
-    ctx.fillText("Wave Cleared!", canvas.width / 2, canvas.height / 2 - 80);
+    ctx.fillText(isBrief ? 'INCOMING!' : 'Wave Cleared!', canvas.width / 2, canvas.height / 2 - 80);
 
-    ctx.font = '30px "Roboto Mono", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
+    if (!isBrief) {
+        ctx.font = '30px "Roboto Mono", monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`Next wave in ${remainingTime}...`, canvas.width / 2, canvas.height / 2 - 30);
 
-    ctx.font = '20px "Roboto Mono", monospace';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText("Reload [R] | Heal Up", canvas.width / 2, canvas.height / 2 + 20);
+        ctx.font = '20px "Roboto Mono", monospace';
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillText('Reload [R] | Heal Up', canvas.width / 2, canvas.height / 2 + 20);
+    } else {
+        ctx.font = '22px "Roboto Mono", monospace';
+        ctx.fillStyle = '#ff8a80';
+        ctx.fillText(`${remainingTime}s`, canvas.width / 2, canvas.height / 2 - 20);
+    }
 
     ctx.restore();
 }

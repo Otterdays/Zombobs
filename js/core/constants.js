@@ -36,6 +36,22 @@ export const SCRAP_BOSS_VALUE = 30;
 export const MAX_SCRAP_PICKUPS = 8;
 export const SCRAP_MAGNETIC_RANGE = 250;
 
+// Scrap Shrine / mid-run shop (wave-break upgrades)
+export const SCRAP_SHRINE_SPAWN_CHANCE = 0.45;
+export const SCRAP_SHRINE_MIN_WAVE = 4;
+export const SCRAP_SHRINE_INTERACT_RANGE = 70;
+export const SCRAP_SHOP_AMMO_COST = 20;
+export const SCRAP_SHOP_SHIELD_COST = 30;
+export const SCRAP_SHOP_OVERCLOCK_COST = 40;
+export const SCRAP_SHOP_OVERCLOCK_DURATION_MS = 10000;
+export const SCRAP_SHOP_SHIELD_AMOUNT = 25;
+
+export const SCRAP_SHOP_OFFERS = [
+    { id: 'ammo', label: 'Ammo Cache', cost: SCRAP_SHOP_AMMO_COST, icon: '📦' },
+    { id: 'shield', label: 'Armor Plate', cost: SCRAP_SHOP_SHIELD_COST, icon: '🛡' },
+    { id: 'overclock', label: 'Overclock', cost: SCRAP_SHOP_OVERCLOCK_COST, icon: '⚡' }
+];
+
 // Low ammo threshold (25% of max ammo)
 export const LOW_AMMO_FRACTION = 0.25;
 
@@ -46,7 +62,8 @@ export const MELEE_DAMAGE = 3; // damage per hit
 export const MELEE_SWIPE_DURATION = 200; // ms for swipe animation
 
 // Wave settings
-export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves
+export const WAVE_BREAK_DURATION = 3000; // 3 seconds between waves (base; shrinks with wave via WaveChaosSystem)
+export const WAVE_MUTATOR_MIN_WAVE = 5;
 
 // Grenade system
 export const MAX_GRENADES = 3; // Maximum grenades player can carry

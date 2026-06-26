@@ -317,18 +317,47 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
   - **Soldier**: Military fatigues with camo pattern and army helmet
   - Each variant has unique: skin colors, clothing, accessories, scars, and blood stains.
   - **Animations (v0.8.3.1)**: Procedural sinusoidal walking feet, dual swaying arms, and cohesive colored sleeves matching the outfit (visible hands).
-- **FastZombie**: 1.6x speed, 60% health, smaller hitbox, reddish/orange visuals
-- **ExplodingZombie**: Explodes on death, AOE damage, orange/yellow pulsing glow
-- **ArmoredZombie**: Slower, heavily armored, absorbs damage before health
+  - [AMENDED 2026-06-25]: Feet/arm sway now driven by per-zombie `walkPhase` (desynced via `animSeed`) instead of global `Date.now()` — zombies no longer shuffle in sync.
+- **Torso Overlay VFX (2026-06-25)**: Additive clipped layers on upright zombie torsos (~70% spawn rate, deterministic from `id`). Types: `goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`. Drawn above flesh ellipse, below arms/head. Skipped on ghost/blight/crawler/flying.
+- **Organic Motion System (2026-06-25)**: Cosmetic animation state on base `Zombie` — no multiplayer sync or combat changes.
+
+```mermaid
+flowchart TD
+    update[player_target_in_update] --> organic[updateOrganicMotion]
+    organic --> pose[getPoseOffsets]
+    pose --> drawBody[drawStaticBody_with_lean_bob]
+    drawBody --> eyes[drawEyes_with_gaze]
+    eyes --> overlay[drawTorsoOverlayLayer]
+    overlay --> hitFlash[drawHitReactFlash]
+```
+
+| Method | Purpose |
+|--------|---------|
+| `updateOrganicMotion(player, dx, dy, dist)` | Smooth gaze, advance `walkPhase`, body lean, micro-behavior timer |
+| `getMotionProfile()` | Per-type tuning (lean/bob/sway/tremor scales); overridden by fast/armored/exploding/spitter |
+| `getPoseOffsets()` | Lean, bob, arm sway/reach, hit recoil, tremor offsets |
+| `getDrawPosition()` | Applies pose to render coordinates |
+| `drawEyes(ctx, x, y, radius)` | Gaze-offset pupil glow; quality-gated via `eyeGlow` preset |
+| `drawHitReactFlash(ctx, x, y, radius)` | Brief additive damage flash (~180ms) |
+| `drawTorsoOverlayLayer(ctx, x, y, radius)` | Additive torso detail VFX |
+
+**Per-zombie animation fields**: `animSeed`, `gazeX`, `gazeY`, `bodyLean`, `facingAngle`, `walkPhase`, `armSwayOffset`, `hitReactUntil`, `behaviorState`, `behaviorUntil`, `torsoOverlay`, `torsoShape`
+
+**Micro-behaviors** (pose-only): `lurch`, `stagger`, `hesitate`, `reach`, `chase` — cosmetic; do not alter `speed` or AI pathfinding.
+
+- **FastZombie**: 1.6x speed, 60% health, smaller hitbox, reddish/orange visuals; aggressive forward lean (`leanScale: 1.45`)
+- **ExplodingZombie**: Explodes on death, AOE damage, orange/yellow pulsing glow; danger tremor scales up below 50% HP
+- **ArmoredZombie**: Slower, heavily armored, absorbs damage before health; heavy/slow bob motion profile
 - **GhostZombie**: Semi-transparent (50% opacity), 1.3x speed, spectral blue/white, wobble animation
-- **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, Wave 6+
+- **SpitterZombie**: Ranged enemy with kiting AI, fires acid projectiles, toxic green appearance, throat/torso acid pulse, Wave 6+
 - **FlyingZombie**: Flies with wings, 1.2x speed, 70% health, smaller hitbox, subtle floating animation, Wave 5+
 - **BlightZombie**: Fungal support zombie, 0.75x speed, 1.3x health (tanky), 1.1x radius. Leaves toxic slime trail (acid pools every 900ms, smaller radius, lower damage). Explodes into a damaging spore cloud on death (70px radius, 20 AOE damage) plus a lingering slime pool. Deep purple/magenta appearance with mushroom growths and pulsing fungal nodules, Wave 7+
 - **CrawlerZombie**: Low-profile crawler, 1.3x speed, 60% health, 0.7x radius (smaller hitbox), dark brown/gray appearance, crawling pose, Wave 4+
 
 **Methods**:
-- `update(player)` - AI pathfinding (kiting for SpitterZombie, slime trail dropping for BlightZombie)
-- `draw()` - Complex rendering (variant-specific visuals)
+- `update(player)` - AI pathfinding (kiting for SpitterZombie, slime trail dropping for BlightZombie); calls `updateOrganicMotion()` for gaze/pose state
+- `drawStaticBody(ctx, x, y, radius, pose)` - Layered body render (torso → overlay → limbs → head)
+- `draw()` - Aura, posed body, hit flash, gaze eyes, health bar
   - Health bar rendering with configurable styles (gradient, solid, simple)
   - Health bar shown for 2 seconds after taking damage (if enabled)
   - Style controlled by `enemyHealthBarStyle` setting
@@ -912,7 +941,35 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Multiplayer synchronization (leader-only spawning)
 - Spawn indicator system (1 second warning before spawn)
 
-**Dependencies**: `core/gameState.js`, `core/canvas.js`, `entities/Zombie.js`, `entities/BossZombie.js`, `utils/gameUtils.js`
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `entities/Zombie.js`, `entities/BossZombie.js`, `utils/gameUtils.js`, `systems/WaveChaosSystem.js` (mutators, spawn timing, boss minions)
+
+#### WaveChaosSystem.js (2026-06-25)
+**Purpose**: Wave pacing escalation — dynamic breaks, spawn stagger/bursts, mutators, boss minion counts
+
+**Exports**: `WAVE_MUTATORS`, `getWaveBreakDuration()`, `rollWaveMutator()`, `getSpawnTiming()`, `selectZombieClass()`, `getBossMinionCount()`, etc.
+
+**Features**:
+- Shrinking wave breaks; fast-clear and RUSH mutator shorten further
+- Spawn pack bursts; indicators fade after wave 8
+- Five mutators: SWARM, ELITES, VOLATILE, ENCIRCLE, RUSH
+- Boss waves spawn `floor(wave/2)` minions (cap 12)
+
+**Dependencies**: `core/constants.js` (`WAVE_BREAK_DURATION`)
+
+#### ScrapShopSystem.js (2026-06-25)
+**Purpose**: Mid-run scrap spending via wave-break shrines
+
+**Exports**: `ScrapShopSystem` class, `scrapShopSystem` singleton
+
+**Methods**:
+- `trySpawnShrine()` — 45% roll during wave break (wave 4+, non-multiplayer)
+- `tryPurchase(player)` — E-key buy when near active shrine
+- `clearShrines()` — On wave advance / reset
+- `getPromptText(player)` — Tooltip copy for HUD
+
+**Offers** (one random per shrine): Ammo Cache (20), Armor Plate (30), Overclock (40)
+
+**Dependencies**: `entities/ScrapShrine.js`, `core/constants.js`, `GameLoopSystem` (spawn on break start, tooltip draw)
 
 #### PlayerSystem.js
 **Purpose**: Handles player updates, rendering, and co-op lobby management
@@ -1018,7 +1075,8 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 
 **Rendered Entities**:
 - Shells, bullets, grenades, acid projectiles, acid pools
-- All pickup types (health, ammo, damage, nuke, speed, rapidfire, shield, adrenaline)
+- All pickup types (health, ammo, damage, nuke, speed, rapidfire, shield, adrenaline, scrap)
+- Scrap shrines (`scrapShrines`)
 - Zombies (with automatic name tag post-draw via `drawNameTag`)
 
 **Dependencies**: `utils/gameUtils.js` (isInViewport, isVisibleOnScreen), `core/canvas.js` (ctx fallback)
@@ -1033,6 +1091,9 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - `spawnHealthPickup(gameState, canvas, now)` - Health pickup spawning logic
 - `spawnAmmoPickup(gameState, canvas, now)` - Ammo pickup spawning logic
 - `spawnPowerup(gameState, canvas, now)` - Powerup spawning with weighted distribution
+- `updateScrapPickups(gameState, now)` - Magnetic scrap pull toward nearest living player
+- `spawnScrapAt(gameState, x, y, value)` - Death-drop scrap at world position
+- `tryDropScrapFromZombie(gameState, zombie, x, y)` - Boss always / regular 20% drop roll
 
 **Features**:
 - Conditional spawning (health only spawns if players are hurt, ammo only if players are low on ammo)
@@ -1593,11 +1654,28 @@ This hybrid approach provides:
 - `switchWeapon(weapon)` - Change weapon
 - `throwGrenade(mouse, canvas)` - Throw grenade
 - `triggerExplosion(x, y, radius, damage, sourceIsPlayer)` - Create explosion
-- `handleBulletZombieCollisions()` - Process bullet hits
 - `handlePlayerZombieCollisions()` - Process player damage
 - `handlePickupCollisions()` - Process pickup collection
+- `updateScoreMultiplier(player)`, `awardScore(...)`, `getZombieBaseScore(zombie)` - Kill scoring
+- Re-exports `handleBulletZombieCollisions` from `bulletZombieCollisions.js` (backward compat)
+
+[AMENDED 2026-06-25]: `handleBulletZombieCollisions()` moved to `bulletZombieCollisions.js`. File ~887 lines (was ~1,417).
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`, `systems/*`, `entities/*`
+
+#### bulletZombieCollisions.js [2026-06-25]
+**Purpose**: Bullet–zombie collision detection and kill side-effects (Phase 4b extract)
+
+**Exports**:
+- `handleBulletZombieCollisions()` - Quadtree broad-phase, prop barrel hits, per-bullet-type hit resolution (flame, piercing, rocket, headshot, crit), kill rewards, multiplayer sync emits
+
+**Internal helpers**:
+- `syncBulletCollisionQuadtree(isSinglePlayerArcade)` - Reused quadtree; world bounds in arcade, canvas bounds otherwise
+- `handleBulletPropCollision(bullet)` - Explosive barrel detonation
+
+**Dependencies**: `core/gameState.js`, `core/canvas.js`, `utils/Quadtree.js`, `utils/gameUtils.js`, `utils/combatUtils.js` (score/explosion), `systems/*`, `entities/*`
+
+**Size**: ~550 lines
 
 #### ChunkManager.js (v0.8.1.2)
 **Purpose**: Chunk-based coordinate system for world division
@@ -1639,6 +1717,7 @@ This hybrid approach provides:
   - Entry structure: `{score, wave, kills, timeSurvived, maxMultiplier, username, dateTime}`
   - Only saves if entry makes it into top 10 after sorting
   - Returns boolean indicating if entry was saved
+- [2026-06-25] **Mode / UI helpers**: `isSinglePlayerArcadeMode(state)`, `isGameplayBlocked(state)`, `isUICanvasInteractive(state, hud)`, `isHTMLOverlayActive(state)`, `isMenuOrOverlayScreen(state, hud)`, `isMobileDevice()` — shared gates for game loop, overlay pointer-events, and touch controls
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`
 
@@ -1709,25 +1788,23 @@ This hybrid approach provides:
 
 ### Main Entry Point (`js/main.js`)
 
-**Purpose**: Game loop, initialization, and event handlers
+**Purpose**: Initialization, DOM input, menu actions, and engine wiring
 
 **Responsibilities**:
-- Initialize game systems (including `CompanionSystem`)
-- Set up event listeners
-- Run game loop (`gameLoop()`)
-- Coordinate all modules
-- Handle input (keyboard, mouse)
-- Handle melee attacks (`performMeleeAttack`)
-- Update game state (`updateGame()`) - delegates to specialized systems
-- Render game (`drawGame()`) - delegates to specialized systems
-- Delegate AI companion updates to `CompanionSystem`
+- Initialize game systems (including `CompanionSystem`, `GameLoopSystem`)
+- Set up event listeners (keyboard, mouse, touch, resize)
+- Assign `gameEngine.update` / `gameEngine.draw` callbacks
+- Handle menu button routing (`handleMenuInteraction`)
+- WebGPU boot and settings change listeners
+- Thin delegates: `updatePlayers()`, `drawPlayers()`, pause/restart/start
 
 **Dependencies**: All other modules
 
 **Refactoring Notes**:
 - Main.js has been significantly refactored to extract large systems into dedicated modules
+- **Phase 4 (2026-06-25)**: Per-frame gameplay update + render → `GameLoopSystem.update()` / `GameLoopSystem.draw()`
 - Zombie updates delegated to `ZombieUpdateSystem`
-- Entity rendering delegated to `EntityRenderSystem`
+- Entity rendering delegated to `EntityRenderSystem` (via `GameLoopSystem`)
 - Pickup spawning delegated to `PickupSpawnSystem`
 - Multiplayer networking extracted to `MultiplayerSystem`
 - Zombie spawning extracted to `ZombieSpawnSystem`
@@ -1735,31 +1812,44 @@ This hybrid approach provides:
 - Game lifecycle management extracted to `GameStateManager`
 - Melee combat extracted to `MeleeSystem`
 - Drawing utilities extracted to `drawingUtils.js`
-- Current size: ~1,241 lines (reduced from ~2,536 lines, ~51% reduction)
+- [AMENDED 2026-06-25] Current size: ~1,183 lines (cumulative ~53% reduction from original ~2,536)
 
 **AI Companion Integration**:
 - `addAIPlayer()` function delegates to `companionSystem.addCompanion()`
 - `updatePlayers()` calls `companionSystem.update(player)` for AI-controlled players
 - Movement vectors returned from `CompanionSystem` integrated with existing physics
 
+#### GameLoopSystem.js [2026-06-25]
+**Purpose**: Per-frame gameplay simulation and world/HUD rendering (Phase 4 extract from `main.js`)
+
+**Methods**:
+- `update()` — day/night, camera/world systems, entity updates, collisions, wave progression, music intensity
+- `draw()` — UI canvas routing (menus/settings/gameplay), world render pipeline, HUD, touch controls
+- `_updateMusicIntensity()`, `_emitMultiplayerPlayerState()`, `_drawPickupTooltips()`, `_calculateNightAlpha()`
+
+**Dependencies**: `GameEngine`, `GameHUD`, `SettingsPanel`, profile screens, `WebGPURenderer`, `TouchControlSystem`, `combatUtils`, `bulletZombieCollisions`, entity/system singletons, `gameUtils` mode helpers
+
+**Size**: ~715 lines
+
 ## Game Systems
 
 ### Input System
-**Location**: `js/main.js`, `js/systems/InputSystem.js`
+**Location**: `js/main.js`, `js/systems/InputSystem.js`, `js/systems/TouchControlSystem.js`
 - **Keyboard**: State tracking (`keys` object), event listeners for keydown/keyup
 - **Mouse**: Position tracking (`mouse` object), event listeners for mousemove/click
 - **Gamepad**: HTML5 Gamepad API integration via `InputSystem`
   - Left Stick: Movement (analog)
   - Right Stick: Aiming (analog)
   - Button mapping: RT (fire), RB (grenade), X (reload), Y (next weapon), LB (prev weapon), R3 (melee), L3 (sprint), Start (pause)
+- **Touch / Virtual Gamepad**: `TouchControlSystem` on mobile UA only (`isMobileDevice()`); virtual state wired through `InputSystem.setVirtualState()`. [AMENDED 2026-06-25]: No longer auto-enabled via `maxTouchPoints` on desktop.
 - **Input Source Detection**: Automatically switches between mouse/keyboard and gamepad based on active input
 - **Virtual Crosshair**: When using controller, crosshair follows right stick aim direction
 - Settings-aware keybind handling (keyboard and gamepad)
 
 ### Collision Detection
-**Location**: `js/utils/gameUtils.js`, `js/utils/combatUtils.js`
+**Location**: `js/utils/gameUtils.js`, `js/utils/combatUtils.js`, `js/utils/bulletZombieCollisions.js`
 - Circle-based collision using squared distance formula (optimized, no sqrt)
-- Quadtree spatial partitioning for bullet-zombie collisions (reused instance)
+- Quadtree spatial partitioning for bullet-zombie collisions in `bulletZombieCollisions.js` (reused instance)
 - Used for: bullet-zombie, player-zombie, player-pickup interactions
 - Special handling for exploding zombies (position stored before removal)
 - **Performance**: Squared distance comparisons eliminate expensive sqrt operations
@@ -1909,7 +1999,7 @@ This hybrid approach provides:
   - Survival skills: Vitality Boost (max HP), Regeneration (health regen), Eagle Eye (crit chance), Hoarder (ammo capacity), Iron Grip (reload speed)
 - Multiplayer synchronization: Leader generates skill choices and broadcasts to all clients
 - Skill effects integrated throughout game systems:
-  - Combat: `handleBulletZombieCollisions()`, `handlePlayerZombieCollisions()` in `combatUtils.js`
+  - Combat: `handleBulletZombieCollisions()` in `bulletZombieCollisions.js`; `handlePlayerZombieCollisions()` in `combatUtils.js`
   - Movement: `updatePlayers()` in `PlayerSystem.js` (adrenaline boost)
   - Pickups: All spawn functions in `PickupSpawnSystem.js` (scavenger multiplier)
   - Bullets: `shootBullet()` in `combatUtils.js` (range and spread modifiers)
@@ -1932,7 +2022,8 @@ This hybrid approach provides:
 
 ## Rendering Pipeline
 
-### drawGame() Function (main.js)
+### drawGame() Function (GameLoopSystem.draw) [AMENDED 2026-06-25]
+Previously in `main.js`; now `GameLoopSystem.draw()`.
 **Execution Order**:
 1. Check for settings panel or main menu (draw and return early if active)
 2. Apply screen shake transform
@@ -1955,7 +2046,8 @@ This hybrid approach provides:
 17. Restore transform (undo shake)
 18. Draw UI elements (damage numbers, crosshair, HUD, notifications, FPS)
 
-### Update Loop (main.js)
+### Update Loop (GameLoopSystem.update) [AMENDED 2026-06-25]
+Previously `updateGame()` in `main.js`; now `GameLoopSystem.update()`, called from `gameEngine.update` in `main.js`.
 **updateGame() Function**:
 1. Check pause state (skip if paused)
 2. Spawn health/ammo pickups periodically
@@ -2038,8 +2130,8 @@ All game state is managed through the `gameState` object:
 ## Event Flow
 
 1. **Input Events** → Update `keys` object or `mouse` position (main.js)
-2. **Game Loop** → `updateGame()` → `drawGame()` (main.js)
-3. **Collision Events** → Update game state (combatUtils.js)
+2. **Game Loop** → `GameLoopSystem.update()` → `GameLoopSystem.draw()` (via `gameEngine` in `main.js`)
+3. **Collision Events** → Update game state (`bulletZombieCollisions.js`, `combatUtils.js`)
 4. **State Changes** → Trigger effects (gameUtils.js)
 5. **UI Update** → HUD renders updated state (GameHUD.js)
 

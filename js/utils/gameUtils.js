@@ -117,10 +117,24 @@ export function triggerDamageIndicator() {
     gameState.damageIndicator.intensity = 1.0;
 }
 
-export function triggerWaveNotification() {
+export function triggerWaveNotification(customText = null, customLife = null) {
     gameState.waveNotification.active = true;
-    gameState.waveNotification.text = `Wave ${gameState.wave} Starting!`;
-    gameState.waveNotification.life = gameState.waveNotification.maxLife;
+    if (customText) {
+        gameState.waveNotification.text = customText;
+    } else if (gameState.waveMutator) {
+        const labels = {
+            swarm: 'SWARM',
+            elites: 'ELITES',
+            volatile: 'VOLATILE',
+            encircle: 'ENCIRCLE',
+            rush: 'RUSH'
+        };
+        const tag = labels[gameState.waveMutator] || gameState.waveMutator.toUpperCase();
+        gameState.waveNotification.text = `Wave ${gameState.wave} — ${tag}`;
+    } else {
+        gameState.waveNotification.text = `Wave ${gameState.wave} Starting!`;
+    }
+    gameState.waveNotification.life = customLife ?? gameState.waveNotification.maxLife;
 }
 
 export function triggerMuzzleFlash(x, y, angle) {
@@ -384,5 +398,75 @@ export function formatTime(seconds) {
     }
 
     return parts.join(' ');
+}
+
+/** True on phone/tablet user agents (matches GameHUD mobile layout gate) */
+export function isMobileDevice() {
+    return /Android|iPhone|iPad|iPod/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+}
+
+/** Single-player arcade: world-space camera, infinite ground, prop spawning */
+export function isSinglePlayerArcadeMode(state) {
+    return !state.isCoop && !state.multiplayer.active;
+}
+
+/** True when gameplay simulation should not run (menus/overlays active) */
+export function isGameplayBlocked(state) {
+    return !state.gameRunning ||
+        state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges;
+}
+
+/** True when uiCanvas should capture pointer events */
+export function isUICanvasInteractive(state, hud) {
+    return state.showSettingsPanel ||
+        state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges ||
+        state.showLevelUp ||
+        state.showUsernameModal ||
+        hud.gameOver ||
+        state.gamePaused;
+}
+
+/** HTML overlay screens that need clicks to pass through to DOM */
+export function isHTMLOverlayActive(state) {
+    return state.showProfile ||
+        state.showAchievements ||
+        state.showBattlepass ||
+        state.showBadges;
+}
+
+/** Menus/lobbies where touch controls should be hidden */
+export function isMenuOrOverlayScreen(state, hud) {
+    return state.showMainMenu ||
+        state.showLobby ||
+        state.showCoopLobby ||
+        state.showAILobby ||
+        state.showGallery ||
+        state.showAbout ||
+        state.showProfile ||
+        state.showAchievements ||
+        state.showBadges ||
+        state.showBattlepass ||
+        state.showSettingsPanel ||
+        state.gamePaused ||
+        hud.gameOver ||
+        state.showLevelUp;
 }
 
