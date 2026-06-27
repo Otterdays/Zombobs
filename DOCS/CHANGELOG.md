@@ -6,10 +6,12 @@ All notable changes to the Zombie Survival Game project will be documented in th
 ## [Unreleased]
 
 ### Added
+- **Smooth Game Entry (2026-06-26)** — Idle menu warm-up (`requestIdleCallback`, ~2–3.5s) preloads WebGPU module/init and ground texture while the main menu is visible. Async `startGame()` awaits `prepareGameSession()` when GPU is not ready; `GameHUD` draws a brief **PREPARING WORLD** canvas overlay (fade in/out). `#gpuCanvas` uses a 450ms opacity transition instead of popping in. Key files: `js/main.js`, `js/ui/GameHUD.js`, `css/style.css`.
 - **Startup Performance Metrics (2026-06-26)** — Added `zombobs:*` performance marks/measures for bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Console logging can be enabled with `?perf=1` or `localStorage.zombobs_perf='1'`; `window.zombobsPerf.entries()` returns captured measures.
 - **Class Tree System (hybrid 3×5)** — Nation Red-style build paths alongside existing 16 flat skills. Three trees (Gunner, Survivor, Scavenger) with 5 tiered tree-exclusive skills each, linear prereqs, rarer level-up weight (35%). New file `js/core/skillTreeDefinitions.js`. Combat hooks: fire rate, pierce, damage mult, Executioner, Second Wind, scrap magnet, Feeding Frenzy heal, Killing Spree adrenaline. UI: tree badges on level-up cards, tree color accent on HUD active skills. Achievement **Tree Master** (15 tree skills lifetime). Profile tracks `unlockedTreeSkillIds`.
 
 ### Changed
+- **Game Start Flow (2026-06-26)** — `startGame()` in `js/main.js` is async: waits for WebGPU when needed before `GameStateManager.startGame()`. Multiplayer lobby host start routes through the same path. Session prep overlay skipped when idle warm-up already completed GPU init.
 - **Default Music Volume (2026-06-26)** — Halved default `audio.musicVolume` from `0.5` to `0.25` so MP3 menu/gameplay tracks sit below gunfire without boosting SFX. Settings schema bumped to v3; saves still on the legacy default auto-migrate. Custom music levels are preserved. Key files: `js/systems/SettingsManager.js`, `js/systems/AudioSystem.js`, `js/systems/ArcadeMusicSystem.js`.
 - **Main Menu Startup Deferrals (2026-06-26)** — WebGPU renderer code now loads dynamically on first gameplay/WebGPU re-enable instead of during menu boot. Vendored Socket.IO client now lazy-loads only when multiplayer networking initializes.
 
@@ -30,6 +32,8 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ### Fixed
 - **Main Menu Lag Spike** — Cached local score reads, prebaked static horror-background layers, throttled menu noise drawing, and removed GPU/network startup work from the first menu path.
+
+[AMENDED 2026-06-26 — smooth game entry, same release train]: Idle menu warm-up for WebGPU + ground texture; async `startGame()` with **PREPARING WORLD** canvas overlay when GPU not ready; `#gpuCanvas` 450ms opacity fade-in. See `[Unreleased]` for full entry.
 
 ## [v0.8.4] - 2026-06-25
 

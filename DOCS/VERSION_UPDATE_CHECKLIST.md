@@ -79,3 +79,5 @@ Example: `V0.8.4 ALPHA`
 
 [AMENDED 2026-06-26 — V0.9.0 modality pass]: Updated `NEWS_UPDATES`, main-menu/About version boxes, landing bubbles, mobile web mirror, itch `page_description.md`, launcher, and server package metadata. V0.9.0 public copy leads with *Performance & Systems Update* (main-menu smoothness, lazy WebGPU, lazy Socket.IO, startup metrics, class tree skills).
 
+[AMENDED 2026-06-26 — smooth game entry]: Documented idle GPU/ground warm-up, async `startGame()`, session prep overlay, and `gpuCanvas` fade-in in `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `REFACTOR_PLAN`, `My_Thoughts`. No version bump — ships under existing V0.9.0 ALPHA performance release.
+

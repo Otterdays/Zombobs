@@ -161,6 +161,7 @@ All adjustment points are marked with `// ADJUSTMENT:` comments in the code for 
 - Respects `video.webgpuEnabled` and only renders when enabled and available
 - Consolidated checks via `isWebGPUActive()` helper in main.js
 - ZombobsFX initialized during WebGPURenderer.init() and rendered in render() loop
+- **[AMENDED 2026-06-26] Lazy load + warm-up**: `WebGPURenderer` module loads via dynamic `import()` — not at menu boot. `scheduleWebGPUInit()` runs during idle menu warm-up (`requestIdleCallback`) or on first Play via `prepareGameSession()`. `#gpuCanvas` visibility toggled in `updateGpuCanvasVisibility()` with 450ms CSS opacity fade-in (`css/style.css`).
 
 #### ZombobsFX.js
 **Purpose**: 100k particle spore cloud background effect with mouse interaction
@@ -1285,6 +1286,7 @@ This hybrid approach provides:
 
 **Methods**:
 - `draw()` - Delegates to HUD, menu, or lobby render paths
+- `beginSessionPrep()` / `endSessionPrep()` / `drawSessionPrepOverlay()` — **[2026-06-26]** Brief **PREPARING WORLD** fade overlay while WebGPU finishes init on Play (see `main.js` `prepareGameSession()`)
 - `drawStat()` - Render individual stat panel
 - `drawMainMenu()` - Render main menu (single/multi/settings/gallery/about buttons, username, high score)
 
@@ -1831,12 +1833,30 @@ This hybrid approach provides:
 - Handle menu button routing (`handleMenuInteraction`)
 - WebGPU boot and settings change listeners
 - Thin delegates: `updatePlayers()`, `drawPlayers()`, pause/restart/start
+- **Game session entry (2026-06-26)**: `warmSessionResourcesInBackground()` (idle menu warm-up), `prepareGameSession()` + async `startGame()` (await GPU when needed), `updateGpuCanvasVisibility()` with opacity fade-in
+
+**Game Session Entry Flow** [2026-06-26]:
+
+```mermaid
+flowchart TD
+    A[Game loop starts] --> B{requestIdleCallback ~2-3.5s}
+    B --> C[warmSessionResourcesInBackground]
+    C --> D[scheduleWebGPUInit + groundTextureSystem.init]
+    E[User clicks Play] --> F{isWebGPUActive?}
+    F -->|yes| G[GameStateManager.startGame]
+    F -->|no| H[GameHUD.beginSessionPrep overlay]
+    H --> I[await scheduleWebGPUInit]
+    I --> G
+    G --> J[GameHUD.endSessionPrep fade out]
+    D -.->|GPU ready before Play| F
+```
 
 **Dependencies**: All other modules
 
 **Refactoring Notes**:
 - Main.js has been significantly refactored to extract large systems into dedicated modules
 - **Phase 4 (2026-06-25)**: Per-frame gameplay update + render → `GameLoopSystem.update()` / `GameLoopSystem.draw()`
+- **Phase 4c (2026-06-26)**: WebGPU code-split + idle warm-up; `startGame()` async with session prep overlay in `GameHUD`
 - Zombie updates delegated to `ZombieUpdateSystem`
 - Entity rendering delegated to `EntityRenderSystem` (via `GameLoopSystem`)
 - Pickup spawning delegated to `PickupSpawnSystem`

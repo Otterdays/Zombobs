@@ -1,6 +1,10 @@
 <!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
 
+## 2026-06-26 - Smooth Game Entry
+
+Lazy WebGPU fixed menu boot but moved the hitch to **Play** — module parse, shader compile, and `gpuCanvas` pop-in all landed at once with no feedback. Split the fix into two paths: **idle warm-up** on menu (`requestIdleCallback` ~2–3.5s) starts GPU + ground texture quietly; **async `startGame()`** only shows the **PREPARING WORLD** overlay when Play beats warm-up. `gpuCanvas` gets a CSS opacity fade so the GPU layer doesn't snap in. Keeps fast path instant when user reads menu a few seconds; cold immediate-Play still feels intentional, not broken.
+
 ## 2026-06-26 - V0.9.0 ALPHA Modality Pass
 
 V0.9.0 is positioned as **Performance & Systems Update** because the player-facing win is feel: menu stops hitching, WebGPU/Sockets no longer punish first paint, and perf marks make future startup regressions visible. Kept V0.8.4 horde/scrap content in copy as "still live" rather than pretending all gameplay systems changed today. Updated all major modalities together: `NEWS_UPDATES`, menu/About version boxes, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`, `SCRATCHPAD`, and this checklist trail.

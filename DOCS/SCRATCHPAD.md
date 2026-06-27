@@ -16,6 +16,7 @@
 - **Done**: Added `zombobs:*` performance marks/measures; enable console logs with `?perf=1` or `localStorage.zombobs_perf='1'`.
 - **Done**: V0.9.0 modality sweep — menu version/news ticker, About screen, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`.
 - **Done**: Smooth game entry — idle WebGPU + ground texture warm-up on menu; async `startGame()` with canvas prep overlay when GPU not ready; `gpuCanvas` opacity fade-in.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `ARCHITECTURE`, `REFACTOR_PLAN`, `My_Thoughts`.
 - **Next**: Browser QA cold boot, first Play click with WebGPU enabled, multiplayer lobby connect.
 
 ### Class Tree System (3×5 hybrid) [2026-06-25] ✅ COMPLETE

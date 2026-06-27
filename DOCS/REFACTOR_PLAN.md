@@ -245,14 +245,16 @@ main.js
 
 [AMENDED 2026-06-26 — Phase 4c / v0.9.0 performance additions:]
 ```
-├── main.js → lazy WebGPURenderer dynamic import, startup perf marks, first-play GPU init
+├── main.js → lazy WebGPURenderer dynamic import, startup perf marks, idle GPU warm-up, async startGame/prepareGameSession
 ├── systems/
 │   └── MultiplayerSystem.js → lazy Socket.IO client script load on network init
 ├── ui/
-│   └── GameHUD.js → cached creepy-background static layers, throttled menu noise
+│   └── GameHUD.js → cached creepy-background static layers, throttled menu noise, session prep overlay
 └── utils/
     └── gameUtils.js → cached scoreboard/recent-run reads for menu draw path
 ```
+
+[AMENDED 2026-06-26 — smooth game entry]: `css/style.css` → `#gpuCanvas` opacity transition; `GroundTextureSystem.init()` also called during idle warm-up.
 
 ## Benefits Achieved
 
