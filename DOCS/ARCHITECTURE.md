@@ -518,7 +518,9 @@ flowchart TD
 ### System Modules (`js/systems/`)
 
 #### AudioSystem.js
-**Purpose**: Web Audio API sound generation
+**Purpose**: Web Audio API sound generation and MP3 music playback
+
+**Music defaults (2026-06-26)**: `audio.musicVolume` default is `0.25` (halved from `0.5`) so licensed MP3 menu/gameplay tracks sit under procedural gunshots. Settings schema v3 migrates legacy saves still on `0.5`; user-custom levels are preserved.
 
 **Exports**:
 - `initAudio()` - Initialize audio context
@@ -708,6 +710,7 @@ flowchart TD
 
 **Methods**:
 - `loadSettings()` - Load from localStorage
+- `applySettingsMigrations()` - Schema migrations (v3: halve legacy default `musicVolume` 0.5 → 0.25)
 - `saveSettings()` - Save to localStorage
 - `getSetting(category, key)` - Get setting value
 - `setSetting(category, key, value)` - Set setting value
@@ -1213,7 +1216,13 @@ flowchart TD
 **Dependencies**: `systems/GraphicsSystem.js`, `systems/CameraSystem.js`, `core/constants.js`
 
 **Settings Structure**:
-- `audio.masterVolume` - Master volume (0.0 to 1.0)
+- `audio.masterVolume` - Master volume (0.0 to 1.0, default 1.0)
+- `audio.musicVolume` - Background music volume (0.0 to 1.0, default 0.25; was 0.5 pre-settings v3)
+- `audio.sfxVolume` - Sound effects volume (0.0 to 1.0, default 1.0)
+- `audio.gunshotVolume` - Weapon fire volume (0.0 to 1.0, default 1.0)
+- `audio.walkingVolume` - Footstep volume (0.0 to 1.0, default 1.0)
+- `audio.hitSoundVolume` - Hit marker tick volume (0.0 to 1.0, default 1.0)
+- `audio.multiplierVolume` - Multiplier shimmer volume (0.0 to 1.0, default 1.0)
 - `video.vignette` - Enable/disable vignette overlay
 - `video.shadows` - Enable/disable shadows under entities
 - `video.lighting` - Enable/disable lighting overlay

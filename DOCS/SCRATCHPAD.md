@@ -2,6 +2,12 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Audio Balance — Music vs Gunshots (2026-06-26) ✅ COMPLETE
+- **Done**: Halved default `audio.musicVolume` (`0.5` → `0.25`) so MP3 menu/gameplay tracks sit under gunfire without boosting SFX.
+- **Done**: Settings schema v3 migration — existing saves still on legacy default `0.5` auto-migrate to `0.25`; custom music levels untouched.
+- **Done**: Updated fallbacks in `AudioSystem.js` and `ArcadeMusicSystem.js`.
+- **Docs**: `CHANGELOG`, `SUMMARY`, `settings.roadmap`, `ARCHITECTURE`.
+
 ### Main Menu Startup Performance (2026-06-26) ✅ COMPLETE
 - **Done**: Cached menu scoreboard/recent-run reads to avoid per-frame `localStorage` parse/sort.
 - **Done**: Prerendered creepy background scanlines/vignette and throttled noise draw.

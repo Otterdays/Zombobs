@@ -33,7 +33,7 @@ A beginner-friendly settings panel that allows players to customize their gaming
 |---------|------|---------------|---------|--------|
 | **Master Volume** | Slider | 0-100% | 100% | ✅ Implemented |
 | **SFX Volume** | Slider | 0-100% | 100% | ✅ Implemented |
-| **Music Volume** | Slider | 0-100% | 50% | ✅ Implemented |
+| **Music Volume** | Slider | 0-100% | 25% | ✅ Implemented |
 | **Mute All** | Toggle | On/Off | Off | ⏳ Future Enhancement |
 
 **Implementation Notes**:
@@ -201,7 +201,7 @@ A beginner-friendly settings panel that allows players to customize their gaming
 │  🔊 AUDIO                            │
 │  ─────────────────────────────────   │
 │  Master Volume:  [━━━━━━━━━] 100%  │
-│  Music Volume:    [━━━━━━━━━]  50%  │
+│  Music Volume:    [━━━━━━     ]  25%  │
 │  SFX Volume:      [━━━━━━━━━] 100%  │
 │                                     │
 │  🎨 VIDEO                            │
@@ -287,7 +287,7 @@ const defaultSettings = {
     audio: {
         masterVolume: 1.0,      // 0.0 to 1.0
         sfxVolume: 1.0,        // 0.0 to 1.0
-        musicVolume: 1.0,     // 0.0 to 1.0
+        musicVolume: 0.25,    // 0.0 to 1.0 (halved 2026-06-26 for gunshot clarity)
         muted: false
     },
     graphics: {

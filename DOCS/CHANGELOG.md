@@ -10,6 +10,7 @@ All notable changes to the Zombie Survival Game project will be documented in th
 - **Class Tree System (hybrid 3×5)** — Nation Red-style build paths alongside existing 16 flat skills. Three trees (Gunner, Survivor, Scavenger) with 5 tiered tree-exclusive skills each, linear prereqs, rarer level-up weight (35%). New file `js/core/skillTreeDefinitions.js`. Combat hooks: fire rate, pierce, damage mult, Executioner, Second Wind, scrap magnet, Feeding Frenzy heal, Killing Spree adrenaline. UI: tree badges on level-up cards, tree color accent on HUD active skills. Achievement **Tree Master** (15 tree skills lifetime). Profile tracks `unlockedTreeSkillIds`.
 
 ### Changed
+- **Default Music Volume (2026-06-26)** — Halved default `audio.musicVolume` from `0.5` to `0.25` so MP3 menu/gameplay tracks sit below gunfire without boosting SFX. Settings schema bumped to v3; saves still on the legacy default auto-migrate. Custom music levels are preserved. Key files: `js/systems/SettingsManager.js`, `js/systems/AudioSystem.js`, `js/systems/ArcadeMusicSystem.js`.
 - **Main Menu Startup Deferrals (2026-06-26)** — WebGPU renderer code now loads dynamically on first gameplay/WebGPU re-enable instead of during menu boot. Vendored Socket.IO client now lazy-loads only when multiplayer networking initializes.
 
 ### Fixed

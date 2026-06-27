@@ -5,7 +5,7 @@
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), and v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata.
+**Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata. **Audio balance (2026-06-26)**: default music volume halved (`0.5` → `0.25`, settings v3 migration) so gunshots cut through MP3 tracks without raising SFX gain.
 
 **Release: V0.8.4 ALPHA (2026-06-25)** — *The Chaos & Horde Update*. Wave Chaos mutators, Scrap Shop shrine + kill-drop economy, **Class Tree System (hybrid 3×5)**, zombie torso overlays + organic motion, MP3 gameplay soundtrack (intensity scaling), controls moved to Settings → Controls (in-game overlay removed), Phase 4 `GameLoopSystem` refactor, mobile touch gate fix. Player-facing modality: `NEWS_UPDATES` news reel, landing version bubbles (9 items), itch V0.8.4 section.
 
@@ -24,7 +24,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
 ✅ **Audio System** - Advanced Web Audio API implementation
   - **In-Game Music**: Two-track MP3 playlist (loops track A → B → A) with pause/resume; replaces procedural arcade oscillators
   - **Menu Music**: `Shadows of the Wasteland.mp3` (loop)
-  - **Granular Mixer**: Independent volume controls for Master, Music, SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
+  - **Granular Mixer**: Independent volume controls for Master, Music (default 25%), SFX, Footsteps, Gunshots, Hit Markers, and Multipliers
   - **High-Fidelity SFX**: Multi-layered visceral impacts, noise-based "ticks", crystal shimmer multipliers, and **Laser "Zaps"**
   - **UI Sound**: Procedural "Pip" (click) and "Tick" (hover) sounds for full menu feedback
   - **Interactive**: Fully adjustable via the in-game Settings Panel
