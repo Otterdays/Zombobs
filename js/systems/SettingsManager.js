@@ -1,5 +1,5 @@
 // Current settings version - increment when schema changes
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 export class SettingsManager {
     constructor() {
@@ -8,7 +8,7 @@ export class SettingsManager {
             _version: SETTINGS_VERSION, // Track settings schema version
             audio: {
                 masterVolume: 1.0,
-                musicVolume: 0.5,
+                musicVolume: 0.25,
                 sfxVolume: 1.0,
                 spatialAudio: false, // Stereo panning based on position
                 muted: false, // Master mute toggle
@@ -118,6 +118,28 @@ export class SettingsManager {
             }
         }
         this.settings = this.loadSettings();
+        this.applySettingsMigrations();
+    }
+
+    applySettingsMigrations() {
+        const savedVersion = this.settings._version ?? 1;
+        let changed = false;
+
+        if (savedVersion < 3) {
+            if (this.settings.audio?.musicVolume === 0.5) {
+                this.settings.audio.musicVolume = 0.25;
+                changed = true;
+            }
+        }
+
+        if (this.settings._version !== SETTINGS_VERSION) {
+            this.settings._version = SETTINGS_VERSION;
+            changed = true;
+        }
+
+        if (changed) {
+            this.saveSettings();
+        }
     }
 
     loadSettings() {

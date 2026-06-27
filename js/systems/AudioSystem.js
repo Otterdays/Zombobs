@@ -82,7 +82,7 @@ function ensureGameMusicGain() {
 
     gameMusicGain = audioContext.createGain();
     const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-    gameMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+    gameMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.25;
     gameMusicGain.connect(masterGainNode || audioContext.destination);
 }
 
@@ -148,7 +148,7 @@ export function initAudio() {
 
             // Update music volume if it exists
             const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            const resolvedMusicVol = musicVol !== undefined ? musicVol : 0.5;
+            const resolvedMusicVol = musicVol !== undefined ? musicVol : 0.25;
             if (menuMusicGain) {
                 menuMusicGain.gain.value = resolvedMusicVol;
             }
@@ -187,7 +187,7 @@ export function updateAudioSettings() {
         sfxGainNode.gain.value = sfxVol;
     }
 
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
     if (menuMusicGain) {
         menuMusicGain.gain.value = musicVol;
     } else if (menuMusic) {
@@ -217,7 +217,7 @@ export function playMenuMusic() {
             menuMusicSource = audioContext.createMediaElementSource(menuMusic);
             menuMusicGain = audioContext.createGain();
             const musicVol = settingsManager.getSetting('audio', 'musicVolume');
-            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.5;
+            menuMusicGain.gain.value = musicVol !== undefined ? musicVol : 0.25;
             menuMusicSource.connect(menuMusicGain);
             menuMusicGain.connect(masterGainNode || audioContext.destination);
         } catch (e) {
@@ -281,7 +281,7 @@ export function setGameMusicIntensity(intensity) {
     gameMusicIntensity = Math.max(0, Math.min(1, intensity));
     if (!gameMusicGain) return;
 
-    const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+    const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
     const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
     const scale = 0.72 + gameMusicIntensity * 0.28;
     gameMusicGain.gain.value = baseVol * masterVol * scale;

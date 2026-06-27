@@ -51,7 +51,7 @@ export function initArcadeMusic(existingContext = null) {
 
         // Create music-specific gain (controlled by music volume setting)
         musicGain = audioContext.createGain();
-        const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+        const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
         const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
         musicGain.gain.value = musicVol * masterVol * 0.3; // Keep music subtle
         musicGain.connect(masterGain);
@@ -68,7 +68,7 @@ export function updateMusicVolume() {
     if (!musicGain || isPaused) return; // Don't update volume if paused (keep it muted)
 
     const isMuted = settingsManager.getSetting('audio', 'muted') === true;
-    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+    const musicVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
     const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
 
     musicGain.gain.value = isMuted ? 0 : (musicVol * masterVol * 0.3 * (0.8 + currentIntensity * 0.4));
@@ -168,7 +168,7 @@ export function setMusicIntensity(intensity) {
 
     // Adjust music parameters based on intensity
     if (musicGain) {
-        const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.5;
+        const baseVol = settingsManager.getSetting('audio', 'musicVolume') ?? 0.25;
         const masterVol = settingsManager.getSetting('audio', 'masterVolume') ?? 1.0;
         // Slightly louder at higher intensity
         musicGain.gain.value = baseVol * masterVol * 0.3 * (0.8 + currentIntensity * 0.4);
