@@ -1,10 +1,15 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Project Summary
 
 ## Overview
 A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScript. Features wave-based gameplay, smooth controls, and visual effects.
 
 ## Current Status
-**Release: V0.8.4 ALPHA (2026-06-25)** — *The Chaos & Horde Update*. Wave Chaos mutators, Scrap Shop shrine + kill-drop economy, zombie torso overlays + organic motion, MP3 gameplay soundtrack (intensity scaling), controls moved to Settings → Controls (in-game overlay removed), Phase 4 `GameLoopSystem` refactor, mobile touch gate fix. Player-facing modality: `NEWS_UPDATES` news reel, landing version bubbles (9 items), itch V0.8.4 section.
+**Release: V0.9.0 ALPHA (2026-06-26)** — *Performance & Systems Update*. Main-menu lag spike mitigation (cached score/recent-run reads, prebaked creepy-background scanlines/vignette, throttled static noise), WebGPU renderer code-split + first-gameplay init, Socket.IO lazy-load on multiplayer/network start, startup performance marks (`zombobs:*`), and v0.9.0 public modality updates across menu, about, landing, itch copy, launcher, and server package metadata.
+
+**Release: V0.8.4 ALPHA (2026-06-25)** — *The Chaos & Horde Update*. Wave Chaos mutators, Scrap Shop shrine + kill-drop economy, **Class Tree System (hybrid 3×5)**, zombie torso overlays + organic motion, MP3 gameplay soundtrack (intensity scaling), controls moved to Settings → Controls (in-game overlay removed), Phase 4 `GameLoopSystem` refactor, mobile touch gate fix. Player-facing modality: `NEWS_UPDATES` news reel, landing version bubbles (9 items), itch V0.8.4 section.
+
+✅ **Class Tree System — hybrid 3×5 (2026-06-25)** — Nation Red-style build paths alongside existing 16 flat skills. Three linear trees (Gunner, Survivor, Scavenger) × 5 tier-exclusive skills with prereqs; tree picks weighted 35% vs flat pool. Capstones: Coup de Grace, Revenant, Killing Spree. UI: tree badges on level-up cards, tree accent on HUD. Achievement **Tree Master** + profile `unlockedTreeSkillIds`. Key files: `js/core/skillTreeDefinitions.js`, `js/systems/SkillSystem.js`, `js/utils/combatUtils.js`, `js/utils/bulletZombieCollisions.js`, `js/ui/LevelUpScreen.js`.
 
 ✅ **Scrap Shop — Wave-Break Shrine (2026-06-25)** — Spend session scrap during wave breaks (45% spawn after wave 4). Random offer per shrine: Ammo Cache (20), Armor Plate (30), Overclock (40). **E** to buy near pedestal; tooltip prompt; shrine clears on purchase or next wave. Files: `js/entities/ScrapShrine.js`, `js/systems/ScrapShopSystem.js`.
 ✅ **Zombie Visual Polish — Torso Overlays + Organic Motion (2026-06-25)** — Procedural additive torso overlays (`goreWetness`, `decayMold`, `tornRemnants`, `infectionPulse`, `slimeFilm`) on upright zombie types; gaze-tracking eyes; velocity lean/bob; cosmetic micro-behaviors (`lurch`/`stagger`/`hesitate`/`reach`); hit recoil flash; per-type motion profiles (fast/armored/exploding/spitter). All cosmetic — no combat or multiplayer packet changes. Key file: `js/entities/Zombie.js`.
@@ -180,7 +185,8 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Settings organized in logical sections (UI ELEMENTS, CROSSHAIR, etc.)
   - All settings persist across game sessions via localStorage
 ✅ **Skill System Expansion** - 10 new basic skills added with full effect integration
-  - Total skills now: 16 (6 original + 10 new)
+  - Total flat skills: 16 (6 original + 10 new)
+  - [AMENDED 2026-06-25]: **Class Tree System (hybrid)** — +15 tree-exclusive skills in 3 linear paths (Gunner / Survivor / Scavenger × 5 tiers). Flat pool unchanged; tree skills gated by prereqs, rarer at level-up. See `DOCS/XP_AND_SKILLS_SYSTEM.md` § Class Tree System.
   - New skills: Thick Skin, Lucky Strike, Quick Hands, Scavenger, Adrenaline, Armor Plating, Long Range, Fast Fingers, Bloodlust, Steady Aim
   - All skills have proper icons, descriptions, and functional effects
   - Skills integrated into combat system, player movement, pickup spawning, and bullet mechanics
@@ -201,6 +207,7 @@ A 2D top-down zombie survival game built with vanilla HTML5 Canvas and JavaScrip
   - Rank XP and rank-up notifications on game over screen
 ✅ **Achievement System** - 30+ unlockable achievements across 5 categories
   - Categories: Combat, Survival, Collection, Skill, Social
+  - [AMENDED 2026-06-25]: **Tree Master** — unlock all 15 class tree skills lifetime (title: Specialist, 2500 rank XP)
   - Achievement unlock notifications during gameplay (non-intrusive popup)
   - Achievement gallery screen with category filtering and progress tracking
   - Rank XP rewards (100-10,000 XP) and unlockable titles
@@ -261,6 +268,7 @@ ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS/
 │   ├── main.js                   # Init, input events, menu actions, engine wiring (~1,183 lines)
 │   ├── core/
 │   │   ├── constants.js          # Game constants and configuration
+│   │   ├── skillTreeDefinitions.js  # Class tree skills (Gunner/Survivor/Scavenger)
 │   │   ├── canvas.js             # Canvas initialization and management
 │   │   ├── gameState.js          # Centralized game state management
 │   ├── companions/

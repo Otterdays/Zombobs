@@ -109,6 +109,11 @@ export class AchievementSystem {
                     shouldUnlock = newProgress >= requirement.value;
                     break;
 
+                case "treeSkillsUnlocked":
+                    newProgress = sessionStats.totalTreeSkillsUnlocked || 0;
+                    shouldUnlock = newProgress >= requirement.value;
+                    break;
+
                 case "pickupsCollected":
                     newProgress = (sessionStats.totalPickupsCollected || 0) + (sessionStats.sessionPickupsCollected || 0);
                     shouldUnlock = newProgress >= requirement.value;

@@ -97,6 +97,8 @@
             /* Let clicks pass through to game canvas */
             /* Hidden by default, will be shown when WebGPU is active */
             display: none;
+            opacity: 0;
+            transition: opacity 0.45s ease-out;
         }
 
         #uiCanvas {

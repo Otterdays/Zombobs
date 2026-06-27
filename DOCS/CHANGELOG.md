@@ -5,6 +5,31 @@ All notable changes to the Zombie Survival Game project will be documented in th
 
 ## [Unreleased]
 
+### Added
+- **Startup Performance Metrics (2026-06-26)** — Added `zombobs:*` performance marks/measures for bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Console logging can be enabled with `?perf=1` or `localStorage.zombobs_perf='1'`; `window.zombobsPerf.entries()` returns captured measures.
+- **Class Tree System (hybrid 3×5)** — Nation Red-style build paths alongside existing 16 flat skills. Three trees (Gunner, Survivor, Scavenger) with 5 tiered tree-exclusive skills each, linear prereqs, rarer level-up weight (35%). New file `js/core/skillTreeDefinitions.js`. Combat hooks: fire rate, pierce, damage mult, Executioner, Second Wind, scrap magnet, Feeding Frenzy heal, Killing Spree adrenaline. UI: tree badges on level-up cards, tree color accent on HUD active skills. Achievement **Tree Master** (15 tree skills lifetime). Profile tracks `unlockedTreeSkillIds`.
+
+### Changed
+- **Main Menu Startup Deferrals (2026-06-26)** — WebGPU renderer code now loads dynamically on first gameplay/WebGPU re-enable instead of during menu boot. Vendored Socket.IO client now lazy-loads only when multiplayer networking initializes.
+
+### Fixed
+- **Main Menu Lag Spike (2026-06-26)** — Removed per-frame localStorage scoreboard parsing, prerendered static creepy-background layers, throttled noise draw, and moved WebGPU/Socket.IO startup work off the initial menu path.
+
+## [v0.9.0] - 2026-06-26
+
+> **Performance & Systems Update** — Main-menu smoothness, lazy startup systems, measurable boot metrics, class tree progression, and synchronized v0.9.0 public modalities.
+
+### Added
+- **Startup Performance Metrics** — `zombobs:*` marks/measures cover bootstrap, loop start, first draw, WebGPU module load, and WebGPU init. Enable console output with `?perf=1` or `localStorage.zombobs_perf='1'`; inspect via `window.zombobsPerf.entries()`.
+- **V0.9.0 Public Modalities** — Main-menu version/news ticker, About screen, landing page, mobile web mirror, itch page description, launcher banner, and server package metadata now present **V0.9.0 ALPHA**.
+
+### Changed
+- **WebGPU Startup Path** — `WebGPURenderer` now loads with dynamic `import()` and initializes on first gameplay or WebGPU re-enable instead of menu boot.
+- **Socket.IO Startup Path** — Vendored Socket.IO client lazy-loads only when multiplayer networking initializes instead of blocking `index.html`.
+
+### Fixed
+- **Main Menu Lag Spike** — Cached local score reads, prebaked static horror-background layers, throttled menu noise drawing, and removed GPU/network startup work from the first menu path.
+
 ## [v0.8.4] - 2026-06-25
 
 > **The Chaos & Horde Update** — Wave escalation, scrap economy shrine, zombie visual AI polish, MP3 soundtrack, and Phase 4 engine refactor.

@@ -139,7 +139,8 @@ The Achievement System tracks player milestones and unlocks achievements based o
 
 **Collection Achievements**:
 - Weapon master (use all weapons in one game)
-- Skill collector (unlock all 16 skills)
+- Skill collector (unlock all 16 flat skills)
+- Tree master (unlock all 15 class tree skills) [AMENDED 2026-06-25]
 - Pickup hoarder (collect 100 pickups)
 
 **Skill Achievements**:

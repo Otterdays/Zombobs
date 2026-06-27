@@ -70,6 +70,9 @@ export class PlayerProfileSystem {
                 maxCombo: 0,
                 totalPerfectWaves: 0,
                 totalSkillsUnlocked: 0,
+                totalTreeSkillsUnlocked: 0,
+                unlockedSkillIds: [],
+                unlockedTreeSkillIds: [],
                 totalPickupsCollected: 0,
                 totalCoopWins: 0,
                 profileVisits: 0,
@@ -165,6 +168,9 @@ export class PlayerProfileSystem {
                     maxCombo: 0,
                     totalPerfectWaves: 0,
                     totalSkillsUnlocked: 0,
+                    totalTreeSkillsUnlocked: 0,
+                    unlockedSkillIds: [],
+                    unlockedTreeSkillIds: [],
                     totalPickupsCollected: 0,
                     totalCoopWins: 0,
                     profileVisits: 0
@@ -184,6 +190,11 @@ export class PlayerProfileSystem {
         if (!profile.stats.galleryVisits) profile.stats.galleryVisits = 0;
         if (!profile.stats.gameRestarts) profile.stats.gameRestarts = 0;
         if (!profile.stats.gamePauses) profile.stats.gamePauses = 0;
+        if (!profile.stats.unlockedSkillIds) profile.stats.unlockedSkillIds = [];
+        if (!profile.stats.unlockedTreeSkillIds) profile.stats.unlockedTreeSkillIds = [];
+        if (profile.stats.totalTreeSkillsUnlocked === undefined) {
+            profile.stats.totalTreeSkillsUnlocked = profile.stats.unlockedTreeSkillIds.length;
+        }
 
         // Migrate battlepass v2 fields
         if (profile.battlepass) {
@@ -299,7 +310,9 @@ export class PlayerProfileSystem {
             maxCombo: this.profile.stats.maxCombo,
             totalPerfectWaves: this.profile.stats.totalPerfectWaves,
             totalPickupsCollected: this.profile.stats.totalPickupsCollected,
-            totalCoopWins: this.profile.stats.totalCoopWins
+            totalCoopWins: this.profile.stats.totalCoopWins,
+            totalSkillsUnlocked: (this.profile.stats.unlockedSkillIds || []).length,
+            totalTreeSkillsUnlocked: (this.profile.stats.unlockedTreeSkillIds || []).length
         };
         const newlyUnlocked = achievementSystem.updateProgress(sessionStatsForAchievements);
 
@@ -497,6 +510,26 @@ export class PlayerProfileSystem {
      * Export profile data (for backup)
      * @returns {string} JSON string of profile
      */
+    /**
+     * Track lifetime skill unlock for achievements
+     * @param {string} skillId
+     * @param {boolean} isTreeSkill
+     */
+    recordSkillUnlock(skillId, isTreeSkill = false) {
+        if (!this.profile) this.loadProfile();
+        if (!this.profile.stats) return;
+
+        const listKey = isTreeSkill ? 'unlockedTreeSkillIds' : 'unlockedSkillIds';
+        const countKey = isTreeSkill ? 'totalTreeSkillsUnlocked' : 'totalSkillsUnlocked';
+
+        if (!this.profile.stats[listKey]) this.profile.stats[listKey] = [];
+        if (this.profile.stats[listKey].includes(skillId)) return;
+
+        this.profile.stats[listKey].push(skillId);
+        this.profile.stats[countKey] = this.profile.stats[listKey].length;
+        this.saveProfile();
+    }
+
     exportProfile() {
         if (!this.profile) {
             this.loadProfile();

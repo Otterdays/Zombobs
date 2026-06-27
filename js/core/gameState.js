@@ -353,6 +353,27 @@ export function resetGameState(canvasWidth, canvasHeight) {
             player.hasRegeneration = false;
             player.scrap = 0;
             player.scrapMultiplier = 1.0;
+            player.fireRateSkillMultiplier = 1.0;
+            player.damageSkillMultiplier = 1.0;
+            player.pierceChance = 0;
+            player.pickupMagnetBonus = 0;
+            player.pickupSpawnRateMultiplier = 1.0;
+            player.bulletRangeMultiplier = 1.0;
+            player.bulletSpreadReduction = 1.0;
+            player.luckyStrikeChance = 0;
+            player.weaponSwitchSpeedMultiplier = 1.0;
+            player.damageReduction = 1.0;
+            player.hasAdrenaline = false;
+            player.hasBloodlust = false;
+            player.bloodlustHealAmount = 2;
+            player.adrenalineDurationMs = 3000;
+            player.adrenalineBoostMultiplier = 1.2;
+            player.adrenalineBoostActive = false;
+            player.adrenalineBoostEndTime = null;
+            player.hasExecutioner = false;
+            player.hasBerserker = false;
+            player.hasSecondWind = false;
+            player.secondWindUsed = false;
 
             // Reset weapon states
             player.weaponStates = {

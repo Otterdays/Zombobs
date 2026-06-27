@@ -390,14 +390,10 @@ export class GameHUD {
 
         // Calculate bottom UI positions (bottom stat / weapon row)
         const isMobile = this.isMobile();
-        const statRowHeight = 50 * scale;
-        const bottomRowTop = this.getBottomHudRowY(statRowHeight);
-
-        // XP Bar Setup
         const xpBarWidth = 280 * scale;
         const xpBarHeight = 50 * scale;
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = bottomRowTop - xpBarHeight - (isMobile ? this.padding : (1 * scale));
+        const xpBarY = this.getBottomHudRowY(xpBarHeight);
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
 
         // Calculate Data
@@ -555,13 +551,9 @@ export class GameHUD {
         const sharedStatsY = topY + statsHeight + itemSpacing;
         this.drawSharedStats(leftX, sharedStatsY);
 
-        const statRowHeight = 50 * scale;
-        const bottomRowTop = this.getBottomHudRowY(statRowHeight);
-
         const bottomWidth = 160 * scale;
         const xpBarWidth = 280 * scale;
         const xpBarHeight = 50 * scale;
-        const bottomHeight = 50 * scale;
 
         // Top right: Active Skills (moved from bottom left)
         const hpBarHeight = 50 * scale;
@@ -573,7 +565,7 @@ export class GameHUD {
         this.drawActiveSkills(skillsX, skillsY, bottomWidth);
 
         const xpBarX = this.canvas.width / 2 - (xpBarWidth / 2);
-        const xpBarY = bottomRowTop - xpBarHeight - (1 * scale);
+        const xpBarY = this.getBottomHudRowY(xpBarHeight);
         this.drawXPBar(xpBarX, xpBarY, xpBarWidth);
 
         // Bottom right: Weapon and Grenade boxes - side by side, aligned with XP bar
@@ -933,12 +925,10 @@ export class GameHUD {
         this.drawStat('Grenades', player.grenadeCount, '💣', grenadeColor, grenadeX, y, width);
     }
 
-    getBottomHudRowY(statHeight) {
+    getBottomHudRowY(rowHeight) {
         const scale = this.getUIScale();
-        if (this.isMobile()) {
-            return this.canvas.height;
-        }
-        return this.canvas.height - statHeight - this.padding;
+        const bottomInset = 6 * scale; // small gutter above screen edge / OS taskbar
+        return this.canvas.height - rowHeight - bottomInset;
     }
 
     drawTooltip(text, x, y) {

@@ -215,18 +215,15 @@ export function loadMultiplierStats() {
     }
 }
 
-// Scoreboard System
+// Scoreboard System — in-memory cache avoids localStorage parse every menu frame
+let _scoreboardCache = null;
+let _recentRunsCache = null;
 
-/**
- * Load scoreboard from localStorage
- * @returns {Array} Array of scoreboard entries (max 10), sorted by score descending
- */
-export function loadScoreboard() {
+function readScoreboardFromStorage() {
     try {
         const saved = localStorage.getItem('zombobs_scoreboard');
         if (saved) {
             const scoreboard = JSON.parse(saved);
-            // Ensure it's an array and sort by score descending
             if (Array.isArray(scoreboard)) {
                 return scoreboard.sort((a, b) => b.score - a.score).slice(0, 10);
             }
@@ -237,12 +234,44 @@ export function loadScoreboard() {
     return [];
 }
 
+function readRecentRunsFromStorage() {
+    try {
+        const saved = localStorage.getItem('zombobs_recent_runs');
+        if (saved) {
+            const recentRuns = JSON.parse(saved);
+            if (Array.isArray(recentRuns)) {
+                return recentRuns;
+            }
+        }
+    } catch (error) {
+        // Failed to load recent runs
+    }
+    return [];
+}
+
+export function invalidateMenuScoreCaches() {
+    _scoreboardCache = null;
+    _recentRunsCache = null;
+}
+
+/**
+ * Load scoreboard from localStorage
+ * @returns {Array} Array of scoreboard entries (max 10), sorted by score descending
+ */
+export function loadScoreboard() {
+    if (_scoreboardCache === null) {
+        _scoreboardCache = readScoreboardFromStorage();
+    }
+    return _scoreboardCache;
+}
+
 /**
  * Clear the scoreboard from localStorage
  */
 export function clearScoreboard() {
     try {
         localStorage.removeItem('zombobs_scoreboard');
+        _scoreboardCache = [];
         return true;
     } catch (error) {
         return false;
@@ -269,6 +298,7 @@ function saveToRecentRuns(entry) {
         const recentRunsToSave = recentRuns.slice(0, 10);
 
         localStorage.setItem('zombobs_recent_runs', JSON.stringify(recentRunsToSave));
+        _recentRunsCache = recentRunsToSave;
     } catch (error) {
         // Failed to save to recent runs
     }
@@ -332,6 +362,7 @@ export function saveScoreboardEntry(entry) {
 
         // Save to localStorage
         localStorage.setItem('zombobs_scoreboard', JSON.stringify(top10));
+        _scoreboardCache = top10;
 
         return entryQualified;
     } catch (error) {
@@ -346,30 +377,22 @@ export function saveScoreboardEntry(entry) {
  * @returns {Array} Array of scoreboard entries sorted by dateTime descending
  */
 export function getLastRuns(count, gameMode = null) {
-    try {
-        const saved = localStorage.getItem('zombobs_recent_runs');
-        if (saved) {
-            const recentRuns = JSON.parse(saved);
-            if (Array.isArray(recentRuns)) {
-                // The list is already sorted by date (most recent first)
-                let filtered = recentRuns;
-                if (gameMode) {
-                    if (gameMode === 'arcade') {
-                        filtered = recentRuns.filter(entry => {
-                            const mode = entry.gameMode || 'arcade';
-                            return mode === 'arcade';
-                        });
-                    } else {
-                        filtered = recentRuns.filter(entry => entry.gameMode === gameMode);
-                    }
-                }
-                return filtered.slice(0, count);
-            }
-        }
-    } catch (error) {
-        // Failed to load last runs
+    if (_recentRunsCache === null) {
+        _recentRunsCache = readRecentRunsFromStorage();
     }
-    return [];
+
+    let filtered = _recentRunsCache;
+    if (gameMode) {
+        if (gameMode === 'arcade') {
+            filtered = _recentRunsCache.filter(entry => {
+                const mode = entry.gameMode || 'arcade';
+                return mode === 'arcade';
+            });
+        } else {
+            filtered = _recentRunsCache.filter(entry => entry.gameMode === gameMode);
+        }
+    }
+    return filtered.slice(0, count);
 }
 
 /**

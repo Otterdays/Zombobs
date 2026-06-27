@@ -404,6 +404,7 @@
 - [ ] **Dynamic Weather System** - Real-time weather changes affecting visibility, movement speed, and zombie behavior (rain reduces accuracy, fog limits vision, wind affects projectile trajectories) 🔴
 - [ ] **Procedural Level Generation** - Algorithmic map creation with configurable parameters for size, difficulty zones, loot distribution, and environmental hazards 🔴
 - [ ] **Advanced Character Customization** - Deep skill trees with branching paths, visual appearance options, and personalized loadout configurations 🟡
+- [x] **Class Tree System (partial, 2026-06-25)** - Hybrid 3×5 linear skill trees (Gunner/Survivor/Scavenger) alongside flat 16-skill pool; prereqs, tree UI, Tree Master achievement. Branching paths + pause-menu tree viewer still open. 🟡
 - [ ] **Multiplayer Cooperative Mode** - Full online co-op with shared objectives, synchronized wave progression, and team-based rewards 🔴
 - [ ] **Competitive PvP Arena** - Player vs player combat modes with ranking system, seasonal leaderboards, and skill-based matchmaking 🔴
 - [ ] **Crafting System** - Resource gathering from environment and enemies, combined with blueprints to create weapons, ammo, and utility items 🟡

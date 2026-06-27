@@ -163,6 +163,16 @@ export class MainMenuScreen {
         return webgpuRenderer.isAvailable();
     }
 
+    getMenuTopLeftContentX() {
+        const padding = 15;
+        const spacing = 8;
+        const webgpuIconWidth = 75;
+        if (this.isWebGPUActive()) {
+            return padding + webgpuIconWidth + spacing;
+        }
+        return padding;
+    }
+
     drawEffects() {
         // Draw Eyes
         this.ctx.save();
@@ -848,15 +858,11 @@ export class MainMenuScreen {
     }
 
     drawVersionBox() {
-        if (this.isMobileLayout || !this.isWebGPUActive()) return;
-        const version = "V0.8.4 ALPHA";
+        if (this.isMobileLayout) return;
+        const version = "V0.9.0 ALPHA";
         const padding = 15;
         const boxHeight = 24;
-        const spacing = 8; // Space between WebGPU icon and version box
-
-        // Position next to WebGPU icon (top left)
-        const webgpuIconWidth = 75;
-        const x = padding + webgpuIconWidth + spacing;
+        const x = this.getMenuTopLeftContentX();
         const y = padding;
 
         this.ctx.save();
@@ -883,12 +889,12 @@ export class MainMenuScreen {
     }
 
     drawTechnologyBranding() {
-        if (this.isMobileLayout || !this.isWebGPUActive()) return;
+        if (this.isMobileLayout) return;
         this.ctx.save();
 
         const scale = this.getUIScale();
         const padding = 15;
-        const spacing = 8; // Space between version box and technology branding
+        const spacing = 8;
         const fontSize = Math.max(8, Math.round(10 * scale));
         const lineHeight = 14 * scale;
         const textPadding = 8 * scale;
@@ -915,15 +921,10 @@ export class MainMenuScreen {
         const panelWidth = maxWidth + textPadding * 2 + (20 * scale);
         const panelHeight = lines.length * lineHeight + textPadding * 2;
 
-        // Position to the right of version box, at same Y level (top left)
-        const webgpuIconWidth = 75;
-        const versionBoxHeight = 24;
-        // Calculate version box width (same logic as drawVersionBox)
         this.ctx.font = 'bold 12px "Roboto Mono", monospace';
-        const versionTextWidth = this.ctx.measureText("V0.8.4 ALPHA").width;
+        const versionTextWidth = this.ctx.measureText("V0.9.0 ALPHA").width;
         const versionBoxWidth = versionTextWidth + 24;
-        // Position to the right of version box
-        const panelX = padding + webgpuIconWidth + spacing + versionBoxWidth + spacing;
+        const panelX = this.getMenuTopLeftContentX() + versionBoxWidth + spacing;
         const panelY = padding;
 
         // Draw background panel

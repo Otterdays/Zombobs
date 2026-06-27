@@ -776,6 +776,27 @@ flowchart TD
 
 **Dependencies**: `core/gameState.js`, `core/constants.js`
 
+[AMENDED 2026-06-25] **Class Tree System (hybrid)**:
+
+**New file**: `js/core/skillTreeDefinitions.js` — `SKILL_TREES`, `TREE_SKILLS_POOL` (15 tree-exclusive skills).
+
+**Additional exports** from `SkillSystem.js`: `SKILL_TREES`, `TREE_SKILLS_POOL`, `TREE_SKILL_WEIGHT_MULT` (0.35).
+
+**Additional methods**:
+- `getSkillById(id)` — flat + tree lookup
+- `isTreeSkillUnlocked(skill)` — prereq gate (linear tier chain per tree)
+- `isSkillMaxed(skill, activeEntry)` — respects `maxLevel`
+- `getAvailableSkills()` — merged pool filter
+
+**Trees** (5 tiers each, linear prereqs):
+- **Gunner** — fire rate, crit, pierce, damage mult, Executioner capstone
+- **Survivor** — damage reduction, HP, stamina, shield, Second Wind capstone
+- **Scavenger** — scrap mult, pickup spawn, magnet range, bloodlust heal, adrenaline capstone
+
+**Integration**: `combatUtils.js` (`applySkillDamageModifiers`, `trySecondWind`), `bulletZombieCollisions.js` (pierce, executioner), `PickupSpawnSystem.js` (magnet bonus), `LevelUpScreen.js` / `GameHUD.js` (tree UI), `PlayerProfileSystem.js` (`unlockedTreeSkillIds`), `achievementDefinitions.js` (Tree Master).
+
+**Dependencies** (updated): `core/skillTreeDefinitions.js`, `systems/PlayerProfileSystem.js`
+
 #### RankSystem.js
 **Purpose**: Permanent rank progression system that accumulates across all game sessions
 

@@ -47,9 +47,10 @@ export function shootBullet(target, canvas, player) {
         }
     }
 
-    // Check fire rate cooldown (with rapid fire buff)
+    // Check fire rate cooldown (with rapid fire buff + skill fire rate)
     const fireRateMultiplier = (gameState.rapidFireEndTime > now) ? 0.5 : 1;
-    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier) {
+    const skillFireRate = player.fireRateSkillMultiplier || 1.0;
+    if (now - player.lastShotTime < player.currentWeapon.fireRate * fireRateMultiplier * skillFireRate) {
         return;
     }
 
@@ -652,6 +653,16 @@ export function handlePlayerZombieCollisions() {
                     createParticles(player.x, player.y, '#ff0000', 3); // Red for health hit
                 }
 
+                if (player.health <= 0 && trySecondWind(player)) {
+                    const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
+                    if (damageNumberStyle !== 'off') {
+                        gameState.damageNumbers.push(new DamageNumber(
+                            player.x, player.y - 30, 'SECOND WIND!', false, '#66bb6a', 18
+                        ));
+                    }
+                    createParticles(player.x, player.y, '#66bb6a', 8);
+                }
+
                 // Reset multiplier if health was reduced (shield didn't fully absorb)
                 if (player.health < previousHealth && player.shield === 0) {
                     resetMultiplier(player);
@@ -898,12 +909,14 @@ function triggerNuke(x, y) {
 
         // Apply Bloodlust heal (2 HP per kill)
         if (player.hasBloodlust) {
-            player.health = Math.min(player.maxHealth, player.health + 2);
+            const healAmt = player.bloodlustHealAmount || 2;
+            player.health = Math.min(player.maxHealth, player.health + healAmt);
         }
 
-        // Apply Adrenaline speed boost (20% for 3s after kill)
+        // Apply Adrenaline speed boost after kill
         if (player.hasAdrenaline) {
-            player.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+            const duration = player.adrenalineDurationMs || 3000;
+            player.adrenalineBoostEndTime = Date.now() + duration;
             player.adrenalineBoostActive = true;
         }
 
@@ -987,6 +1000,36 @@ export function resetMultiplier(player) {
             '#ff1744'
         ));
     }
+}
+
+/**
+ * Applies tree/flat skill damage modifiers to a hit
+ */
+export function applySkillDamageModifiers(shootingPlayer, damage, zombie) {
+    let d = damage * (shootingPlayer.damageSkillMultiplier || 1.0);
+    if (shootingPlayer.hasExecutioner && zombie.maxHealth > 0) {
+        if (zombie.health / zombie.maxHealth < 0.3) {
+            d *= 1.5;
+        }
+    }
+    if (shootingPlayer.hasBerserker && shootingPlayer.maxHealth > 0) {
+        if (shootingPlayer.health / shootingPlayer.maxHealth < 0.3) {
+            d *= 1.3;
+        }
+    }
+    return d;
+}
+
+/**
+ * Second Wind — survive fatal damage once at 50% HP
+ * @returns {boolean} true if second wind triggered
+ */
+export function trySecondWind(player) {
+    if (player.health > 0) return false;
+    if (!player.hasSecondWind || player.secondWindUsed) return false;
+    player.health = Math.floor(player.maxHealth * 0.5);
+    player.secondWindUsed = true;
+    return true;
 }
 
 /**

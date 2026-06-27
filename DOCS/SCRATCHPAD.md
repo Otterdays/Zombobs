@@ -2,6 +2,25 @@
 # SCRATCHPAD
 
 ## Active Tasks
+### Main Menu Startup Performance (2026-06-26) ✅ COMPLETE
+- **Done**: Cached menu scoreboard/recent-run reads to avoid per-frame `localStorage` parse/sort.
+- **Done**: Prerendered creepy background scanlines/vignette and throttled noise draw.
+- **Done**: Deferred WebGPU renderer module load/init until first gameplay or WebGPU setting re-enable.
+- **Done**: Deferred vendored Socket.IO client load until multiplayer/network init.
+- **Done**: Added `zombobs:*` performance marks/measures; enable console logs with `?perf=1` or `localStorage.zombobs_perf='1'`.
+- **Done**: V0.9.0 modality sweep — menu version/news ticker, About screen, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`.
+- **Done**: Smooth game entry — idle WebGPU + ground texture warm-up on menu; async `startGame()` with canvas prep overlay when GPU not ready; `gpuCanvas` opacity fade-in.
+- **Next**: Browser QA cold boot, first Play click with WebGPU enabled, multiplayer lobby connect.
+
+### Class Tree System (3×5 hybrid) [2026-06-25] ✅ COMPLETE
+- **Done**: `skillTreeDefinitions.js` — Gunner/Survivor/Scavenger × 5 skills, prereq chains, hybrid pool with flat 16.
+- **Done**: `SkillSystem` merge pools, tree weight 0.35, `getSkillById`, profile unlock tracking.
+- **Done**: Combat — fire rate, pierce, damage mult, Executioner, Second Wind, magnet, bloodlust/adrenaline tuning.
+- **Done**: LevelUpScreen tree badge + tagline; GameHUD tree accent bar.
+- **Done**: Tree Master achievement + `treeSkillsUnlocked` profile stat.
+- **Done**: Docs — SUMMARY, CHANGELOG, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN.
+- **Next**: Browser QA — pick tree T1→T5 path, verify prereqs block early tiers, co-op level-up sync.
+
 ### Controls Panel → Settings (2026-06-25) ✅ COMPLETE
 - Removed `GameHUD.drawInstructions()` in-game overlay; bottom HUD layout via `getBottomHudRowY()`.
 - Settings → Controls: mouse fixed section, cycle throwable, dodge, throw throwable labels, gamepad sticks.
@@ -31,6 +50,8 @@
 - **Current Status**: ⏳ In progress
 
 ## Compacted History
+- **Class Tree System — hybrid 3×5 (2026-06-25) ✅ COMPLETE**
+  - `skillTreeDefinitions.js` (Gunner/Survivor/Scavenger × 5), hybrid with flat 16, prereqs, 35% tree weight, combat hooks, tree UI, Tree Master achievement. Docs: SUMMARY, CHANGELOG, XP_AND_SKILLS, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN.
 - **v0.8.4 ALPHA — The Chaos & Horde Update (2026-06-25) ✅ RELEASED**
   - Version bump: `MainMenuScreen`, `AboutScreen`, `landing.html`, `NEWS_UPDATES`, `launch.ps1`, server `package.json`, itch copy, `mobile/www` sync.
   - Ship list: Wave Chaos, Scrap Shop shrine, zombie visual AI + torso overlays, MP3 soundtrack, controls in Settings (overlay removed), GameLoopSystem refactor, touch gate fix.
@@ -116,11 +137,11 @@
 - [ ] Survival Mode (Disabled in code)
 
 ## Recent Context (last 5 actions)
-1. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
-2. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`; removed `maxTouchPoints` auto-enable (Windows laptops showed mobile overlay).
-3. **GameLoopSystem syntax fix (2026-06-25)**: Added missing `}` on `_updateMusicIntensity()` — fixed load crash at `draw()`.
-4. **Bullet-zombie collision split (2026-06-25)**: `handleBulletZombieCollisions()` → `js/utils/bulletZombieCollisions.js` (~550 lines). `combatUtils.js` ~887 lines.
-5. **Phase 4 — GameLoopSystem (2026-06-25)**: `updateGame()` + `drawGame()` → `js/systems/GameLoopSystem.js`. `main.js` ~1,183 lines. `gameUtils` mode/UI helpers; scrap update in `PickupSpawnSystem`.
+1. **Class Tree docs (2026-06-25)**: SUMMARY, XP_AND_SKILLS_SYSTEM, ARCHITECTURE, roadmap, RANK_PROGRESSION, REFACTOR_PLAN updated for hybrid 3×5 trees.
+2. **Class Tree System shipped (2026-06-25)**: `skillTreeDefinitions.js`, SkillSystem hybrid pool, combat hooks, LevelUp/HUD tree UI, Tree Master achievement.
+3. **Docs refresh (2026-06-25)**: Updated SUMMARY, CHANGELOG, REFACTOR_PLAN, ARCHITECTURE, My_Thoughts for Phase 4 / collision split / touch-control fix.
+4. **Desktop touch-control fix (2026-06-25)**: Gated `TouchControlSystem` + virtual gamepad behind `isMobileDevice()`.
+5. **GameLoopSystem syntax fix (2026-06-25)**: Added missing `}` on `_updateMusicIntensity()` — fixed load crash at `draw()`.
 
 ## Active Tasks
 - [x] Verify mobile settings panel fix

@@ -8,17 +8,14 @@
 
 ---
 
-### **🆕 V0.8.4 ALPHA — The Chaos & Horde Update**
+### **🆕 V0.9.0 ALPHA — Performance & Systems Update**
 
-*   **Wave Chaos** — Five wave mutators (SWARM, ELITES, VOLATILE, ENCIRCLE, RUSH), shrinking breaks, burst spawns, boss minions, "INCOMING!" late-game pacing
-*   **Scrap Shop Shrine** — Spend kill-earned scrap during wave breaks (press **E**): Ammo Cache, Armor Plate, or Overclock
-*   **Scrap Economy** — Magnetic scrap drops from kills; HUD counter; feeds the shrine loop
-*   **Zombie Visual AI** — Gaze-tracking eyes, organic lean/bob, hit recoil, cosmetic micro-behaviors
-*   **Torso Overlay VFX** — Additive gore/decay/slime layers on upright zombies
-*   **MP3 Soundtrack** — Licensed gameplay playlist; intensity scales with horde pressure
-*   **Controls in Settings** — In-game controls overlay removed; Settings → Controls has mouse reference, cycle throwable, dodge roll, throw throwable labels, and gamepad stick map
-*   **Phase 4 Engine** — `GameLoopSystem` refactor + bullet collision module split
-*   **Touch Fix** — Virtual controls gated to mobile UA (no desktop false positives)
+*   **Main Menu Smoothness** — Cached score reads, prebaked horror-background layers, and throttled static noise reduce menu lag spikes
+*   **Lazy WebGPU Init** — GPU renderer module loads on first gameplay or WebGPU re-enable instead of menu boot
+*   **Lazy Socket.IO Load** — Multiplayer client script loads only when online lobby/networking starts
+*   **Startup Metrics** — `zombobs:*` performance marks measure bootstrap, first draw, loop start, WebGPU module load, and GPU init
+*   **Class Tree Skills** — Gunner, Survivor, and Scavenger build paths augment the flat skill pool
+*   **V0.8.4 Systems Still Live** — Wave Chaos, Scrap Shop Shrine, MP3 soundtrack, controls-in-settings, and Phase 4 engine split remain active
 
 ---
 
@@ -52,8 +49,8 @@
 *   Real-time HUD timers for active power-ups
 *   Kill streak combos with visual feedback
 *   Sprint system with stamina management
-*   Scrap currency from kills + wave-break Scrap Shop shrines (V0.8.4)
-*   Wave Chaos mutators and escalating spawn pacing (V0.8.4)
+*   Scrap currency from kills + wave-break Scrap Shop shrines (V0.8.4+)
+*   Wave Chaos mutators and escalating spawn pacing (V0.8.4+)
 *   16-skills progression system with 3-choice level-ups
 *   XP gain from zombie kills with kill streak multipliers
 
@@ -136,7 +133,7 @@
 
 Built with love, sweat, and zero dependencies.
 
-*   **Engine:** ZOMBS-XFX-NGIN V0.8.4 ALPHA (Vanilla JS + HTML5 Canvas)
+*   **Engine:** ZOMBS-XFX-NGIN V0.9.0 ALPHA (Vanilla JS + HTML5 Canvas)
 *   **Graphics:** WebGPU with Canvas 2D fallback, GPU-accelerated shaders, bloom post-processing
 *   **Audio:** Web Audio API (Procedurally generated sounds) + HTMLAudioElement for music
 *   **Assets:** High-res ground tiles, minimalist pixel art & code-drawn graphics
@@ -146,6 +143,6 @@ Built with love, sweat, and zero dependencies.
 
 ---
 
-**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.8.4 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+**⚠️ Early Production Disclaimer:** This game is currently in active development (V0.9.0 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 
 *Playable directly in your browser. Best experienced on Chrome or Edge. Requires modern browser with WebGPU support (optional, falls back to Canvas 2D).*

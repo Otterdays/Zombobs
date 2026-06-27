@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # Refactor Plan: Zombie Survival Game
 
 ## Status
@@ -190,6 +191,7 @@ main.js
 │   ├── constants.js (no dependencies)
 │   ├── canvas.js → constants.js
 │   ├── gameState.js → constants.js
+│   ├── skillTreeDefinitions.js → (leaf — class tree skill defs)
 │   ├── GameEngine.js (no dependencies)
 │   └── WebGPURenderer.js (no dependencies)
 ├── systems/
@@ -201,7 +203,7 @@ main.js
 │   ├── ZombieUpdateSystem.js → utils/gameUtils.js
 │   ├── EntityRenderSystem.js → utils/gameUtils.js
 │   ├── PickupSpawnSystem.js → core/constants.js, entities/Pickup.js
-│   ├── SkillSystem.js → core/gameState.js, core/constants.js
+│   ├── SkillSystem.js → core/gameState.js, core/skillTreeDefinitions.js, systems/PlayerProfileSystem.js
 │   ├── RenderingCache.js → core/canvas.js, core/constants.js, systems/GraphicsSystem.js
 │   ├── MultiplayerSystem.js → core/gameState.js, core/canvas.js, core/constants.js, systems/SkillSystem.js, systems/AudioSystem.js, systems/ParticleSystem.js, utils/combatUtils.js
 │   ├── ZombieSpawnSystem.js → core/gameState.js, core/canvas.js, entities/Zombie.js, entities/BossZombie.js, utils/gameUtils.js
@@ -239,6 +241,17 @@ main.js
 └── utils/
     ├── bulletZombieCollisions.js → combatUtils (score/explosion), gameUtils, Quadtree, systems/*
     └── gameUtils.js — added mode/UI/mobile helpers (2026-06-25)
+```
+
+[AMENDED 2026-06-26 — Phase 4c / v0.9.0 performance additions:]
+```
+├── main.js → lazy WebGPURenderer dynamic import, startup perf marks, first-play GPU init
+├── systems/
+│   └── MultiplayerSystem.js → lazy Socket.IO client script load on network init
+├── ui/
+│   └── GameHUD.js → cached creepy-background static layers, throttled menu noise
+└── utils/
+    └── gameUtils.js → cached scoreboard/recent-run reads for menu draw path
 ```
 
 ## Benefits Achieved

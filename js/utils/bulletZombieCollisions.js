@@ -15,7 +15,8 @@ import {
     triggerExplosion,
     updateScoreMultiplier,
     awardScore,
-    getZombieBaseScore
+    getZombieBaseScore,
+    applySkillDamageModifiers
 } from './combatUtils.js';
 
 // Reusable Quadtree instance to avoid recreation every frame
@@ -233,18 +234,20 @@ export function handleBulletZombieCollisions() {
 
                         gameState.zombiesKilled++;
 
-                        // Apply Bloodlust heal (2 HP per kill)
                         if (shootingPlayer.hasBloodlust) {
-                            shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                            const healAmt = shootingPlayer.bloodlustHealAmount || 2;
+                            shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + healAmt);
                             const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                             if (damageNumberStyle !== 'off') {
-                                gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                                gameState.damageNumbers.push(new DamageNumber(
+                                    shootingPlayer.x, shootingPlayer.y - 50, `+${healAmt} HP`, false, '#00ff00'
+                                ));
                             }
                         }
 
-                        // Apply Adrenaline speed boost (20% for 3s after kill)
                         if (shootingPlayer.hasAdrenaline) {
-                            shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                            const duration = shootingPlayer.adrenalineDurationMs || 3000;
+                            shootingPlayer.adrenalineBoostEndTime = Date.now() + duration;
                             shootingPlayer.adrenalineBoostActive = true;
                         }
 
@@ -373,11 +376,11 @@ export function handleBulletZombieCollisions() {
                 // Lucky Strike chance (15% for double damage)
                 const isLuckyStrike = shootingPlayer.luckyStrikeChance && Math.random() < shootingPlayer.luckyStrikeChance;
 
-                let finalDamage = bullet.damage;
+                let finalDamage = applySkillDamageModifiers(shootingPlayer, bullet.damage, zombie);
                 if (isCrit) {
-                    finalDamage = bullet.damage * 2; // 2x damage on crit
+                    finalDamage *= 2;
                 } else if (isLuckyStrike) {
-                    finalDamage = bullet.damage * 2; // 2x damage on lucky strike
+                    finalDamage *= 2;
                 }
 
                 // Check if zombie dies from this hit
@@ -463,18 +466,22 @@ export function handleBulletZombieCollisions() {
 
                     gameState.zombiesKilled++;
 
-                    // Apply Bloodlust heal (2 HP per kill)
+                    // Apply Bloodlust heal
                     if (shootingPlayer.hasBloodlust) {
-                        shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + 2);
+                        const healAmt = shootingPlayer.bloodlustHealAmount || 2;
+                        shootingPlayer.health = Math.min(shootingPlayer.maxHealth, shootingPlayer.health + healAmt);
                         const damageNumberStyle = settingsManager.getSetting('video', 'damageNumberStyle') || 'floating';
                         if (damageNumberStyle !== 'off') {
-                            gameState.damageNumbers.push(new DamageNumber(shootingPlayer.x, shootingPlayer.y - 50, "+2 HP", false, '#00ff00'));
+                            gameState.damageNumbers.push(new DamageNumber(
+                                shootingPlayer.x, shootingPlayer.y - 50, `+${healAmt} HP`, false, '#00ff00'
+                            ));
                         }
                     }
 
-                    // Apply Adrenaline speed boost (20% for 3s after kill)
+                    // Apply Adrenaline speed boost after kill
                     if (shootingPlayer.hasAdrenaline) {
-                        shootingPlayer.adrenalineBoostEndTime = Date.now() + 3000; // 3 seconds
+                        const duration = shootingPlayer.adrenalineDurationMs || 3000;
+                        shootingPlayer.adrenalineBoostEndTime = Date.now() + duration;
                         shootingPlayer.adrenalineBoostActive = true;
                     }
 
@@ -627,7 +634,10 @@ export function handleBulletZombieCollisions() {
                 playHitSound();
 
                 if (bullet.type !== 'piercing') {
-                    bullet.markedForRemoval = true;
+                    const pierceRoll = shootingPlayer.pierceChance && Math.random() < shootingPlayer.pierceChance;
+                    if (!pierceRoll) {
+                        bullet.markedForRemoval = true;
+                    }
                 }
             }
         }

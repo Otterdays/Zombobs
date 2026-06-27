@@ -39,7 +39,6 @@ window.triggerDamageIndicator = triggerDamageIndicator;
 import { inputSystem } from './systems/InputSystem.js';
 import { GameEngine } from './core/GameEngine.js';
 import { CompanionSystem } from './companions/CompanionSystem.js';
-import { WebGPURenderer } from './core/WebGPURenderer.js';
 import { skillSystem } from './systems/SkillSystem.js';
 import { cameraSystem } from './systems/CameraSystem.js';
 import { GameLoopSystem } from './systems/GameLoopSystem.js';
@@ -57,6 +56,44 @@ import { BattlepassScreen } from './ui/BattlepassScreen.js';
 import { BadgeScreen } from './ui/BadgeScreen.js';
 import { bloodSimulationSystem } from './systems/BloodSimulationSystem.js';
 import { TouchControlSystem } from './systems/TouchControlSystem.js';
+import { groundTextureSystem } from './systems/GroundTextureSystem.js';
+
+const perfEnabled = (() => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return params.has('perf') || localStorage.getItem('zombobs_perf') === '1';
+    } catch (error) {
+        return false;
+    }
+})();
+
+function perfMark(name) {
+    if (typeof performance === 'undefined' || !performance.mark) return;
+    performance.mark(name);
+}
+
+function perfMeasure(name, start, end) {
+    if (typeof performance === 'undefined' || !performance.measure) return;
+    try {
+        performance.measure(name, start, end);
+        if (perfEnabled) {
+            const entries = performance.getEntriesByName(name);
+            const latest = entries[entries.length - 1];
+            if (latest) console.info(`[perf] ${name}: ${latest.duration.toFixed(1)}ms`);
+        }
+    } catch (error) {
+        // Missing mark; ignore perf-only failures.
+    }
+}
+
+window.zombobsPerf = {
+    enabled: perfEnabled,
+    entries: () => (typeof performance === 'undefined' ? [] : performance.getEntriesByType('measure'))
+        .filter(entry => entry.name.startsWith('zombobs:'))
+        .map(entry => ({ name: entry.name, duration: entry.duration }))
+};
+
+perfMark('zombobs:main:init:start');
 
 // Initialize Game Engine
 const gameEngine = new GameEngine();
@@ -92,7 +129,7 @@ const gameStateManager = new GameStateManager(gameHUD, (count) => {
 });
 const multiplayerSystem = new MultiplayerSystem(
     gameEngine,
-    () => gameStateManager.startGame(),
+    () => startGame(),
     (player) => meleeSystem.performMeleeAttack(player),
     (target, canvas, player) => shootBullet(target, canvas, player),
     (player) => reloadWeapon(player),
@@ -137,27 +174,113 @@ window.addEventListener('resize', () => {
     resizeCanvas(localPlayer);
 });
 
-// Initialize WebGPU Renderer
-const webgpuRenderer = new WebGPURenderer();
+// WebGPU renderer is code-split so menu boot does not parse/compile GPU code.
+let WebGPURenderer = null;
+let webgpuRenderer = null;
+let webgpuInitPromise = null;
 // Make renderer globally accessible for GameHUD
 window.webgpuRenderer = webgpuRenderer;
 
 // Set initial gpuCanvas visibility (hidden until WebGPU is confirmed active)
 updateGpuCanvasVisibility();
 
+function hasNativeWebGPU() {
+    return typeof navigator !== 'undefined' && navigator.gpu !== undefined;
+}
+
+function loadWebGPURendererModule() {
+    if (WebGPURenderer) {
+        return Promise.resolve(WebGPURenderer);
+    }
+
+    perfMark('zombobs:webgpu:module:start');
+    return import('./core/WebGPURenderer.js').then(module => {
+        WebGPURenderer = module.WebGPURenderer;
+        perfMark('zombobs:webgpu:module:end');
+        perfMeasure('zombobs:webgpu:module-load', 'zombobs:webgpu:module:start', 'zombobs:webgpu:module:end');
+        return WebGPURenderer;
+    });
+}
+
 function scheduleWebGPUInit() {
-    webgpuRenderer.init().then(initialized => {
+    if (webgpuInitPromise) {
+        return webgpuInitPromise;
+    }
+
+    perfMark('zombobs:webgpu:init:start');
+    webgpuInitPromise = loadWebGPURendererModule().then(Renderer => {
+        if (!webgpuRenderer) {
+            webgpuRenderer = new Renderer();
+            window.webgpuRenderer = webgpuRenderer;
+            gameLoopSystem.webgpuRenderer = webgpuRenderer;
+        }
+        return webgpuRenderer.init();
+    }).then(initialized => {
         if (initialized) {
             applyWebGPUSettings();
         }
         updateGpuCanvasVisibility();
+        perfMark('zombobs:webgpu:init:end');
+        perfMeasure('zombobs:webgpu:init', 'zombobs:webgpu:init:start', 'zombobs:webgpu:init:end');
+        return initialized;
+    }).catch(error => {
+        console.warn('WebGPU init failed:', error);
+        updateGpuCanvasVisibility();
+        return false;
     });
+
+    return webgpuInitPromise;
 }
 
-if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(scheduleWebGPUInit, { timeout: 2500 });
-} else {
-    setTimeout(scheduleWebGPUInit, 500);
+let webgpuInitStarted = false;
+
+function ensureWebGPUInit() {
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    if (!webgpuEnabled || !hasNativeWebGPU()) {
+        return null;
+    }
+    if (!webgpuInitStarted) {
+        webgpuInitStarted = true;
+    }
+    return scheduleWebGPUInit();
+}
+
+function warmSessionResourcesInBackground() {
+    if (!gameState.showMainMenu) return;
+
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    if (webgpuEnabled && hasNativeWebGPU() && !webgpuInitStarted) {
+        webgpuInitStarted = true;
+        scheduleWebGPUInit();
+    }
+
+    groundTextureSystem.init();
+}
+
+let sessionStartInProgress = false;
+
+async function prepareGameSession() {
+    const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
+    const needsWebGPU = webgpuEnabled && hasNativeWebGPU();
+    if (!needsWebGPU || isWebGPUActive()) {
+        return;
+    }
+
+    if (!webgpuInitStarted) {
+        webgpuInitStarted = true;
+    }
+    const initPromise = scheduleWebGPUInit();
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (isWebGPUActive()) {
+        await initPromise;
+        return;
+    }
+
+    gameHUD.beginSessionPrep();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await initPromise;
+    await new Promise(resolve => requestAnimationFrame(resolve));
 }
 
 /**
@@ -166,7 +289,7 @@ if (typeof requestIdleCallback === 'function') {
  */
 function isWebGPUActive() {
     const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
-    return webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+    return webgpuEnabled && webgpuRenderer && webgpuRenderer.isAvailable() && hasNativeWebGPU();
 }
 
 /**
@@ -179,7 +302,7 @@ function updateGpuCanvasVisibility() {
         return;
     }
     const webgpuEnabled = settingsManager.getSetting('video', 'webgpuEnabled') ?? true;
-    const webgpuAvailable = webgpuRenderer && webgpuRenderer.isAvailable() && WebGPURenderer.isWebGPUAvailable();
+    const webgpuAvailable = webgpuRenderer && webgpuRenderer.isAvailable() && hasNativeWebGPU();
     const webgpuActive = webgpuEnabled && webgpuAvailable;
 
 
@@ -187,13 +310,21 @@ function updateGpuCanvasVisibility() {
     if (webgpuActive) {
         gpuCanvas.style.display = 'block';
         gpuCanvas.style.visibility = 'visible';
-        gpuCanvas.style.opacity = '1';
-
+        const currentOpacity = parseFloat(gpuCanvas.style.opacity);
+        if (!Number.isFinite(currentOpacity) || currentOpacity < 0.01) {
+            gpuCanvas.style.opacity = '0';
+            requestAnimationFrame(() => {
+                if (gpuCanvas.style.display !== 'none') {
+                    gpuCanvas.style.opacity = '1';
+                }
+            });
+        } else {
+            gpuCanvas.style.opacity = '1';
+        }
     } else {
         gpuCanvas.style.display = 'none';
         gpuCanvas.style.visibility = 'hidden';
         gpuCanvas.style.opacity = '0';
-
     }
 }
 
@@ -257,6 +388,9 @@ settingsManager.addChangeListener((category, key, value) => {
 
         // Handle WebGPU enabled/disabled toggle
         if (key === 'webgpuEnabled') {
+            if (value) {
+                ensureWebGPUInit();
+            }
             // Update gpuCanvas visibility when WebGPU setting changes
             updateGpuCanvasVisibility();
         }
@@ -385,8 +519,17 @@ function restartGame() {
     gameStateManager.restartGame();
 }
 
-function startGame() {
-    gameStateManager.startGame();
+async function startGame() {
+    if (sessionStartInProgress) return;
+    sessionStartInProgress = true;
+
+    try {
+        await prepareGameSession();
+        gameStateManager.startGame();
+        gameHUD.endSessionPrep();
+    } finally {
+        sessionStartInProgress = false;
+    }
 }
 
 function cycleWeapon(direction, player) {
@@ -499,6 +642,8 @@ let bootOverlayDismissed = false;
 function dismissBootOverlayOnce() {
     if (bootOverlayDismissed) return;
     bootOverlayDismissed = true;
+    perfMark('zombobs:first-draw');
+    perfMeasure('zombobs:init-to-first-draw', 'zombobs:main:init:start', 'zombobs:first-draw');
     const el = document.getElementById('boot-overlay');
     if (!el) return;
     el.setAttribute('aria-busy', 'false');
@@ -1343,6 +1488,7 @@ window.addEventListener('touchend', (e) => {
 });
 
 // Initialization
+perfMark('zombobs:bootstrap:start');
 loadHighScore();
 loadUsername();
 
@@ -1367,4 +1513,18 @@ setTimeout(() => gameHUD.leaderboardDisplay.fetch(), 2000);
 // Make clearScoreboard available globally for console access
 window.clearScoreboard = clearScoreboard;
 
-requestAnimationFrame(() => gameEngine.start());
+perfMark('zombobs:bootstrap:end');
+perfMeasure('zombobs:bootstrap', 'zombobs:bootstrap:start', 'zombobs:bootstrap:end');
+
+requestAnimationFrame(() => {
+    perfMark('zombobs:game-loop:start');
+    perfMeasure('zombobs:init-to-loop-start', 'zombobs:main:init:start', 'zombobs:game-loop:start');
+    gameEngine.start();
+
+    const scheduleWarmup = () => warmSessionResourcesInBackground();
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(scheduleWarmup, { timeout: 3500 });
+    } else {
+        setTimeout(scheduleWarmup, 2000);
+    }
+});

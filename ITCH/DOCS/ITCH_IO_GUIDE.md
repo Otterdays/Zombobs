@@ -1,3 +1,4 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # How to Publish ZOMBOBS - ZOMBIE APOCALYPSE WITH FRIENDS to Itch.io
 
 ## Mandatory rule (do not skip)
@@ -41,7 +42,7 @@ Since Itch.io hosts static files, we need to zip only the files the browser need
     *   Check **"Mobile Friendly"** (optional, but good practice).
 6.  **Details:** Fill in description, genre (Shooter/Survival), and tags.
     *   **Recommended Description:** Include this disclaimer at the top:
-        > ⚠️ **Early Production**: This game is currently in active development (V0.8.4 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
+        > ⚠️ **Early Production**: This game is currently in active development (V0.9.0 ALPHA). Features may change, bugs may exist, and content is still being added. Your feedback is welcome!
 7.  **Visibility:** Set to **Draft** (to test) or **Public** (to release).
 8.  Click **Save & View Page**.
 

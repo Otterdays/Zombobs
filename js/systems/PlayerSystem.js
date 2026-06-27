@@ -138,10 +138,10 @@ export class PlayerSystem {
             const speedBoostMultiplier = (gameState.speedBoostEndTime > Date.now()) ? 1.5 : 1;
             const skillSpeedMultiplier = player.speedMultiplier || 1.0;
 
-            // Adrenaline boost (20% speed for 3s after kill)
+            // Adrenaline boost (skill-tuned multiplier after kill)
             let adrenalineBoostMultiplier = 1.0;
             if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime > Date.now()) {
-                adrenalineBoostMultiplier = 1.2; // 20% speed boost
+                adrenalineBoostMultiplier = player.adrenalineBoostMultiplier || 1.2;
             } else if (player.adrenalineBoostActive && player.adrenalineBoostEndTime && player.adrenalineBoostEndTime <= Date.now()) {
                 // Expire adrenaline boost
                 player.adrenalineBoostActive = false;

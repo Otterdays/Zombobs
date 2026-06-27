@@ -1,4 +1,13 @@
+<!-- PRESERVATION RULE: Never delete or replace content. Append or annotate only. -->
 # My Thoughts
+
+## 2026-06-26 - V0.9.0 ALPHA Modality Pass
+
+V0.9.0 is positioned as **Performance & Systems Update** because the player-facing win is feel: menu stops hitching, WebGPU/Sockets no longer punish first paint, and perf marks make future startup regressions visible. Kept V0.8.4 horde/scrap content in copy as "still live" rather than pretending all gameplay systems changed today. Updated all major modalities together: `NEWS_UPDATES`, menu/About version boxes, landing + mobile mirror, itch copy, launcher, server package metadata, `SUMMARY`, `CHANGELOG`, `SCRATCHPAD`, and this checklist trail.
+
+## 2026-06-25 - Class Tree System (hybrid 3×5)
+
+Nation Red feel = **build identity**, not just stat bumps. Chose **hybrid** over full replace: flat 16 stays for variety; 15 tree-exclusive skills in **linear** chains (not branching web yet) keeps scope shippable in vanilla JS. Tree weight 0.35 → rare picks feel special; 6 slot cap forces commitment. Capstones wired in combat (Executioner, Second Wind, pierce, magnet) so deep paths *feel* different. Pause-menu tree map = v2.
 
 ## 2026-06-25 - Controls Panel → Settings (V0.8.4 follow-up)
 

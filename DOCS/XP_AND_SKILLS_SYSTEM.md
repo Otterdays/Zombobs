@@ -2,7 +2,9 @@
 
 ## Overview
 
-The XP (Experience Points) and Skills System is a core progression mechanic in Zombobs that allows players to level up by defeating zombies and choose skills to enhance their combat effectiveness. The system features 16 unique skills, a 3-choice level-up selection screen, and linear XP scaling.
+The XP (Experience Points) and Skills System is a core progression mechanic in Zombobs that allows players to level up by defeating zombies and choose skills to enhance their combat effectiveness. The system features 16 flat skills plus 15 class-tree skills (hybrid 3×5), a 3-choice level-up selection screen, and linear XP scaling.
+
+[AMENDED 2026-06-25]: Added hybrid **Class Tree System** — see § Class Tree System at document end.
 
 ---
 
@@ -395,6 +397,8 @@ Potential enhancements to the XP and Skills System:
 5. **Skill Trees**: Branching skill paths instead of random selection
 6. **XP Display**: Show XP gain numbers when zombies are killed
 
+[AMENDED 2026-06-25]: Item 5 partially shipped — **hybrid class trees** (3 linear paths × 5 skills). See § Class Tree System at end of this doc. Full branching / pause-menu tree viewer still future work.
+
 ---
 
 ## Summary
@@ -408,3 +412,60 @@ The XP and Skills System provides a rewarding progression loop where players:
 
 The system is fully integrated across combat, movement, weapons, and pickups, ensuring skills feel impactful and meaningful throughout gameplay.
 
+---
+
+## Class Tree System [AMENDED 2026-06-25]
+
+Hybrid progression: **16 flat skills** (random pool, unchanged) + **15 tree-exclusive skills** in **3 linear trees** (Nation Red–style build identity).
+
+### Trees
+
+| Tree | Theme | T1 → T5 capstone |
+|------|-------|------------------|
+| **Gunner** 🔫 | Firepower | Trigger Happy → … → **Coup de Grace** (+50% dmg vs &lt;30% HP enemies) |
+| **Survivor** 🛡️ | Durability | Grit → … → **Revenant** (Second Wind — survive fatal once at 50% HP) |
+| **Scavenger** 🔍 | Economy | Plunderer → … → **Killing Spree** (+25% speed 4s after kill) |
+
+Definitions: `js/core/skillTreeDefinitions.js` (`SKILL_TREES`, `TREE_SKILLS_POOL`).
+
+### Rules
+
+- **Prerequisites**: Tier N requires tier N−1 skill from the **same tree** owned (level ≥ 1).
+- **Weighting**: Tree skills use `TREE_SKILL_WEIGHT_MULT = 0.35` vs flat pool in `generateChoices()`.
+- **Slots**: Still `MAX_SKILL_SLOTS = 6` across flat + tree combined.
+- **Upgrades**: T1–T4 tree skills upgradeable to level 3; T5 capstones are single-pick.
+
+### Selection flow
+
+1. `getAvailableSkills()` merges `SKILLS_POOL` + `TREE_SKILLS_POOL`.
+2. Filters: max level reached, slots full (upgrades only), tree prereqs not met.
+3. Weighted pick × 3 for level-up overlay (`LevelUpScreen`).
+
+### UI
+
+- Level-up cards: tree badge (`GUNNER · T2/5`), tagline, rarity styling.
+- HUD `drawActiveSkills`: tree-colored left accent bar on tree skills.
+
+### Combat integration (tree-only hooks)
+
+| Effect | File |
+|--------|------|
+| Fire rate (`fireRateSkillMultiplier`) | `combatUtils.js` `shootBullet()` |
+| Pierce chance (`pierceChance`) | `bulletZombieCollisions.js` |
+| Damage mult + Executioner | `applySkillDamageModifiers()` in `combatUtils.js` |
+| Second Wind | `trySecondWind()` in `handlePlayerZombieCollisions()` |
+| Scrap magnet (`pickupMagnetBonus`) | `PickupSpawnSystem.updateScrapPickups()` |
+| Bloodlust heal amount / adrenaline duration | kill handlers in `bulletZombieCollisions.js`, `combatUtils.js` |
+
+### Profile & achievements
+
+- `PlayerProfileSystem.recordSkillUnlock(skillId, isTreeSkill)` — separate `unlockedSkillIds` vs `unlockedTreeSkillIds`.
+- **Skill Collector** — still 16 flat skills lifetime.
+- **Tree Master** — 15 tree skills lifetime (`treeSkillsUnlocked` achievement type).
+
+### Key exports (`SkillSystem.js`)
+
+- Re-exports: `SKILL_TREES`, `TREE_SKILLS_POOL`
+- Methods: `getSkillById()`, `isTreeSkillUnlocked()`, `getAvailableSkills()`
+
+---

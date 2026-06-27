@@ -1,6 +1,6 @@
 import { gameState } from '../core/gameState.js';
 import { settingsManager } from '../systems/SettingsManager.js';
-import { SKILL_RARITY } from '../systems/SkillSystem.js';
+import { SKILL_RARITY, SKILL_TREES } from '../systems/SkillSystem.js';
 
 export class LevelUpScreen {
     constructor(canvas, ctx, hud) {
@@ -168,8 +168,24 @@ export class LevelUpScreen {
             ctx.stroke();
             ctx.shadowBlur = 0;
 
+            // Tree path badge (tree-exclusive skills)
+            let badgeYOffset = 0;
+            if (skill.tree && SKILL_TREES[skill.tree]) {
+                const treeInfo = SKILL_TREES[skill.tree];
+                const treeBadgeY = cardY + 14 * scale;
+                ctx.fillStyle = treeInfo.color;
+                ctx.font = `bold ${Math.max(9, 11 * scale)}px "Roboto Mono", monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    `${treeInfo.icon} ${treeInfo.name.toUpperCase()} · T${skill.tier}/5`,
+                    cardX + cardWidth / 2,
+                    treeBadgeY
+                );
+                badgeYOffset = 14 * scale;
+            }
+
             // Rarity badge at top
-            const badgeY = cardY + 20 * scale;
+            const badgeY = cardY + 20 * scale + badgeYOffset;
             ctx.fillStyle = rarityInfo.color;
             ctx.font = `bold ${Math.max(10, 12 * scale)}px "Roboto Mono", monospace`;
             ctx.textAlign = 'center';
@@ -200,6 +216,14 @@ export class LevelUpScreen {
             const skillNameFontSize = Math.max(14, 20 * scale);
             ctx.font = `bold ${skillNameFontSize}px "Roboto Mono", monospace`;
             ctx.fillText(skill.name, cardX + cardWidth / 2, cardY + 165 * scale);
+
+            // Tree tagline
+            if (skill.tagline) {
+                ctx.fillStyle = SKILL_TREES[skill.tree]?.color || '#888888';
+                const tagFontSize = Math.max(9, 12 * scale);
+                ctx.font = `italic ${tagFontSize}px "Roboto Mono", monospace`;
+                ctx.fillText(`"${skill.tagline}"`, cardX + cardWidth / 2, cardY + 188 * scale);
+            }
 
             // Description
             ctx.fillStyle = '#cccccc';

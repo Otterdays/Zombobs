@@ -80,6 +80,10 @@ export class WebGPURenderer {
     }
 
     async init() {
+        if (this.isInitialized || this.fallbackMode) {
+            return this.isInitialized;
+        }
+
         // Check for WebGPU support
         if (!navigator.gpu) {
             console.warn('WebGPU is not supported in this browser. Falling back to Canvas 2D.');

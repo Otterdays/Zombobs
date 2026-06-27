@@ -161,6 +161,15 @@ export const ACHIEVEMENT_DEFINITIONS = [
         reward: { rankXP: 2000, title: "Scholar" }
     },
     {
+        id: "tree_master",
+        name: "Tree Master",
+        description: "Unlock all 15 class tree skills across all games",
+        category: "collection",
+        icon: "🌳",
+        requirement: { type: "treeSkillsUnlocked", value: 15 },
+        reward: { rankXP: 2500, title: "Specialist" }
+    },
+    {
         id: "pickup_hoarder",
         name: "Pickup Hoarder",
         description: "Collect 100 pickups",

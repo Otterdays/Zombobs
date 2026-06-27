@@ -1,8 +1,12 @@
 import { gameState } from '../core/gameState.js';
-import { PLAYER_MAX_HEALTH, PLAYER_BASE_SPEED } from '../core/constants.js';
+import { SKILL_TREES, TREE_SKILLS_POOL } from '../core/skillTreeDefinitions.js';
+import { playerProfileSystem } from './PlayerProfileSystem.js';
+
+export { SKILL_TREES, TREE_SKILLS_POOL };
 
 // Constants
 export const MAX_SKILL_SLOTS = 6;
+export const TREE_SKILL_WEIGHT_MULT = 0.35;
 export const XP_BASE_REQUIREMENT = 100;
 export const XP_SCALING_FACTOR = 1.2;
 
@@ -402,27 +406,45 @@ class SkillSystem {
         }
     }
 
+    getSkillById(skillId) {
+        return SKILLS_POOL.find(s => s.id === skillId)
+            || TREE_SKILLS_POOL.find(s => s.id === skillId)
+            || null;
+    }
+
+    isTreeSkillUnlocked(skill) {
+        if (!skill.requires) return true;
+        return gameState.activeSkills.some(s => s.id === skill.requires);
+    }
+
+    isSkillMaxed(skill, activeEntry) {
+        if (!activeEntry) return false;
+        const maxLevel = skill.maxLevel || 3;
+        return (activeEntry.level || 1) >= maxLevel;
+    }
+
+    getAvailableSkills() {
+        const slotsFull = gameState.activeSkills.length >= MAX_SKILL_SLOTS;
+        const allPools = [...SKILLS_POOL, ...TREE_SKILLS_POOL];
+
+        return allPools.filter(skill => {
+            const existing = gameState.activeSkills.find(s => s.id === skill.id);
+            if (this.isSkillMaxed(skill, existing)) return false;
+            if (!existing && slotsFull) return false;
+            if (skill.treeExclusive && !this.isTreeSkillUnlocked(skill)) return false;
+            return true;
+        });
+    }
+
     /**
      * Generate skill choices with weighted rarity system
      * @returns {Array} Array of 3 skill choices
      */
     generateChoices() {
-        const activeSkillIds = gameState.activeSkills.map(s => s.id);
-
-        // Filter available skills
-        let availableSkills = SKILLS_POOL.filter(skill => {
-            if (activeSkillIds.length < MAX_SKILL_SLOTS) {
-                return true;
-            }
-            return activeSkillIds.includes(skill.id);
-        });
-
-        // Weighted random selection based on rarity
+        const availableSkills = this.getAvailableSkills();
         const choices = [];
         const usedIds = new Set();
-
-        // Increase legendary chance at higher levels
-        const levelBonus = Math.min(0.02 * (gameState.level - 1), 0.10); // Up to 10% bonus at level 6+
+        const levelBonus = Math.min(0.02 * (gameState.level - 1), 0.10);
 
         for (let i = 0; i < 3; i++) {
             const skill = this.selectWeightedSkill(availableSkills, usedIds, levelBonus);
@@ -432,9 +454,8 @@ class SkillSystem {
             }
         }
 
-        // Fallback if we don't have 3 choices
         while (choices.length < 3) {
-            const fallback = SKILLS_POOL.find(s => !usedIds.has(s.id));
+            const fallback = availableSkills.find(s => !usedIds.has(s.id));
             if (fallback) {
                 choices.push(fallback);
                 usedIds.add(fallback.id);
@@ -457,22 +478,23 @@ class SkillSystem {
         const available = skills.filter(s => !excludeIds.has(s.id));
         if (available.length === 0) return null;
 
-        // Calculate total weight with level bonus
         let totalWeight = 0;
         const weightedSkills = available.map(skill => {
             const baseRarity = SKILL_RARITY[skill.rarity] || SKILL_RARITY.COMMON;
             let weight = baseRarity.weight;
 
-            // Apply level bonus to non-common rarities
+            if (skill.treeExclusive) {
+                weight *= TREE_SKILL_WEIGHT_MULT;
+            }
+
             if (skill.rarity !== 'COMMON' && levelBonus > 0) {
-                weight *= (1 + levelBonus * 2); // Boost rare+ chances at higher levels
+                weight *= (1 + levelBonus * 2);
             }
 
             totalWeight += weight;
             return { skill, weight, cumulative: totalWeight };
         });
 
-        // Random selection
         const roll = Math.random() * totalWeight;
         for (const entry of weightedSkills) {
             if (roll <= entry.cumulative) {
@@ -480,7 +502,7 @@ class SkillSystem {
             }
         }
 
-        return available[0]; // Fallback
+        return available[0];
     }
 
     /**
@@ -493,11 +515,11 @@ class SkillSystem {
     }
 
     activateSkill(skillId) {
-        const skill = SKILLS_POOL.find(s => s.id === skillId);
+        const skill = this.getSkillById(skillId);
         if (!skill) return;
 
-        // Check if skill already exists
         const existingSkill = gameState.activeSkills.find(s => s.id === skillId);
+        const isNewUnlock = !existingSkill;
 
         if (existingSkill) {
             existingSkill.level = (existingSkill.level || 1) + 1;
@@ -505,21 +527,28 @@ class SkillSystem {
             if (gameState.activeSkills.length >= MAX_SKILL_SLOTS) {
                 return;
             }
-            gameState.activeSkills.push({
+            const entry = {
                 id: skillId,
                 level: 1,
                 rarity: skill.rarity
-            });
+            };
+            if (skill.tree) {
+                entry.tree = skill.tree;
+                entry.tier = skill.tier;
+            }
+            gameState.activeSkills.push(entry);
         }
 
-        // Apply effect to all players
         gameState.players.forEach(player => {
             if (player.health > 0) {
                 skill.effect(player);
             }
         });
 
-        // Broadcast choice if Leader
+        if (isNewUnlock) {
+            playerProfileSystem.recordSkillUnlock(skillId, !!skill.treeExclusive);
+        }
+
         if (gameState.isCoop && gameState.multiplayer.active && gameState.multiplayer.isLeader) {
             gameState.multiplayer.socket.emit('game:skill', skillId);
         }
